@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamNew creates a window for strem creation.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   width="400" title="{resourceManager.getString('language', 'STW_NEWWINDOWTITLE')}">
+			   
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.core.FlexGlobals;
+		import mx.managers.PopUpManager;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			this.sTitle.text = resourceManager.getString('language', 'STW_NEWTITLE') + " " + LoadedData.stream.title;
+			this.sFile.text = resourceManager.getString('language', 'STW_NEWFILE') + " " + LoadedData.stream.id;
+			this.sAuthor.text = resourceManager.getString('language', 'STW_NEWAUTHOR') + " " + LoadedData.stream.author.name;
+		}
+		
+		/**
+		 * Create new stream.
+		 */
+		private function onOK():void {
+			LoadedData.stream.clear();
+			FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_NEWOK')));
+			PopUpManager.removePopUp(this);
+			FlexGlobals.topLevelApplication.processCommand('selectNone');
+			FlexGlobals.topLevelApplication.processCommand("redraw");
+			FlexGlobals.topLevelApplication.processCommand("StreamRefresh");
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function onCancel():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label text="{resourceManager.getString('language', 'STW_NEWCURRENT')}"/>
+		<s:Label id="sTitle" text="{resourceManager.getString('language', 'STW_NEWTITLE')}"/>
+		<s:Label id="sFile" text="{resourceManager.getString('language', 'STW_NEWFILE')}"/>
+		<s:Label id="sAuthor" text="{resourceManager.getString('language', 'STW_NEWAUTHOR')}"/>
+		<mx:HRule width="100%"/>
+		<s:Label text="{resourceManager.getString('language', 'STW_NEWOVERRIDE')}"/>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_OK')}" click="onOK()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

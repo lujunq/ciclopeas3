@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityCategories creates a window to manage community categories.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				creationComplete="init()" width="600" height="550" title="{resourceManager.getString('language', 'CW_LINKS_TITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="streamList" />
+		<mx:ArrayCollection id="showInterfaceData" />
+		<mx:ArrayCollection id="showClockData" />
+		<mx:ArrayCollection id="showVotesData" />
+		<mx:ArrayCollection id="showCommentData" />
+		<mx:ArrayCollection id="showRateData" />
+		<mx:ArrayCollection id="showZoomData" />
+		<mx:ArrayCollection id="showUserData" />
+		<mx:ArrayCollection id="renderModeData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.navigateToURL;
+		import flash.net.URLRequest;
+		import flash.system.System;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _display:String = "";							// display options
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// prepare show data
+			this.showInterfaceData.removeAll();
+			this.showClockData.removeAll();
+			this.showVotesData.removeAll();
+			this.showCommentData.removeAll();
+			this.showRateData.removeAll();
+			this.showZoomData.removeAll();
+			this.showUserData.removeAll();
+			this.renderModeData.removeAll();
+			this.showInterfaceData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showInterfaceData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showInterfaceData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.showClockData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showClockData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showClockData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.showVotesData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showVotesData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showVotesData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.showCommentData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showCommentData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showCommentData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.showRateData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showRateData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showRateData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.showZoomData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showZoomData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showZoomData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.showUserData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEDEFAULT'), data:"" } );
+			this.showUserData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USETRUE'), data:"true" } );
+			this.showUserData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_USEFALSE'), data:"false" } );
+			this.renderModeData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_RENDERDEFAULT'), data:"flash" } );
+			this.renderModeData.addItem( { label: resourceManager.getString('language', 'CW_LINKS_RENDER5'), data:"html5" } );
+			// load streams list
+			WindowServerCheck.createServer("streamlist", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Stream list information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try to load again
+				WindowServerCheck.createServer("streamlist", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// clear previous data
+				this.streamList.removeAll();
+				// add initial streams
+				this.streamList.addItem( { label: resourceManager.getString('language', 'CW_LINKS_STREAMCURRENT'), data: LoadedData.stream.id } );
+				this.streamList.addItem( { label: resourceManager.getString('language', 'CW_LINKS_STREAMHOME'), data: "" } );
+				// add loaded names
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.streamList.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file ) } );
+				}
+				this.theStreams.selectedIndex = 0;
+				this.changeSets();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Show links and iframe codes based on last set change.
+		 */
+		private function changeSets():void {
+			// interface display
+			this._display = "";
+			if (this.showInterface.selectedItem == undefined) {
+				this.showInterface.selectedItem = this.showInterfaceData.getItemAt(0);
+				this.showInterfaceData.refresh();
+				this.showInterface.validateNow();
+			}
+			if (this.showClock.selectedItem == undefined) {
+				this.showClock.selectedItem = this.showClockData.getItemAt(0);
+				this.showClockData.refresh();
+				this.showClock.validateNow();
+			}
+			if (this.showVotes.selectedItem == undefined) {
+				this.showVotes.selectedItem = this.showVotesData.getItemAt(0);
+				this.showVotesData.refresh();
+				this.showVotes.validateNow();
+			}
+			if (this.showComment.selectedItem == undefined) {
+				this.showComment.selectedItem = this.showCommentData.getItemAt(0);
+				this.showCommentData.refresh();
+				this.showComment.validateNow();
+			}
+			if (this.showRate.selectedItem == undefined) {
+				this.showRate.selectedItem = this.showRateData.getItemAt(0);
+				this.showRateData.refresh();
+				this.showRate.validateNow();
+			}
+			if (this.showZoom.selectedItem == undefined) {
+				this.showZoom.selectedItem = this.showZoomData.getItemAt(0);
+				this.showZoomData.refresh();
+				this.showZoom.validateNow();
+			}
+			if (this.showUser.selectedItem == undefined) {
+				this.showUser.selectedItem = this.showUserData.getItemAt(0);
+				this.showUserData.refresh();
+				this.showUser.validateNow();
+			}
+			if (this.renderMode.selectedItem == undefined) {
+				this.renderMode.selectedItem = this.renderModeData.getItemAt(0);
+				this.renderModeData.refresh();
+				this.renderMode.validateNow();
+			}
+			if (this.renderMode.selectedItem.data == "html5") this._display += "&render=5"; 
+			if (this.showInterface.selectedItem.data != "") this._display += "&showinterface=" + this.showInterface.selectedItem.data;
+			if (this.showClock.selectedItem.data != "") this._display += "&showclock=" + this.showClock.selectedItem.data;
+			if (this.showVotes.selectedItem.data != "") this._display += "&showvote=" + this.showVotes.selectedItem.data;
+			if (this.showComment.selectedItem.data != "") this._display += "&showcomment=" + this.showComment.selectedItem.data;
+			if (this.showRate.selectedItem.data != "") this._display += "&showrate=" + this.showRate.selectedItem.data;
+			if (this.showZoom.selectedItem.data != "") this._display += "&showzoom=" + this.showZoom.selectedItem.data;
+			if (this.showUser.selectedItem.data != "") this._display += "&showuser=" + this.showUser.selectedItem.data;
+			// set iframe text
+			var frameText:String = '<iframe style="background: none repeat scroll 0% 0% #000000;" name="managana" src="';
+			frameText += EditorOptions.path + "iframe.php?community=" + LoadedData.community.id;
+			if (this.theStreams.selectedItem.data != "") frameText += "&stream=" + this.theStreams.selectedItem.data;
+			frameText += this._display;
+			frameText += '" frameborder="no" scrolling="no" width="' + this.iframeWidth.text + '" height="' + this.iframeHeight.text + '"></iframe>';
+			this.theIframe.text = frameText;
+			// direct link
+			var linkText:String = EditorOptions.path + "?community=" + LoadedData.community.id;
+			if (this.theStreams.selectedItem.data != "") linkText += "&stream=" + this.theStreams.selectedItem.data;
+			linkText += this._display;
+			this.theLink.text = linkText;
+		}
+		
+		/**
+		 * Access the current link on a new tab.
+		 */
+		private function accessLink():void {
+			navigateToURL(new URLRequest(this.theLink.text));
+		}
+		
+		/**
+		 * Copy the link to clipboard.
+		 */
+		private function copyLink():void {
+			System.setClipboard(this.theLink.text);
+		}
+		
+		/**
+		 * Copy the iframe to clipboard.
+		 */
+		private function copyIframe():void {
+			System.setClipboard(this.theIframe.text);
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function closeWindow():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CW_LINKS_ABOUT')}"/>
+		<mx:HRule width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CW_LINKS_DISPLAYOPTIONS')}"/>
+		
+		<s:HGroup verticalAlign="middle" width="100%">
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_USEUI')}" textAlign="right" />
+			<s:DropDownList id="showInterface" selectedIndex="0" width="25%" dataProvider="{showInterfaceData}" change="changeSets()" />
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_SHOWCLOCK')}" textAlign="right" />
+			<s:DropDownList id="showClock" selectedIndex="0" width="25%" dataProvider="{showClockData}" change="changeSets()" />
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="100%">
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_SHOWVOTES')}" textAlign="right" />
+			<s:DropDownList id="showVotes" selectedIndex="0" width="25%" dataProvider="{showVotesData}" change="changeSets()" />
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_SHOWCOMMETS')}" textAlign="right" />
+			<s:DropDownList id="showComment" selectedIndex="0" width="25%" dataProvider="{showCommentData}" change="changeSets()" />
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="100%">
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_SHOWRATE')}" textAlign="right" />
+			<s:DropDownList id="showRate" selectedIndex="0" width="25%" dataProvider="{showRateData}" change="changeSets()" />
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_SHOWZOOM')}" textAlign="right" />
+			<s:DropDownList id="showZoom" selectedIndex="0" width="25%" dataProvider="{showZoomData}" change="changeSets()" />
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="100%">
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_SHOWUSER')}" textAlign="right" />
+			<s:DropDownList id="showUser" selectedIndex="0" width="25%" dataProvider="{showUserData}" change="changeSets()" />
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_RENDERMODE')}" textAlign="right" />
+			<s:DropDownList id="renderMode" selectedIndex="0" width="25%" dataProvider="{renderModeData}" change="changeSets()" />
+		</s:HGroup>
+		<mx:HRule width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CW_LINKS_STREAM')}" />
+		<s:DropDownList id="theStreams" width="100%" dataProvider="{streamList}" selectedIndex="0" change="changeSets()" />
+		<mx:HRule width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CW_LINKS_LINK')}" />
+		<s:TextInput id="theLink" editable="false" width="100%" />
+		<s:HGroup width="100%">
+			<s:Button label="{resourceManager.getString('language', 'CW_LINKS_COPY')}" width="50%" click="copyLink()" />
+			<s:Button label="{resourceManager.getString('language', 'CW_LINKS_ACCESS')}" width="50%" click="accessLink()" />
+		</s:HGroup>
+		<mx:HRule width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CW_LINKS_IFRAME')}" />
+		<s:HGroup verticalAlign="middle" width="100%">
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_WIDTH')}" textAlign="right" />
+			<s:TextInput width="25%" text="960" restrict="0-9 \%" id="iframeWidth" change="changeSets()" />
+			<s:Label width="25%" text="{resourceManager.getString('language', 'CW_LINKS_HEIGHT')}" textAlign="right" />
+			<s:TextInput width="25%" text="540" restrict="0-9 \%" id="iframeHeight" change="changeSets()" />
+		</s:HGroup>
+		<s:TextArea width="100%" height="100%" editable="false" id="theIframe" />
+		<s:Button label="{resourceManager.getString('language', 'CW_LINKS_COPY')}" width="100%" click="copyIframe()" />
+		<s:Label text="" />
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CW_LINKS_CLOSE')}" click="closeWindow()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamTime creates a windo to handle stream time and (in future) voting.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			    xmlns:mana="art.ciclope.managanaeditor.*"
+			   width="600" height="500" borderVisible="true" title="{resourceManager.getString('language', 'STW_TIMETITLE')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="streamInstances" />
+		<mx:ArrayCollection id="voteDefaultList" />
+		<s:RadioButtonGroup id="timeType"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		import flash.events.Event;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			var index:uint;
+			// check current stream instances
+			this.streamInstances.removeAll();
+			if (FlexGlobals.topLevelApplication.view != null) {
+				var instances:Array = FlexGlobals.topLevelApplication.view.instanceNames;
+				for (index = 0; index < instances.length; index++) {
+					this.streamInstances.addItem(instances[index]);
+				}
+			}
+			// is instace dropdown already available?
+			if (this.instancesTime != null) {
+				this.instancesTime.selectedIndex = 0;
+				if (LoadedData.stream.votetype == "instance") {
+					for (index = 0; index < this.streamInstances.length; index++) {
+						if (this.streamInstances.getItemAt(index) == LoadedData.stream.votereference) this.instancesTime.selectedIndex = index;
+					}
+				}
+			}
+			// default vote options
+			this.voteDefaultList.removeAll();
+			this.voteDefaultList.addItem( { label: resourceManager.getString('language', 'STW_VOTENODEFAULT'), data: 0 } );
+			this.voteDefaultList.addItem( { label: "1", data: 1 } );
+			this.voteDefaultList.addItem( { label: "2", data: 2 } );
+			this.voteDefaultList.addItem( { label: "3", data: 3 } );
+			this.voteDefaultList.addItem( { label: "4", data: 4 } );
+			this.voteDefaultList.addItem( { label: "5", data: 5 } );
+			this.voteDefaultList.addItem( { label: "6", data: 6 } );
+			this.voteDefaultList.addItem( { label: "7", data: 7 } );
+			this.voteDefaultList.addItem( { label: "8", data: 8 } );
+			this.voteDefaultList.addItem( { label: "9", data: 9 } );
+		}
+		
+		/**
+		 * Get data from loaded stream information.
+		 */
+		private function getData(name:String):void {
+			switch (name) {
+				case "typeInfinite":
+					if (LoadedData.stream.votetype == "infinite") this.typeInfinite.selected = true;
+					break;
+				case "typeDefined":
+					if (LoadedData.stream.votetype == "defined") this.typeDefined.selected = true;
+					break;
+				case "typeInstance":
+					if (LoadedData.stream.votetype == "instance") this.typeInstance.selected = true;
+					break;
+				case "definedTime":
+					if (LoadedData.stream.votetype == "defined") {
+						this.definedTime.value = uint(LoadedData.stream.votereference);
+					} else {
+						this.definedTime.value = 60;
+					}
+					break;
+				case "instancesTime":
+					this.instancesTime.selectedIndex = 0;
+					if (LoadedData.stream.votetype == "instance") {
+						for (var index:uint = 0; index < this.streamInstances.length; index++) {
+							if (this.streamInstances.getItemAt(index) == LoadedData.stream.votereference) this.instancesTime.selectedIndex = index;
+						}
+					}
+					break;
+				case "startaftervote":
+					this.startaftervote.selected = LoadedData.stream.startaftervote;
+					break;
+			}
+		}
+		
+		/**
+		 * Changed the vote option selection.
+		 */
+		private function voteNumChange():void {
+			this.voteProperties.enabled = true;
+			this.votePx.value = LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].px;
+			this.votePy.value = LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].py;
+			this.voteVisible.selected = LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].visible;
+			this.codeWindow.code = LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].action;
+		}
+		
+		/**
+		 * Get initial component value when it is initialized.
+		 * @param	comp	the component name
+		 */
+		private function cInit(comp:String):void {
+			switch (comp) {
+				case "codeWindow":
+					this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+					break;
+				case "voteDefault":
+					this.voteDefault.selectedIndex = 0;
+					for (var ivote:uint = 0; ivote < this.voteDefaultList.length; ivote++) {
+						if (this.voteDefaultList[ivote].data == LoadedData.stream.voteDefault) this.voteDefault.selectedIndex = ivote;
+					}
+					break;
+			}
+		}
+		
+		/**
+		 * The text at progress code editor changed.
+		 */
+		private function codeChange(evt:Event):void {
+			if (this.voteNumList.selectedIndex >= 0) {
+				LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].action = this.codeWindow.code;
+				FlexGlobals.topLevelApplication.processCommand("updateVoteDisplay");
+			}
+		}
+		
+		/**
+		 * Information about a vote property changed.
+		 * @param	name	the information that changed
+		 */
+		private function changeData(name:String):void {
+			if (this.voteNumList.selectedIndex >= 0) {
+				switch(name) {
+					case 'px':
+						LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].px = this.votePx.value;
+						break;
+					case 'py':
+						LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].py = this.votePy.value;
+						break;
+					case 'visible':
+						LoadedData.stream.voteoptions[this.voteNumList.selectedIndex].visible = this.voteVisible.selected;
+						break;
+				}
+				FlexGlobals.topLevelApplication.processCommand("updateVoteDisplay");
+			}
+		}
+		
+		/**
+		 * Save stream properties changes.
+		 */
+		private function onOK():void {
+			// time type
+			if (this.typeInfinite.selected) LoadedData.stream.votetype = "infinite";
+			if (this.typeDefined.selected) LoadedData.stream.votetype = "defined";
+			if (this.typeInstance.selected) LoadedData.stream.votetype = "instance";
+			LoadedData.stream.startaftervote = this.startaftervote.selected;
+			if (this.voteDefault != null) LoadedData.stream.voteDefault = this.voteDefault.selectedItem.data;
+			// vote reference
+			if (LoadedData.stream.votetype == "defined") LoadedData.stream.votereference = String(this.definedTime.value);
+				else if (LoadedData.stream.votetype == "instance") LoadedData.stream.votereference = String(this.instancesTime.selectedItem);
+			// probgress code
+			if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Avoid changes.
+		 */
+		private function onCANCEL():void {
+			// progress code
+			if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_TIMETAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label text="{resourceManager.getString('language', 'STW_TIMEABOUT')}" />
+					<s:RadioButton id="typeInfinite" selected="true" label="{resourceManager.getString('language', 'STW_TIMETYPEINFINITE')}" groupName="timeType" creationComplete="getData('typeInfinite')" />
+					<s:HGroup verticalAlign="middle">
+						<s:RadioButton id="typeDefined" label="{resourceManager.getString('language', 'STW_TIMETYPEDEFINED')}" groupName="timeType" creationComplete="getData('typeDefined')"/>
+						<s:NumericStepper minimum="1" maximum="10000" id="definedTime" width="60" creationComplete="getData('definedTime')" />
+						<s:Label text="{resourceManager.getString('language', 'STW_TIMESECONDS')}" />
+						<s:CheckBox id="startaftervote" selected="false" creationComplete="getData('startaftervote')" label="{resourceManager.getString('language', 'STW_TIMEAFTERVOTE')}" />
+					</s:HGroup>
+					<s:HGroup verticalAlign="middle">
+						<s:RadioButton id="typeInstance" label="{resourceManager.getString('language', 'STW_TIMETYPEINSTANCE')}" groupName="timeType" creationComplete="getData('typeInstance')"/>
+						<s:DropDownList id="instancesTime" dataProvider="{streamInstances}" creationComplete="getData('instancesTime')" />
+					</s:HGroup>
+					<mx:Spacer height="5" width="100%" />
+					<s:Label width="100%" height="100%" text="{resourceManager.getString('language', 'STW_TIMEENDABOUT')}" />
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_VOTETAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'STW_VOTEDEFAULT')}" />
+						<s:DropDownList id="voteDefault" dataProvider="{voteDefaultList}" width="100%" creationComplete="cInit('voteDefault')" />
+					</s:HGroup>
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:HGroup width="100%">
+						<s:VGroup width="20%" height="100%">
+							<s:Label width="100%" text="{resourceManager.getString('language', 'STW_VOTENUM')}" />
+							<s:List id="voteNumList" width="100%" height="100%" change="voteNumChange()">
+								<mx:ArrayCollection>
+									<fx:String>1</fx:String>
+									<fx:String>2</fx:String>
+									<fx:String>3</fx:String>
+									<fx:String>4</fx:String>
+									<fx:String>5</fx:String>
+									<fx:String>6</fx:String>
+									<fx:String>7</fx:String>
+									<fx:String>8</fx:String>
+									<fx:String>9</fx:String>
+								</mx:ArrayCollection>
+							</s:List>
+						</s:VGroup>
+						<s:VGroup id="voteProperties" width="80%" height="100%" enabled="false">
+							<s:Label text="{resourceManager.getString('language', 'STW_VOTEPROPERTIES')}" width="100%" />
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label text="{resourceManager.getString('language', 'STW_VOTEPOSITION')}" width="20%" />
+								<s:Label text="x" width="5%" textAlign="right" />
+								<s:NumericStepper id="votePx" width="20%" minimum="-10000" maximum="10000" value="0" change="changeData('px')" />
+								<s:Label text="y" width="5%" textAlign="right" />
+								<s:NumericStepper id="votePy" width="20%" minimum="-10000" maximum="10000" value="0" change="changeData('py')" />
+								<s:Label text="{resourceManager.getString('language', 'STW_VOTEVISIBLE')}" width="30%" textAlign="right" />
+								<s:CheckBox id="voteVisible" change="changeData('visible')" />
+							</s:HGroup>
+							<mana:ProgressCode id="codeWindow" width="100%" height="280" creationComplete="cInit('codeWindow')" />
+						</s:VGroup>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<!--<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCANCEL()" />-->
+			<s:Button label="{resourceManager.getString('language', 'STW_OK')}" click="onOK()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

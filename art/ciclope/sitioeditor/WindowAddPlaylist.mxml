@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:sitio="art.ciclope.sitioeditor.*"
+			   creationComplete="init()"
+			   width="600" height="400" title="Add Playlist">
+			   
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import art.ciclope.sitio.data.DISElementFile;
+		import art.ciclope.sitioeditor.data.DISElementED;
+		import art.ciclope.sitioeditor.data.DISElementFileED;
+		import art.ciclope.sitioeditor.data.DISInstanceED;
+		import art.ciclope.sitioeditor.data.DISPlaylistED;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.util.LoadedFile;
+		import art.ciclope.sitioeditor.data.SelectedFile;
+		
+		// PUBLIC VARIABLES
+		
+		/**
+		 * The file type to list.
+		 */
+		public var fileType:String = LoadedFile.TYPE_PICTURE;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE:
+					this.title = resourceManager.getString('language', 'PLW_TITLEPICTURE');
+					break;
+			}
+			this.fileList.fileType = this.fileType;
+		}
+		
+		/**
+		 * Add a playlist to the stage.
+		 */
+		private function onAdd():void {
+			var selected:SelectedFile = this.fileList.selected;
+			if (selected == null) {
+				Warning.createWarning(resourceManager.getString('language', 'PLW_TITLEERROR'), resourceManager.getString('language', 'PLW_ERRORNOFILE'));
+			} else {
+				if (LoadedData.stream.playlists[selected.playlist] == null) LoadedData.stream.playlists[selected.playlist] = new DISPlaylistED();
+				LoadedData.stream.playlists[selected.playlist].name = selected.playlist;
+				LoadedData.stream.playlists[selected.playlist].id = selected.playlist;
+				LoadedData.stream.playlists[selected.playlist].author = UserInfo.author;
+				if (LoadedData.stream.playlists[selected.playlist].elements[selected.name] == null) LoadedData.stream.playlists[selected.playlist].elements[selected.name] = new DISElementED(selected.name, selected.type);
+				LoadedData.stream.playlists[selected.playlist].elements[selected.name].file.push(new DISElementFileED(selected.path, selected.format, LoadedData.community.language, false));
+				var instance:DISInstanceED = new DISInstanceED();
+				instance.id = selected.name;
+				instance.playlist = selected.playlist;
+				instance.element = selected.name;
+				if (LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] != null) LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id].kill();
+				LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] = instance;
+				FlexGlobals.topLevelApplication.processCommand("redraw");
+				selected.kill();
+				this.fileList.kill();
+				PopUpManager.removePopUp(this);
+			}
+		}
+		
+		/**
+		 * Close window.
+		 */
+		private function onCancel():void {
+			this.fileList.kill();
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label text="select a file to add to stage"/>
+		<sitio:FileList id="fileList" width="100%" height="100%" />
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'PLW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'PLW_ADD')}" click="onAdd()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

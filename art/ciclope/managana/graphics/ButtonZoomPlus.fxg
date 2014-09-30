@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Graphic version="2.0" viewHeight="60" viewWidth="30" ATE:version="1.0.0" flm:version="1.0.0" d:using="" xmlns="http://ns.adobe.com/fxg/2008" xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008">
+  <Library/>
+  <Group d:locked="true" d:type="layer" d:userLabel="Layer 2">
+    <Path data="M30 0 30 60 0 60 0 0 30 0">
+      <fill>
+        <SolidColor color="#FFFFFF" alpha="0"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="Layer 1">
+    <Path data="M16.45 1.75Q20.45 3.45 23.5 6.6 26.55 9.7 28.3 13.75 29.95 17.75 30 22.1 30 24.9 30 27.75 30 33.35 30 38.25 29.85 42.45 28.3 46.3 26.55 50.35 23.5 53.45 20.45 56.55 16.45 58.25 12.3 60 7.8 60L0 60 0 0 7.8 0Q12.3 0 16.45 1.75">
+      <fill>
+        <SolidColor color="#1A1A1A" alpha="0.40000001"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="Layer 3">
+    <Group>
+      <Group>
+        <Path data="M17.3 26.35Q16.7 25.35 15.7 24.75 14.75 24.2 13.55 24.2 12.3 24.2 11.3 24.75 10.35 25.35 9.75 26.35 9.2 27.35 9.15 28.55 9.2 29.75 9.75 30.75 10.35 31.75 11.3 32.35 12.3 32.9 13.55 32.9 14.75 32.9 15.7 32.35 16.7 31.75 17.3 30.75 17.9 29.75
+ 17.9 28.55 17.9 27.35 17.3 26.35M8.9 23.95Q9.8 23.05 11 22.55 12.15 22 13.55 22 14.9 22 16.1 22.55 17.3 23.05 18.15 23.95 19.1 24.8 19.55 26 20.1 27.2 20.1 28.55 20.1 29.6 19.8 30.55 19.5 31.45 18.9 32.25L23 36.35 21.3 38 17.25 33.95Q16.45
+ 34.5 15.5 34.8 14.55 35.1 13.55 35.1 12.15 35.1 11 34.55 9.8 34.1 8.9 33.15 8.05 32.3 7.5 31.1 7 29.95 7 28.55 7 27.2 7.5 26 8.05 24.8 8.9 23.95">
+          <fill>
+            <SolidColor color="#FFFFFF" alpha="0.49803922"/>
+          </fill>
+        </Path>
+      </Group>
+      <Group>
+        <Path data="M16 28.85 13.9 28.85 13.9 31 13.25 31 13.25 28.85 11.1 28.85 11.1 28.25 13.25 28.25 13.25 26.1 13.9 26.1 13.9 28.25 16 28.25 16 28.85">
+          <fill>
+            <SolidColor color="#FFFFFF" alpha="0.49803922"/>
+          </fill>
+        </Path>
+      </Group>
+    </Group>
+  </Group>
+  <Private/>
+</Graphic>

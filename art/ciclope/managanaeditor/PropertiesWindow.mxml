@@ -1,0 +1,881 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+PropertiesWindow creates a window to handle image instance properties.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mana="art.ciclope.managanaeditor.*"
+               xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   close="onClose()" width="470" height="290" title="{resourceManager.getString('language', 'PROP_TITLE')}">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="blendModes">
+			<fx:String>add</fx:String> 
+            <fx:String>alpha</fx:String> 
+            <fx:String>darken</fx:String> 
+            <fx:String>difference</fx:String>
+			<fx:String>erase</fx:String> 
+            <fx:String>hardlight</fx:String> 
+            <fx:String>invert</fx:String>
+			<fx:String>layer</fx:String>
+			<fx:String>lighten</fx:String>
+			<fx:String>multiply</fx:String>
+			<fx:String>normal</fx:String>
+			<fx:String>overlay</fx:String>
+			<fx:String>screen</fx:String>
+			<fx:String>subtract</fx:String>
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="pictureCrops">
+			<fx:String>stretch</fx:String> 
+            <fx:String>crop</fx:String> 
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="fontFaces" />
+		<mx:ArrayCollection id="textAligns" />
+		<mx:ArrayCollection id="mediaTransitions" />
+		<mx:ArrayCollection id="playlistList" />
+		<mx:ArrayCollection id="elementList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.Event;
+		import mx.collections.ArrayCollection;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managana.ManaganaFont;
+		import art.ciclope.display.MediaDisplay;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _image:InstanceDisplay;		// the currently-selected image
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.selectNone();
+			// get available font faces
+			this.fontFaces = new ArrayCollection(ManaganaFont.fontList);
+			// get media transition types
+			this.mediaTransitions.addItem( { label: resourceManager.getString('language', 'PROP_FADE'), data: MediaDisplay.TRANSITION_FADE } );
+			this.mediaTransitions.addItem( { label: resourceManager.getString('language', 'PROP_UP'), data: MediaDisplay.TRANSITION_UP } );
+			this.mediaTransitions.addItem( { label: resourceManager.getString('language', 'PROP_DOWN'), data: MediaDisplay.TRANSITION_DOWN } );
+			this.mediaTransitions.addItem( { label: resourceManager.getString('language', 'PROP_LEFT'), data: MediaDisplay.TRANSITION_LEFT } );
+			this.mediaTransitions.addItem( { label: resourceManager.getString('language', 'PROP_RIGHT'), data: MediaDisplay.TRANSITION_RIGHT } );
+			this.mediaTransitions.addItem( { label: resourceManager.getString('language', 'PROP_NONE'), data: MediaDisplay.TRANSITION_NONE } );
+			// text alignments
+			this.textAligns.addItem( { label: resourceManager.getString('language', 'PROP_TEXTLEFT'), data: "left" } );
+			this.textAligns.addItem( { label: resourceManager.getString('language', 'PROP_TEXTRIGHT'), data: "right" } );
+			this.textAligns.addItem( { label: resourceManager.getString('language', 'PROP_TEXTCENTER'), data: "center" } );
+			this.textAligns.addItem( { label: resourceManager.getString('language', 'PROP_TEXTJUSTIFY'), data: "justify" } );
+		}
+		
+		/**
+		 * The currently selected instance ID.
+		 */
+		public function get selectedInstance():String {
+			if ((this._image != null) && (this._image.instance != null)) {
+				return(this._image.instance.id);
+			} else {
+				return ("");
+			}
+		}
+		
+		/**
+		 * Select a stage image.
+		 * @param	image	the image reference
+		 */
+		public function selectImage(image:InstanceDisplay):void {
+			if (image != null) {
+				this._image = image;
+				this.title = resourceManager.getString('language', 'PROP_TITLEINSTANCE') + " " + this._image.instance.id + " " + resourceManager.getString('language', 'PROP_TITLEELEMENT') + " " + this._image.instance.element + " " + resourceManager.getString('language', 'PROP_TITLEPLAYLIST') + " " + LoadedData.stream.playlists[this._image.instance.playlist].name;
+				this.imageInit();
+				this.propertiesTab.enabled = true;
+			}
+		}
+		
+		/**
+		 * No image selected.
+		 */
+		public function selectNone():void {
+			this._image = null;
+			this.title = resourceManager.getString('language', 'PROP_TITLE');
+			this.propertiesTab.enabled = false;
+		}
+		
+		/**
+		 * A playlist was updated.
+		 * @param	id	the playlist id
+		 */
+		public function playlistUpdated(id:String):void {
+			if ((this._image != null) && (this._image.instance != null)) {
+				if (this._image.instance.playlist == id) {
+					// check playlists
+					this.playlistList.removeAll();
+					for (var indexstr:String in LoadedData.stream.playlists) {
+						this.playlistList.addItem( { label:LoadedData.stream.playlists[indexstr].name, data:LoadedData.stream.playlists[indexstr].id } );
+						if (this.instancePlaylist != null) if (LoadedData.stream.playlists[indexstr].id == this._image.instance.playlist) this.instancePlaylist.selectedIndex = this.playlistList.length - 1;
+					}
+					// check element
+					this.elementList.removeAll();
+					var elements:Array = LoadedData.stream.playlists[this._image.instance.playlist].sortedElements;
+					for (var indexuint:uint = 0; indexuint < elements.length; indexuint++) {
+						this.elementList.addItem(elements[indexuint].id);
+						if (this.instanceElement != null) if (elements[indexuint].id == this._image.instance.element) this.instanceElement.selectedIndex = this.elementList.length - 1;
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Get available font faces.
+		 */
+		public function updateFontList():void {
+			this.fontFaces = new ArrayCollection(ManaganaFont.fontList);
+		}
+		
+		/**
+		 * Edit the current instance playlist.
+		 */
+		private function editPlaylist():void {
+			FlexGlobals.topLevelApplication.processCommand("PlaylistEditPlaylist", this.instancePlaylist.selectedItem.data);
+		}
+		
+		/**
+		 * Get initial component value when it is initialized.
+		 * @param	comp	the component name
+		 */
+		private function cInit(comp:String):void {
+			if (this._image) switch (comp) {
+				case "ipx": this.ipx.value = this._image.instance.px; break;
+				case "ipy": this.ipy.value = this._image.instance.py; break;
+				case "ipz": this.ipz.value = this._image.instance.pz; break;
+				case "iorder": this.iorder.value = this._image.instance.order; break;
+				case "iwidth": this.iwidth.value = this._image.instance.width; break;
+				case "iheight": this.iheight.value = this._image.instance.height; break;
+				case "irx": this.irx.value = this._image.instance.rx; break;
+				case "iry": this.iry.value = this._image.instance.ry; break;
+				case "irz": this.irz.value = this._image.instance.rz; break;
+				case "ialpha": this.ialpha.value = uint(Math.round(100*this._image.instance.alpha)); break;
+				case "ivolume": this.ivolume.value = uint(Math.round(1000 * this._image.instance.rz)); break;
+				case "iplay": this.iplay.selected = this._image.instance.play; break;
+				case "ivisible": this.iplay.selected = this._image.instance.visible; break;
+				case "iactive": this.iplay.selected = this._image.instance.active; break;
+				case "iforce": this.iplay.selected = this._image.instance.force; break;
+				case "iblend":
+					this.iblend.textInput.editable = false;
+					for (var index:uint = 0; index < this.blendModes.length; index++) {
+						if (this.blendModes[index] == this._image.instance.blend) this.iblend.selectedIndex = index;
+					}
+					break;
+				case "ipicture":
+					this.ipicture.textInput.editable = false;
+					for (index = 0; index < this.pictureCrops.length; index++) {
+						if (this.pictureCrops[index] == this._image.instance.displayMode) this.ipicture.selectedIndex = index;
+					}
+					break;
+				case "ismooth": this.ismooth.selected = this._image.instance.smooth; break;
+				case "itransition":
+					this.itransition.textInput.editable = false;
+					for (index = 0; index < this.mediaTransitions.length; index++) {
+						if (this.mediaTransitions[index].data == this._image.instance.transition) this.itransition.selectedIndex = index;
+					}
+					break;
+				case "ispacing": this.ispacing.value = int(this._image.instance.letterSpacing); break;
+				case "ileading": this.ileading.value = int(this._image.instance.leading); break;
+				case "icharmax": this.icharmax.value = uint(this._image.instance.charmax); break;
+				case "ifont": 
+					this.ifont.selectedIndex = 0;
+					for (index = 0; index < this.fontFaces.length; index++) {
+						if (this.fontFaces[index] == this._image.instance.fontface) this.ifont.selectedIndex = index;
+					}
+					break;
+				case "ifontsize": this.ifontsize.value = uint(this._image.instance.fontsize); break;
+				case "italign": 
+					this.italign.selectedIndex = 0;
+					for (index = 0; index < this.textAligns.length; index++) {
+						if (this.textAligns[index].data == this._image.instance.textalign) this.italign.selectedIndex = index;
+					}
+					break;
+				case "ibold": this.ibold.selected = this._image.instance.fontbold; break;
+				case "iitalic": this.iitalic.selected = this._image.instance.fontitalic; break;
+				case "ifontcolor": this.ifontcolor.selectedColor = uint(this._image.instance.fontcolor); break;
+				case "idsangle": this.idsangle.value = this._image.instance.DSFangle; break;
+				case "ired": this.ired.value = this._image.instance.red; break;
+				case "igreen": this.igreen.value = this._image.instance.green; break;
+				case "iblue": this.iblue.value = this._image.instance.blue; break;
+				case "idropshadow": this.idropshadow.selected = this._image.instance.DropShadowFilter; break;
+				case "idsalpha": this.idsalpha.value = 100 * this._image.instance.DSFalpha; break;
+				case "idsangle": this.idsangle.value = this._image.instance.DSFangle; break;
+				case "idsblurx": this.idsblurx.value = this._image.instance.DSFblurX; break;
+				case "idsblury": this.idsblury.value = this._image.instance.DSFblurY; break;
+				case "idscolor": this.idscolor.selectedColor = uint(this._image.instance.DSFcolor); break;
+				case "idsdistance": this.idsdistance.value = this._image.instance.DSFdistance; break;
+				case "ibevel": this.ibevel.selected = this._image.instance.BevelFilter; break;
+				case "ibvangle": this.ibvangle.value = this._image.instance.BVFangle; break;
+				case "ibvdistance": this.ibvdistance.value = this._image.instance.BVFdistance; break;
+				case "ibvblurx": this.ibvblurx.value = this._image.instance.BVFblurX; break;
+				case "ibvblury": this.ibvblury.value = this._image.instance.BVFblurY; break;
+				case "ibvhalpha": this.ibvhalpha.value = 100 * this._image.instance.BVFhighlightAlpha; break;
+				case "ibvsalpha": this.ibvsalpha.value = 100 * this._image.instance.BVFshadowAlpha; break;
+				case "ibvhcolor": this.ibvhcolor.selectedColor = uint(this._image.instance.BVFhighlightColor); break;
+				case "ibvscolor": this.ibvscolor.selectedColor = uint(this._image.instance.BVFshadowColor); break;
+				case "iblur": this.iblur.selected = this._image.instance.BlurFilter; break;
+				case "iblblurx": this.iblblurx.value = this._image.instance.BLFblurX; break;
+				case "iblblury": this.iblblury.value = this._image.instance.BLFblurY; break;
+				case "iglow": this.iglow.selected = this._image.instance.BlurFilter; break;
+				case "iglalpha": this.iglalpha.value = 100 * this._image.instance.GLFalpha; break;
+				case "iglstrength": this.iglstrength.value = this._image.instance.GLFstrength; break;
+				case "iglblurx": this.iglblurx.value = this._image.instance.GLFblurX; break;
+				case "iglblury": this.iglblury.value = this._image.instance.GLFblurY; break;
+				case "iglcolor": this.iglcolor.selectedColor = uint(this._image.instance.GLFcolor); break;
+				case "iglinner": this.iglinner.selected = this._image.instance.GLFinner; break;
+				case "codeWindow":
+					this.codeWindow.code = this._image.instance.action;
+					this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+					break;
+				case "instancePlaylist":
+					var count:uint = 0;
+					for (var idxplay:String in LoadedData.stream.playlists) {
+						if (LoadedData.stream.playlists[idxplay].id == this._image.instance.playlist) this.instancePlaylist.selectedIndex = count;
+						count++;
+					}
+					break;
+				case "instanceElement":
+					var elements:Array = LoadedData.stream.playlists[this._image.instance.playlist].sortedElements;
+					for (var idx:uint = 0; idx < elements.length; idx++) {
+						if (elements[idx].id == this._image.instance.element) this.instanceElement.selectedIndex = idx;
+					}
+					break;
+				case "instanceName":
+					this.instanceName.text = this._image.instance.id;
+					break;
+				case "cssclass":
+					this.cssclass.text = this._image.instance.cssClass;
+					break;
+			}
+		}
+		
+		/**
+		 * Get image properties into component values.
+		 */
+		private function imageInit():void {
+			var indexuint:uint;
+			var indexstr:String;
+			if (this.ipx) this.ipx.value = this._image.instance.px;
+			if (this.ipy) this.ipy.value = this._image.instance.py;
+			if (this.ipz) this.ipz.value = this._image.instance.pz;
+			if (this.iorder) this.iorder.value = this._image.instance.order;
+			if (this.iwidth) this.iwidth.value = this._image.instance.width;
+			if (this.iheight) this.iheight.value = this._image.instance.height;
+			if (this.irx) this.irx.value = this._image.instance.rx;
+			if (this.iry) this.iry.value = this._image.instance.ry;
+			if (this.irz) this.irz.value = this._image.instance.rz;
+			if (this.ialpha) this.ialpha.value = uint(Math.round(100*this._image.instance.alpha));
+			if (this.ivolume) this.ivolume.value = uint(Math.round(100 * this._image.instance.volume));
+			if (this.iplay) this.iplay.selected = this._image.instance.play;
+			if (this.iactive) this.iactive.selected = this._image.instance.active;
+			if (this.iforce) this.iforce.selected = this._image.instance.force;
+			if (this.ivisible) this.ivisible.selected = this._image.instance.visible;
+			if (this.iblend) {
+				this.iblend.textInput.editable = false;
+				for (indexuint = 0; indexuint < this.blendModes.length; indexuint++) {
+					if (this.blendModes[indexuint] == this._image.instance.blend) this.iblend.selectedIndex = indexuint;
+				}
+			}
+			if (this.ipicture) {
+				this.ipicture.textInput.editable = false;
+				for (indexuint = 0; indexuint < this.pictureCrops.length; indexuint++) {
+					if (this.pictureCrops[indexuint] == this._image.instance.displayMode) this.ipicture.selectedIndex = indexuint;
+				}
+			}
+			if (this.ismooth) this.ismooth.selected = this._image.instance.smooth;
+			if (this.itransition) {
+				this.itransition.textInput.editable = false;
+				for (indexuint = 0; indexuint < this.mediaTransitions.length; indexuint++) {
+					if (this.mediaTransitions[indexuint].data == this._image.instance.transition) this.itransition.selectedIndex = indexuint;
+				}
+			}
+			if (this.ifont) {
+				this.ifont.selectedIndex = 0;
+				for (indexuint = 0; indexuint < this.fontFaces.length; indexuint++) {
+					if (this.fontFaces[indexuint] == this._image.instance.fontface) this.ifont.selectedIndex = indexuint;
+				}
+			}
+			if (this.ifontsize) this.ifontsize.value = uint(this._image.instance.fontsize);
+			if (this.italign) {
+				this.italign.selectedIndex = 0;
+				for (indexuint = 0; indexuint < this.textAligns.length; indexuint++) {
+					if (this.textAligns[indexuint].data == this._image.instance.textalign) this.italign.selectedIndex = indexuint;
+				}
+			}
+			if (this.ispacing) this.ispacing.value = int(this._image.instance.letterSpacing);
+			if (this.ileading) this.ileading.value = int(this._image.instance.leading);
+			if (this.icharmax) this.icharmax.value = uint(this._image.instance.charmax);
+			if (this.ibold) this.ibold.selected = this._image.instance.fontbold;
+			if (this.iitalic) this.iitalic.selected = this._image.instance.fontitalic;
+			if (this.ifontcolor) this.ifontcolor.selectedColor = uint(this._image.instance.fontcolor);
+			if (this.ired) this.ired.value = this._image.instance.red;
+			if (this.igreen) this.igreen.value = this._image.instance.green;
+			if (this.iblue) this.iblue.value = this._image.instance.blue;
+			if (this.idropshadow) this.idropshadow.selected = this._image.instance.DropShadowFilter;
+			if (this.idsalpha) this.idsalpha.value = 100 * this._image.instance.DSFalpha;
+			if (this.idsangle) this.idsangle.value = this._image.instance.DSFangle;
+			if (this.idsblurx) this.idsblurx.value = this._image.instance.DSFblurX;
+			if (this.idsblury) this.idsblury.value = this._image.instance.DSFblurY;
+			if (this.idscolor) this.idscolor.selectedColor = uint(this._image.instance.DSFcolor);
+			if (this.idsdistance) this.idsdistance.value = this._image.instance.DSFdistance;
+			if (this.ibevel) this.ibevel.selected = this._image.instance.BevelFilter;
+			if (this.ibvangle) this.ibvangle.value = this._image.instance.BVFangle;
+			if (this.ibvdistance) this.ibvdistance.value = this._image.instance.BVFdistance;
+			if (this.ibvblurx) this.ibvblurx.value = this._image.instance.BVFblurX;
+			if (this.ibvblury) this.ibvblury.value = this._image.instance.BVFblurY;
+			if (this.ibvsalpha) this.ibvsalpha.value = 100 * this._image.instance.BVFshadowAlpha;
+			if (this.ibvscolor) this.ibvscolor.selectedColor = uint(this._image.instance.BVFshadowColor);
+			if (this.ibvhalpha) this.ibvhalpha.value = 100 * this._image.instance.BVFhighlightAlpha;
+			if (this.ibvhcolor) this.ibvhcolor.selectedColor = uint(this._image.instance.BVFhighlightColor);
+			if (this.iblur) this.iblur.selected = this._image.instance.BlurFilter;
+			if (this.iblblurx) this.iblblurx.value = this._image.instance.BLFblurX;
+			if (this.iblblury) this.iblblury.value = this._image.instance.BLFblurY;
+			if (this.iglow) this.iglow.selected = this._image.instance.GlowFilter;
+			if (this.iglalpha) this.iglalpha.value = 100 * this._image.instance.GLFalpha;
+			if (this.iglstrength) this.iglstrength.value = this._image.instance.GLFstrength;
+			if (this.iglblurx) this.iglblurx.value = this._image.instance.GLFblurX;
+			if (this.iglblury) this.iglblury.value = this._image.instance.GLFblurY;
+			if (this.iglcolor) this.iglcolor.selectedColor = uint(this._image.instance.GLFcolor);
+			if (this.iglinner) this.iglinner.selected = this._image.instance.GLFinner;
+			// progress code
+			if (this.codeWindow) this.codeWindow.code = this._image.instance.action;
+			// check playlists
+			this.playlistList.removeAll();
+			for (indexstr in LoadedData.stream.playlists) {
+				this.playlistList.addItem( { label:LoadedData.stream.playlists[indexstr].name, data:LoadedData.stream.playlists[indexstr].id } );
+				if (this.instancePlaylist != null) if (LoadedData.stream.playlists[indexstr].id == this._image.instance.playlist) this.instancePlaylist.selectedIndex = this.playlistList.length - 1;
+			}
+			// check element
+			this.elementList.removeAll();
+			var elements:Array = LoadedData.stream.playlists[this._image.instance.playlist].sortedElements;
+			for (indexuint = 0; indexuint < elements.length; indexuint++) {
+				this.elementList.addItem(elements[indexuint].id);
+				if (this.instanceElement != null) if (elements[indexuint].id == this._image.instance.element) this.instanceElement.selectedIndex = this.elementList.length - 1;
+			}
+			// check instance name
+			if (this.instanceName != null) this.instanceName.text = this._image.instance.id;
+			// feed css
+			if (this.cssclass != null) this.cssclass.text = this._image.instance.cssClass;
+		}
+		
+		/**
+		 * The text at progress code editor changed.
+		 */
+		private function codeChange(evt:Event):void {
+			this.update('codeWindow');
+		}
+		
+		/**
+		 * Update an image property.
+		 * @param	prop	property name
+		 */
+		private function update(prop:String):void {
+			if ((this._image != null) && (this._image.instance != null)) switch (prop) {
+				case "ipx": this._image.instance.px = this._image.x = this.ipx.value; break;
+				case "ipy": this._image.instance.py = this._image.y = this.ipy.value; break;
+				case "ipz":
+					this._image.instance.pz = this._image.z = this.ipz.value;
+					FlexGlobals.topLevelApplication.processCommand("updateInstances");
+					FlexGlobals.topLevelApplication.processCommand("zSort");
+					break;
+				case "iorder":
+					this._image.instance.order = this._image.order = this.iorder.value;
+					FlexGlobals.topLevelApplication.processCommand("updateInstances");
+					FlexGlobals.topLevelApplication.processCommand("zSort");
+					break;
+				case "iwidth": this._image.instance.width = this._image.width = this.iwidth.value; break;
+				case "iheight": this._image.instance.height = this._image.height = this.iheight.value; break;
+				case "irx": this._image.instance.rx = this._image.rotationX = this.irx.value; break;
+				case "iry": this._image.instance.ry = this._image.rotationY = this.iry.value; break;
+				case "irz": this._image.instance.rz = this._image.rotationZ = this.irz.value; break;
+				case "ialpha": this._image.instance.alpha = this._image.alpha = this.ialpha.value / 100; break;
+				case "ivolume": this._image.instance.volume = this._image.volume = this.ivolume.value / 100; break;
+				case "iplay": this._image.instance.play = this.iplay.selected; break;
+				case "iactive": this._image.instance.active = this.iactive.selected; break;
+				case "ivisible": this._image.instance.visible = this._image.visible = this.ivisible.selected; break;
+				case "iforce": this._image.instance.force = this.iforce.selected; break;
+				case "iblend": this._image.instance.blend = this._image.blendMode = this.iblend.selectedItem; break;
+				case "ipicture": this._image.instance.displayMode = this._image.displayMode = this.ipicture.selectedItem; break;
+				case "ismooth": this._image.instance.smooth = this._image.smoothing = this.ismooth.selected; break;
+				case "itransition": this._image.instance.transition = this._image.transition = this.itransition.selectedItem.data; break;
+				case "ifont":
+					this._image.instance.fontface = this._image.textFont = this.ifont.selectedItem;
+					this._image.width = this.iwidth.value;
+					break;
+				case "ifontsize":
+					this._image.instance.fontsize = this._image.textSize = this.ifontsize.value;
+					this._image.width = this.iwidth.value;
+					break;
+				case "ispacing":
+					this._image.instance.letterSpacing = this._image.letterSpacing = this.ispacing.value;
+					this._image.width = this.iwidth.value;
+					break;
+				case "ileading":
+					this._image.instance.leading = this._image.leading = this.ileading.value;
+					this._image.width = this.iwidth.value;
+					break;
+				case "icharmax":
+					this._image.instance.charmax = this._image.maxchars = this.icharmax.value;
+					this._image.width = this.iwidth.value;
+					break;
+				case "ibold":
+					this._image.instance.fontbold = this._image.textBold = this.ibold.selected;
+					this._image.width = this.iwidth.value;
+					break;
+				case "iitalic":
+					this._image.instance.fontitalic = this._image.textItalic = this.iitalic.selected;
+					this._image.width = this.iwidth.value;
+					break;
+				case "ifontcolor":
+					this._image.instance.fontcolor = String(this.ifontcolor.selectedColor);
+					this._image.textColor = uint(this.ifontcolor.selectedColor);
+					break;
+				case "italign":
+					this._image.instance.textalign = String(this.italign.selectedItem.data);
+					this._image.textAlign = String(this.italign.selectedItem.data);
+					break;
+				case "ired": this._image.instance.red = this.ired.value; this._image.applyColor(); break;
+				case "igreen": this._image.instance.green = this.igreen.value; this._image.applyColor(); break;
+				case "iblue": this._image.instance.blue = this.iblue.value; this._image.applyColor(); break;
+				case "idsalpha": this._image.instance.DSFalpha = this.idsalpha.value / 100; this._image.applyFilters(); break;
+				case "idsangle": this._image.instance.DSFangle = this.idsangle.value; this._image.applyFilters(); break;
+				case "idsblurx": this._image.instance.DSFblurX = this.idsblurx.value; this._image.applyFilters(); break;
+				case "idsblury": this._image.instance.DSFblurY = this.idsblury.value; this._image.applyFilters(); break;
+				case "idsdistance": this._image.instance.DSFdistance = this.idsdistance.value; this._image.applyFilters(); break;
+				case "idscolor": this._image.instance.DSFcolor = String(this.idscolor.selectedColor); this._image.applyFilters(); break;
+				case "idropshadow": this._image.instance.DropShadowFilter = this.idropshadow.selected; this._image.applyFilters(); break;
+				case "ibevel": this._image.instance.BevelFilter = this.ibevel.selected; this._image.applyFilters(); break;
+				case "ibvangle": this._image.instance.BVFangle = this.ibvangle.value; this._image.applyFilters(); break;
+				case "ibvblurx": this._image.instance.BVFblurX = this.ibvblurx.value; this._image.applyFilters(); break;
+				case "ibvblury": this._image.instance.BVFblurY = this.ibvblury.value; this._image.applyFilters(); break;
+				case "ibvdistance": this._image.instance.BVFdistance = this.ibvdistance.value; this._image.applyFilters(); break;
+				case "ibvhalpha": this._image.instance.BVFhighlightAlpha = this.ibvhalpha.value / 100; this._image.applyFilters(); break;
+				case "ibvhcolor": this._image.instance.BVFhighlightColor = String(this.ibvhcolor.selectedColor); this._image.applyFilters(); break;
+				case "ibvsalpha": this._image.instance.BVFshadowAlpha = this.ibvsalpha.value / 100; this._image.applyFilters(); break;
+				case "ibvscolor": this._image.instance.BVFshadowColor = String(this.ibvscolor.selectedColor); this._image.applyFilters(); break;
+				case "iblur": this._image.instance.BlurFilter = this.iblur.selected; this._image.applyFilters(); break;
+				case "iblblurx": this._image.instance.BLFblurX = this.iblblurx.value; this._image.applyFilters(); break;
+				case "iblblury": this._image.instance.BLFblurY = this.iblblury.value; this._image.applyFilters(); break;
+				case "iglow": this._image.instance.GlowFilter = this.iglow.selected; this._image.applyFilters(); break;
+				case "iglalpha": this._image.instance.GLFalpha = this.iglalpha.value / 100; this._image.applyFilters(); break;
+				case "iglstrength": this._image.instance.GLFstrength = this.iglstrength.value; this._image.applyFilters(); break;
+				case "iglblurx": this._image.instance.GLFblurX = this.iglblurx.value; this._image.applyFilters(); break;
+				case "iglblury": this._image.instance.GLFblurY = this.iglblury.value; this._image.applyFilters(); break;
+				case "iglcolor": this._image.instance.GLFcolor = String(this.iglcolor.selectedColor); this._image.applyFilters(); break;
+				case "iglinner": this._image.instance.GLFinner = this.iglinner.selected; this._image.applyFilters(); break;
+				case "codeWindow": this._image.instance.action = this.codeWindow.code; break;
+				case "instancePlaylist":
+					if (this.instancePlaylist.selectedItem.data != this._image.instance.playlist) {
+						this._image.instance.playlist = this.instancePlaylist.selectedItem.data;
+						this.elementList.removeAll();
+						var elements:Array = LoadedData.stream.playlists[this._image.instance.playlist].sortedElements;
+						for (var idx:uint = 0; idx < elements.length; idx++) {
+							this.elementList.addItem(elements[idx].id);
+						}
+						this.instanceElement.selectedIndex = 0;
+						this._image.instance.element = this.instanceElement.selectedItem;
+						var hold:String = this._image.instance.id;
+						FlexGlobals.topLevelApplication.processCommand("redraw");
+						this.selectImage(FlexGlobals.topLevelApplication.processCommand("getInstance", hold));
+					}
+					break;
+				case "instanceElement":
+					if ((this._image != null) && (this._image.instance != null) && (this.instanceElement.selectedItem != this._image.instance.element)) {
+						this._image.instance.element = this.instanceElement.selectedItem;
+						var holdelement:String = this._image.instance.id;
+						FlexGlobals.topLevelApplication.processCommand("redraw");
+						this.selectImage(FlexGlobals.topLevelApplication.processCommand("getInstance", holdelement));
+					}
+					break;
+				case "instanceName":
+					if (this.instanceName.text != "") {
+						if (FlexGlobals.topLevelApplication.processCommand("getInstance", this.instanceName.text) != null) {
+							this.instanceName.text = this._image.instance.id;
+							Warning.createWarning(resourceManager.getString('language', 'PROP_INSTANCENAMETITLE'), resourceManager.getString('language', 'PROP_INSTANCENAMEERROR'));
+						} else {
+							var currentName:String = this._image.instance.id;
+							this._image.instance.id = this.instanceName.text;
+							LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[this.instanceName.text] = this._image.instance;
+							delete(LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[currentName]);
+							FlexGlobals.topLevelApplication.processCommand("redraw");
+							this.selectImage(FlexGlobals.topLevelApplication.processCommand("getInstance", this.instanceName.text));
+						}
+					}
+					break;
+				case "cssclass":
+					this._image.instance.cssClass = this.cssclass.text;
+					break;
+			}
+			FlexGlobals.topLevelApplication.processCommand("selectUpdate", this._image);
+		}
+		
+		/**
+		 * Resize selected image according to original width and height.
+		 * @param	name	resize according to...
+		 */
+		private function resize(name:String):void {
+			if (this._image) switch (name) {
+				case "full":
+					this._image.instance.width = this._image.width = this.iwidth.value = uint(Math.round(this._image.originalWidth));
+					this._image.instance.height = this._image.height = this.iheight.value = uint(Math.round(this._image.originalHeight));
+					FlexGlobals.topLevelApplication.processCommand("selectUpdate", this._image);
+					break;
+				case "width":
+					this._image.instance.height = this._image.height = this.iheight.value = uint(Math.round(this._image.instance.width * this._image.originalHeight / this._image.originalWidth));
+					FlexGlobals.topLevelApplication.processCommand("selectUpdate", this._image);
+					break;
+				case "height":
+					this._image.instance.width = this._image.width = this.iwidth.value = uint(Math.round(this._image.instance.height * this._image.originalWidth / this._image.originalHeight));
+					FlexGlobals.topLevelApplication.processCommand("selectUpdate", this._image);
+					break;
+			}
+		}
+		
+		/**
+		 * Handle media playback buttons.
+		 * @param	name	playback action
+		 */
+		private function mediaPlayback(name:String):void {
+			if (this._image) switch (name) {
+				case "play":
+					this._image.play(0);
+					break;
+				case "pause":
+					this._image.pause();
+					break;
+				case "stop":
+					this._image.stop();
+					break;
+			}
+		}
+		
+		/**
+		 * Show data about the chisen filter.
+		 */
+		private function selectFilter():void {
+			this.viewstack1.selectedIndex = this.filterList.selectedIndex;
+		}
+		
+		/**
+		 * Remove the selected image from stage.
+		 */
+		private function deleteImage():void {
+			if (this._image) {
+				FlexGlobals.topLevelApplication.processCommand("deleteInstance", this._image.instance.id);
+				this.selectNone();
+			}
+		}
+		
+		/**
+		 * Close tools window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleProperties");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator id="propertiesTab" width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PROP_IMAGETAB')}">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:VGroup width="100%">
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_POSITION')}" width="80" />
+							<s:Label text="x" width="20" textAlign="right" />
+							<s:NumericStepper id="ipx" minimum="-10000" maximum="10000" width="55" creationComplete="cInit('ipx')" change="update('ipx')" />
+							<s:Label text="y" width="20" textAlign="right" />
+							<s:NumericStepper id="ipy" minimum="-10000" maximum="10000" width="55" creationComplete="cInit('ipy')" change="update('ipy')"/>
+							<s:Label text="z" width="20" textAlign="right" />
+							<s:NumericStepper id="ipz" minimum="-10000" maximum="10000" width="55" creationComplete="cInit('ipz')" change="update('ipz')"/>
+							<s:Label text="{resourceManager.getString('language', 'PROP_ORDER')}" width="43" textAlign="right" />
+							<s:NumericStepper id="iorder" minimum="0" maximum="10000" width="50" creationComplete="cInit('iorder')" change="update('iorder')"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_SIZE')}" width="80" />
+							<s:Label text="{resourceManager.getString('language', 'PROP_WIDTH')}" width="50" textAlign="right" />
+							<s:NumericStepper id="iwidth" minimum="1" maximum="10000" width="60" creationComplete="cInit('iwidth')" change="update('iwidth')"/>
+							<s:Label text="{resourceManager.getString('language', 'PROP_HEIGHT')}" width="50" textAlign="right" />
+							<s:NumericStepper id="iheight" minimum="1" maximum="10000" width="60" creationComplete="cInit('iheight')" change="update('iheight')"/>
+							<s:Label text="" width="32" />
+							<s:Button width="22" height="22" icon="@Embed('icon/properties-full.png')" toolTip="{resourceManager.getString('language', 'PROP_FULLSIZETIP')}" click="resize('full')" />
+							<s:Button width="22" height="22" icon="@Embed('icon/properties-scaleheight.png')" toolTip="{resourceManager.getString('language', 'PROP_WIDTHTIP')}" click="resize('width')" />
+							<s:Button width="22" height="22" icon="@Embed('icon/properties-scalewidth.png')" toolTip="{resourceManager.getString('language', 'PROP_HEIGHTTIP')}" click="resize('height')" />
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle" id="rotationgroup">
+							<s:Label text="{resourceManager.getString('language', 'PROP_ROTATION')}" width="80" />
+							<s:Label text="x" width="50" textAlign="right" />
+							<s:NumericStepper id="irx" minimum="0" maximum="359" width="60" creationComplete="cInit('irx')" change="update('irx')"/>
+							<s:Label text="y" width="50" textAlign="right" /> 
+							<s:NumericStepper id="iry" minimum="0" maximum="359" width="60" creationComplete="cInit('iry')" change="update('iry')"/>
+							<s:Label text="z" width="50" textAlign="right" />
+							<s:NumericStepper id="irz" minimum="0" maximum="359" width="60" creationComplete="cInit('irz')" change="update('irz')"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_BLEND')}" width="100" textAlign="right" />
+							<s:ComboBox id="iblend" dataProvider="{blendModes}" width="96" creationComplete="cInit('iblend')" change="update('iblend')"/>
+							<s:Label text="{resourceManager.getString('language', 'PROP_ALPHA')}" width="50" textAlign="right" />
+							<s:NumericStepper maximum="100" minimum="0" width="60" stepSize="1" id="ialpha" creationComplete="cInit('ialpha')" change="update('ialpha')"/>
+							<s:Label text="{resourceManager.getString('language', 'PROP_VOLUME')}" width="50" textAlign="right"/>
+							<s:NumericStepper maximum="100" minimum="0" width="60" stepSize="1" id="ivolume" creationComplete="cInit('ivolume')" change="update('ivolume')"/>
+						</s:HGroup>
+						<mx:HRule width="100%" />
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:CheckBox width="103" label="{resourceManager.getString('language', 'PROP_STARTPLAY')}" id="iplay" creationComplete="cInit('iplay')" change="update('iplay')" />
+							<s:CheckBox width="103" label="{resourceManager.getString('language', 'PROP_VISIBLE')}" id="ivisible" creationComplete="cInit('ivisible')" change="update('ivisible')" />
+							<s:CheckBox width="102" label="{resourceManager.getString('language', 'PROP_FORCE')}" id="iforce" creationComplete="cInit('iforce')" change="update('iforce')" />
+							<s:CheckBox width="102" label="{resourceManager.getString('language', 'PROP_ACTIVE')}" id="iactive" creationComplete="cInit('iactive')" change="update('iactive')" />
+						</s:HGroup>
+						<mx:HRule width="100%" />
+						<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="left">
+							<s:Label text="{resourceManager.getString('language', 'PROP_MEDIAPLAYBACK')}" width="119" />
+							<s:Button width="22" height="22" icon="@Embed('icon/properties-play.png')" toolTip="{resourceManager.getString('language', 'PROP_MEDIAPLAY')}" click="mediaPlayback('play')" />
+							<s:Button width="22" height="22" icon="@Embed('icon/properties-pause.png')" toolTip="{resourceManager.getString('language', 'PROP_MEDIAPAUSE')}" click="mediaPlayback('pause')" />
+							<s:Button width="22" height="22" icon="@Embed('icon/properties-stop.png')" toolTip="{resourceManager.getString('language', 'PROP_MEDIASTOP')}" click="mediaPlayback('stop')" />
+							<s:Label text="" width="110" />
+							<s:Button label="{resourceManager.getString('language', 'PROP_DELETE')}" click="deleteImage()" />
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PROP_EFFECT')}">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'PROP_COLORGAIN')}" width="80" />
+						<s:Label text="{resourceManager.getString('language', 'PROP_RED')}" width="50" textAlign="right" />
+						<s:NumericStepper maximum="255" minimum="-255" width="60" stepSize="1" id="ired" creationComplete="cInit('ired')" change="update('ired')"/>
+						<s:Label text="{resourceManager.getString('language', 'PROP_GREEN')}" width="50" textAlign="right" />
+						<s:NumericStepper maximum="255" minimum="-255" width="60" stepSize="1" id="igreen" creationComplete="cInit('igreen')" change="update('igreen')"/>
+						<s:Label text="{resourceManager.getString('language', 'PROP_BLUE')}" width="50" textAlign="right" />
+						<s:NumericStepper maximum="255" minimum="-255" width="60" stepSize="1" id="iblue" creationComplete="cInit('iblue')" change="update('iblue')"/>
+					</s:HGroup>
+					<mx:HRule width="100%" />
+					<s:Label text="{resourceManager.getString('language', 'PROP_FILTERS')}"/>
+					<s:HGroup width="100%">
+					<s:List id="filterList" width="130" height="140" dataProvider="{viewstack1}" change="selectFilter()"></s:List>
+						<mx:ViewStack id="viewstack1" width="100%" height="100%">
+							<s:NavigatorContent width="100%" height="100%" label="DropShadow">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="{resourceManager.getString('language', 'PROP_DROP')}" id="idropshadow" creationComplete="cInit('idropshadow')" change="update('idropshadow')" />										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_ALPHA')}" width="85" textAlign="right" />
+											<s:NumericStepper width="60" maximum="100" minimum="0" id="idsalpha" creationComplete="cInit('idsalpha')" change="update('idsalpha')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_ANGLE')}" width="85" textAlign="right" />
+											<s:NumericStepper width="60" maximum="360" minimum="0" id="idsangle" creationComplete="cInit('idsangle')" change="update('idsangle')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURX')}" width="85" textAlign="right" />
+											<s:NumericStepper width="60" maximum="50" minimum="0" id="idsblurx" creationComplete="cInit('idsblurx')" change="update('idsblurx')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURY')}" width="85" textAlign="right" />
+											<s:NumericStepper width="60" maximum="50" minimum="0" id="idsblury" creationComplete="cInit('idsblury')" change="update('idsblury')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_DISTANCE')}" width="85" textAlign="right" />
+											<s:NumericStepper width="60" maximum="10" minimum="0" id="idsdistance" creationComplete="cInit('idsdistance')" change="update('idsdistance')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_COLOR')}" width="85" textAlign="right" />
+											<mx:ColorPicker id="idscolor" creationComplete="cInit('idscolor')" change="update('idscolor')" editable="true" />
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent width="100%" height="100%" label="Bevel">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="{resourceManager.getString('language', 'PROP_BEVEL')}" id="ibevel" creationComplete="cInit('ibevel')" change="update('ibevel')"/>										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_ANGLE')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="360" minimum="0" width="60" id="ibvangle" creationComplete="cInit('ibvangle')" change="update('ibvangle')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_DISTANCE')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="10" minimum="0" width="60" id="ibvdistance" creationComplete="cInit('ibvdistance')" change="update('ibvdistance')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURX')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="50" minimum="0" width="60" id="ibvblurx" creationComplete="cInit('ibvblurx')" change="update('ibvblurx')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURY')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="50" minimum="0" width="60" id="ibvblury" creationComplete="cInit('ibvblury')" change="update('ibvblury')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_HIGHALPHA')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="100" minimum="0" width="60" id="ibvhalpha" creationComplete="cInit('ibvhalpha')" change="update('ibvhalpha')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_HIGHCOLOR')}" width="85" textAlign="right"/>
+											<mx:ColorPicker id="ibvhcolor" creationComplete="cInit('ibvhcolor')" change="update('ibvhcolor')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_SHADOWALPHA')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="100" minimum="0" width="60" id="ibvsalpha" creationComplete="cInit('ibvsalpha')" change="update('ibvsalpha')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_SHADOWCOLOR')}" width="85" textAlign="right"/>
+											<mx:ColorPicker id="ibvscolor" creationComplete="cInit('ibvscolor')" change="update('ibvscolor')"/>
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent width="100%" height="100%" label="Blur">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="{resourceManager.getString('language', 'PROP_BLUR')}" id="iblur" creationComplete="cInit('iblur')" change="update('iblur')"/>										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURX')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="50" minimum="0" width="60" id="iblblurx" creationComplete="cInit('iblblurx')" change="update('iblblurx')" />
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURY')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="50" minimum="0" width="60" id="iblblury" creationComplete="cInit('iblblury')" change="update('iblblury')" />
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent width="100%" height="100%" label="Glow">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="{resourceManager.getString('language', 'PROP_GLOW')}" id="iglow" creationComplete="cInit('iglow')" change="update('iglow')"/>										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_ALPHA')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="100" minimum="0" width="60" id="iglalpha" creationComplete="cInit('iglalpha')" change="update('iglalpha')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_STRENGTH')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="10" minimum="0" width="60" id="iglstrength" creationComplete="cInit('iglstrength')" change="update('iglstrength')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURX')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="50" minimum="0" width="60" id="iglblurx" creationComplete="cInit('iglblurx')" change="update('iglblurx')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_BLURY')}" width="85" textAlign="right"/>
+											<s:NumericStepper maximum="50" minimum="0" width="60" id="iglblury" creationComplete="cInit('iglblury')" change="update('iglblury')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_COLOR')}" width="85" textAlign="right"/>
+											<mx:ColorPicker id="iglcolor" creationComplete="cInit('iglcolor')" change="update('iglcolor')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="{resourceManager.getString('language', 'PROP_INNERGLOW')}" width="85" textAlign="right"/>
+											<s:CheckBox label="" width="60" id="iglinner" creationComplete="cInit('iglinner')" change="update('iglinner')"/>
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+						</mx:ViewStack>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PROP_DISPLAY')}">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:HGroup verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'PROP_CROP')}" width="110" textAlign="right" />
+						<s:ComboBox id="ipicture" dataProvider="{pictureCrops}" width="100" creationComplete="cInit('ipicture')" change="update('ipicture')"/>
+					</s:HGroup>
+					<s:HGroup verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'PROP_SMOOTH')}" width="110" textAlign="right" />
+						<s:CheckBox label="" width="100" id="ismooth" creationComplete="cInit('ismooth')" change="update('ismooth')"/>
+					</s:HGroup>
+					<s:HGroup verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'PROP_MEDIATRANSITION')}" width="110" textAlign="right" />
+						<s:ComboBox id="itransition" dataProvider="{mediaTransitions}" width="100" creationComplete="cInit('itransition')" change="update('itransition')"/>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PROP_TEXTDISPLAY')}">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:TileGroup x="0" y="0" width="100%" height="150">
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_FONT')}" width="110" textAlign="right"/>
+							<s:DropDownList id="ifont" dataProvider="{fontFaces}" width="100" creationComplete="cInit('ifont')" change="update('ifont')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_FONTSIZE')}" width="110" textAlign="right"/>
+							<s:NumericStepper maximum="200" minimum="8" width="100" id="ifontsize" creationComplete="cInit('ifontsize')" change="update('ifontsize')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_LETTERSPACING')}" width="110" textAlign="right"/>
+							<s:NumericStepper maximum="10" minimum="-10" width="100" id="ispacing" creationComplete="cInit('ispacing')" change="update('ispacing')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_LEADING')}" width="110" textAlign="right"/>
+							<s:NumericStepper maximum="50" minimum="-50" width="100" id="ileading" creationComplete="cInit('ileading')" change="update('ileading')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_BOLD')}" width="110" textAlign="right"/>
+							<s:CheckBox label="" width="100" id="ibold" creationComplete="cInit('ibold')" change="update('ibold')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_ITALIC')}" width="110" textAlign="right"/>
+							<s:CheckBox label="" width="100" id="iitalic" creationComplete="cInit('iitalic')" change="update('iitalic')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_CHARMAX')}" width="110" textAlign="right"/>
+							<s:NumericStepper maximum="1000000" minimum="0" width="100" id="icharmax" creationComplete="cInit('icharmax')" change="update('icharmax')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_COLOR')}" width="110" textAlign="right"/>
+							<mx:ColorPicker id="ifontcolor" creationComplete="cInit('ifontcolor')" change="update('ifontcolor')"/>
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'PROP_TEXTALIGN')}" width="110" textAlign="right"/>
+							<s:DropDownList id="italign" dataProvider="{textAligns}" width="100" creationComplete="cInit('italign')" change="update('italign')"/>
+						</s:HGroup>
+					</s:TileGroup>
+					<s:VGroup width="100%">
+						<s:Label text="{resourceManager.getString('language', 'PROP_CSSCLASS')}" width="100%"/>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:TextInput id="cssclass" width="70%" creationComplete="cInit('cssclass')" />
+							<s:Button label="{resourceManager.getString('language', 'PROP_CSSCLASSUPDATE')}" width="30%" click="update('cssclass')" />
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PROP_CODETAB')}">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<mana:ProgressCode id="codeWindow" width="100%" height="100%" creationComplete="cInit('codeWindow')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PROP_PLAYLISTTAB')}">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:Label text="{resourceManager.getString('language', 'PROP_PLAYLIST')}" />
+					<mx:HBox width="100%">
+						<s:DropDownList width="80%" id="instancePlaylist" dataProvider="{playlistList}" creationComplete="cInit('instancePlaylist')" change="update('instancePlaylist')" />
+						<s:Button width="20%" label="{resourceManager.getString('language', 'PROP_PLAYLISTEDIT')}" click="editPlaylist()" />
+					</mx:HBox>
+					<s:Label text="{resourceManager.getString('language', 'PROP_ELEMENT')}" />
+					<s:DropDownList width="100%" id="instanceElement" dataProvider="{elementList}" creationComplete="cInit('instanceElement')" change="update('instanceElement')" />
+					<s:Label text="{resourceManager.getString('language', 'PROP_INSTANCENAME')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:TextInput id="instanceName" width="80%" creationComplete="cInit('instanceName')" />
+						<s:Button label="{resourceManager.getString('language', 'PROP_INSTANCECHANGE')}" width="20%" click="update('instanceName')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+	</s:VGroup>
+	
+</s:TitleWindow>

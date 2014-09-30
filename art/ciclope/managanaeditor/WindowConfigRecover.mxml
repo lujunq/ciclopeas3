@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowConfigRecover creates a window to manage password recovering configurations.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="600" title="{resourceManager.getString('language', 'CONF_RECOVERTITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="comList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get configuration values
+			WindowServerCheck.createServer("getconfig", "", onConfig);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Add an user.
+		 */
+		private function onSave():void {
+			var params:String = "action=recover";
+			params += "&RECOVERMESSAGEOK=" + escape(this.recoverMessageOk.text);
+			params += "&RECOVERMESSAGEERROR=" + escape(this.recoverMessagError.text);
+			params += "&LOGINRECOVERABOUT=" + escape(this.recoverAbout.text);
+			params += "&LOGINRECOVERNOTFOUND=" + escape(this.recoverNotFound.text);
+			params += "&LOGINRECOVEROK=" + escape(this.recoverOk.text);
+			params += "&LOGINRECOVERBUTTON=" + escape(this.recoverButton.text);
+			params += "&LOGINRECOVERMAILFIELD=" + escape(this.mailField.text);
+			params += "&LOGINRECOVERPASSFIELD=" + escape(this.passField.text);
+			WindowServerCheck.createServer("saveconfig", params, onSaveReturn);
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * System configuration values received.
+		 */
+		private function onConfig(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					for (var index:uint = 0; index < server.data.child("config").length(); index++) {
+						switch (String(server.data.config[index].name)) {
+							case 'RECOVERMESSAGEOK':
+								this.recoverMessageOk.text = String(server.data.config[index].value);
+								break;
+							case 'RECOVERMESSAGEERROR':
+								this.recoverMessagError.text = String(server.data.config[index].value);
+								break;
+							case 'LOGINRECOVERABOUT':
+								this.recoverAbout.text = String(server.data.config[index].value);
+								break;
+							case 'LOGINRECOVERNOTFOUND':
+								this.recoverNotFound.text = String(server.data.config[index].value);
+								break;
+							case 'LOGINRECOVEROK':
+								this.recoverOk.text = String(server.data.config[index].value);
+								break;
+							case 'LOGINRECOVERBUTTON':
+								this.recoverButton.text = String(server.data.config[index].value);
+								break;
+							case 'LOGINRECOVERMAILFIELD':
+								this.mailField.text = String(server.data.config[index].value);
+								break;
+							case 'LOGINRECOVERPASSFIELD':
+								this.passField.text = String(server.data.config[index].value);
+								break;
+								break;
+						}
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Server response from creatw new user attempt.
+		 */
+		private function onSaveReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_OKTITLE'), resourceManager.getString('language', 'CONF_OKMESSAGE'));
+					break;
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERABOUT')}" />
+		<s:TextInput id="recoverAbout" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERNOTFOUND')}" />
+		<s:TextInput id="recoverNotFound" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVEROK')}" />
+		<s:TextInput id="recoverOk" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERMAILFIELD')}" />
+		<s:TextInput id="mailField" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERPASSFIELD')}" />
+		<s:TextInput id="passField" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERBUTTON')}" />
+		<s:TextInput id="recoverButton" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERMESSAGEOK')}" />
+		<s:TextArea id="recoverMessageOk" width="100%" height="55" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_RECOVERMESSAGEERROR')}" />
+		<s:TextArea id="recoverMessagError" width="100%" height="55" />
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CONF_CLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'CONF_SAVE')}" click="onSave()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

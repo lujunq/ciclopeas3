@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="400" title="{resourceManager.getString('language', 'LW_TITLE')}">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Try to log user.
+		 */
+		private function onLogin():void {
+			var loginParams:String = "user=" + escape(this.uEmail.text) + "&" + "pass=" + escape(this.uPass.text);
+			WindowServerCheck.createServer("login", loginParams, loginReturn);
+		}
+		
+		/**
+		 * Exit login window.
+		 */
+		private function onCancel():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Server response from login attempt.
+		 */
+		private function loginReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// get user data
+					UserInfo.index = uint(server.data.email);
+					UserInfo.id = String(server.data.id);
+					UserInfo.email = String(server.data.email);
+					UserInfo.name = String(server.data.name);
+					UserInfo.level = String(server.data.level);
+					FlexGlobals.topLevelApplication.processCommand("doLogin");
+					PopUpManager.removePopUp(this);
+					break;
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Label width="80" text="{resourceManager.getString('language', 'LW_EMAIL')}"/>
+			<s:TextInput id="uEmail" width="100%"/>
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Label width="80" text="{resourceManager.getString('language', 'LW_PASS')}"/>
+			<s:TextInput id="uPass" width="100%" displayAsPassword="true"/>
+		</s:HGroup>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'LW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'LW_LOGIN')}" click="onLogin()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

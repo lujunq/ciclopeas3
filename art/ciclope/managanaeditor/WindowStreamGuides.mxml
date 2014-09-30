@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamGuides creates a window to edit gudes for several streams at once.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   width="600" height="600" borderVisible="true" title="{resourceManager.getString('language', 'GDW_TITLE')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="lowerListData" />
+		<mx:ArrayCollection id="upperListData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get a list of published streams
+			WindowServerCheck.createServer("publishedstreams", ("ac=all&community=" + escape(LoadedData.community.id)), this.listReturn);
+		}
+		
+		/**
+		 * Streams list information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try again
+				WindowServerCheck.createServer("publishedstreams", ("ac=all&community=" + escape(LoadedData.community.id)), this.listReturn);
+			} else {
+				// get stream data
+				this.lowerListData.removeAll();
+				this.upperListData.removeAll();
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.lowerListData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.upperListData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Save stream properties changes.
+		 */
+		private function onOK():void {
+			if (LoadedData.stream.id != "") {
+				// get all selected stream ids
+				var forlower:Array = new Array();
+				for (var index:uint = 0; index < this.lowerList.selectedItems.length; index++) {
+					forlower.push(this.lowerList.selectedItems[index].data);
+				}
+				var forupper:Array = new Array();
+				for (index = 0; index < this.upperList.selectedItems.length; index++) {
+					forupper.push(this.upperList.selectedItems[index].data);
+				}
+				// prepare server command
+				var lowerstream:String = "";
+				if (this.lowerList.selectedItems.length > 0) lowerstream = forlower.join("|st|");
+				var upperstream:String = "";
+				if (this.upperList.selectedItems.length > 0) upperstream = forupper.join("|st|");
+				// send command to server
+				if ((lowerstream != "") || (upperstream != "")) {
+					WindowServerCheck.createServer("bulkactions", ("ac=setguide&community=" + escape(LoadedData.community.id) + "&stream=" + escape(LoadedData.stream.id) + "&lower=" + escape(lowerstream) + "&upper=" + escape(upperstream)), this.serverReturn);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'GDW_WARNTITLE'), resourceManager.getString('language', 'GDW_ERRORNOSTREAM'));
+				}
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'GDW_WARNTITLE'), resourceManager.getString('language', 'GDW_ERRORNOID'));
+			}
+		}
+		
+		/**
+		 * Guide apply return.
+		 * @param	server	the server information object
+		 */
+		private function serverReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'GDW_WARNTITLE'), resourceManager.getString('error', server.errorID));
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'GDW_WARNTITLE'), resourceManager.getString('language', 'GDW_APPLY'));
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Avoid changes.
+		 */
+		private function onCANCEL():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'GDW_ABOUT')}" />
+		<s:Label width="100%" text="" />
+		<s:HGroup width="100%" height="100%" styleName="paddingGroup">
+			<s:VGroup width="50%" height="100%">
+				<s:Label text="{resourceManager.getString('language', 'GDW_LOWER')}" />
+				<s:List id="lowerList" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{lowerListData}" />
+			</s:VGroup>
+			<s:VGroup width="50%" height="100%">
+				<s:Label text="{resourceManager.getString('language', 'GDW_UPPER')}" />
+				<s:List id="upperList" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{upperListData}" />
+			</s:VGroup>
+		</s:HGroup>				
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'GDW_SAVE')}" click="onOK()" />
+			<s:Button label="{resourceManager.getString('language', 'GDW_CLOSE')}" click="onCANCEL()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

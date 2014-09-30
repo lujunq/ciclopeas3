@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+MainMenu defines the Managana editor upper main menu.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<mx:MenuBar xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			xmlns:s="library://ns.adobe.com/flex/spark" 
+			xmlns:mx="library://ns.adobe.com/flex/mx"
+			styleName="upperMenu" menuStyleName="upperMenu" creationComplete="init()" dataProvider="{mainMenuData}" labelField="@label" iconField="@icon" x="0" y="0" width="100%" itemClick="menuHandler(event)">
+			
+	<fx:Declarations>
+		<mx:XMLListCollection id="mainMenuData">
+			<fx:XMLList id="mainmenuXML">
+				<!-- community -->
+				<menuitem label="Community" data="top" enabled="false">
+					<menuitem label="New..." data="CommunityNew"/>
+					<menuitem label="Open..." data="CommunityOpen"/>
+					<menuitem label="Properties..." data="CommunityProperties" enabled="false" />
+					<menuitem label="Categories..." data="CommunityCategories" enabled="false" />
+					<menuitem label="Variables..." data="CommunityVariables" enabled="false" />
+					<menuitem label="File manager..." data="CommunityFileManager" enabled="false" />
+					<menuitem label="Navigation sequences..." data="CommunityNavigation" enabled="false" />
+					<menuitem label="Edition..." data="CommunityEdition" enabled="false" />
+					<menuitem label="Community users..." data="CommunityPermission" enabled="false" />
+					<menuitem label="Delete community..." data="CommunityDelete" enabled="false" />
+					<menuitem type="separator"/>
+					<menuitem label="Import community..." data="CommunityImport" enabled="false" />
+					<menuitem label="Re-publish streams..." data="CommunityPublish" enabled="false" />
+					<menuitem type="separator"/>
+					<menuitem label="Comments..." data="CommunityComments" enabled="false" />
+					<menuitem label="Ratings..." data="CommunityRatings" enabled="false" />
+					<menuitem label="Statistics..." data="CommunityStats" enabled="false" />
+					<menuitem type="separator"/>
+					<menuitem label="Preview..." data="PreviewCommunity" enabled="false" />
+					<menuitem label="Links..." data="LinksCommunity" enabled="false" />
+				</menuitem>
+				<!-- stream -->
+				<menuitem label="Stream" data="top" enabled="false">
+					<menuitem label="New..." data="StreamNew"/>
+					<menuitem label="Open..." data="StreamOpen"/>
+					<menuitem label="Save" data="StreamSave"/>
+					<menuitem label="Save as..." data="StreamProperties"/>
+					<menuitem label="Publish" data="StreamPublish"/>
+					<menuitem type="separator"/>
+					<menuitem label="Properties..." data="StreamProperties"/>
+					<menuitem label="Time and voting..." data="StreamTime"/>
+					<menuitem label="Navigation..." data="StreamNavigation"/>
+					<menuitem label="Geolocation..." data="StreamGeolocation"/>
+					<menuitem label="Revisions..." data="StreamRevisions"/>
+					<menuitem label="Guides..." data="StreamGuides"/>
+					<menuitem type="separator"/>
+					<menuitem label="Import" data="top">
+						<menuitem label="Artistic text" data="PlaylistAddText"/>
+						<menuitem label="Paragraph text" data="PlaylistAddParagraph"/>
+						<menuitem label="Picture" data="PlaylistAddPicture"/>
+						<menuitem label="Video" data="PlaylistAddVideo"/>
+						<menuitem label="Audio" data="PlaylistAddAudio"/>
+						<menuitem label="Playlist" data="PlaylistAddPlaylist"/>
+					</menuitem>
+					<menuitem type="separator"/>
+					<menuitem label="Add keyframe" data="StreamNewKey"/>
+					<menuitem label="Add empty keyframe" data="StreamNewEmptyKey"/>
+					<menuitem type="separator"/>
+					<menuitem label="Preview..." data="PreviewStream"/>
+				</menuitem>
+				<!-- edit -->
+				<menuitem label="Edit" data="top" enabled="false">
+					<menuitem label="Scale and rotate..." data="3Scale"/>
+					<menuitem type="separator"/>
+					<menuitem label="Align" data="top">
+						<menuitem label="Center" type="radio" groupName="align" data="3Center" />
+						<menuitem label="Left" type="radio" groupName="align" data="3Left" />
+						<menuitem label="Right" type="radio" groupName="align" data="3Right" />
+					</menuitem>
+					<menuitem label="Distribute" data="top">
+						<menuitem label="Top" data="3VCenter" />
+						<menuitem label="Vertical center" data="3VLeft" />
+						<menuitem label="Bottom" data="3VRight" />
+						<menuitem type="separator"/>
+						<menuitem label="Left" data="3HCenter" />
+						<menuitem label="Horizontal center" data="3HLeft" />
+						<menuitem label="Right" data="3HRight" />
+					</menuitem>
+					<menuitem label="Arrange" data="top">
+						<menuitem label="Bring to front" icon="IconMoveToFront" data="3HCenter" />
+						<menuitem label="Bring forward" icon="IconMoveForward" data="3HLeft" />
+						<menuitem label="Send backward" icon="IconMoveBackwards" data="3HRight" />
+						<menuitem label="Send to back" icon="IconMoveToBack" data="3HRight" />
+					</menuitem>
+					<menuitem type="separator"/>
+					<menuitem label="Color and alpha..." data="2Publish"/>
+					<menuitem label="Blend mode" data="top">
+						<menuitem label="Normal" type="radio" groupName="blendmode" toggled="true" data="3HCenter" />
+						<menuitem label="Add" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Alpha" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Darken" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Difference" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Erase" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Hard light" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Invert" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Layer" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Lighten" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Multiply" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Overlay" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Screen" type="radio" groupName="blendmode" data="3HCenter" />
+						<menuitem label="Subtract" type="radio" groupName="blendmode" data="3HCenter" />
+					</menuitem>
+					<menuitem label="Filters" data="top">
+						<menuitem label="Drop shadow..." data="3HCenter" />
+						<menuitem label="Bevel..." data="3HCenter" />
+						<menuitem label="Blur..." data="3HCenter" />
+						<menuitem label="Glow..." data="3HCenter" />
+					</menuitem>
+					<menuitem type="separator"/>
+					<menuitem label="Progress code..." data="2View"/>
+				</menuitem>
+				<menuitem label="Window" data="top" enabled="false">
+					<menuitem label="Playlists" type="check" toggled="false" data="togglePlaylist" />
+					<menuitem label="Tools" type="check" toggled="true" data="toggleTools" />
+					<menuitem label="Properties" type="check" toggled="true" data="toggleProperties" />
+					<menuitem label="Timeline" type="check" toggled="false" data="toggleTimeline" />
+					<menuitem label="Community usage" type="check" toggled="false" data="toggleCommunity" />
+					<menuitem type="separator"/>
+					<menuitem label="Arrange windows" data="windowArrange" />
+				</menuitem>
+				<menuitem label="User" data="top">
+					<menuitem label="Login/logout..." data="loginCheck" />
+					<menuitem label="Change password..." enabled="false" data="passChange" />
+					<menuitem label="Manage users..." enabled="false" data="manageUsers" />
+					<menuitem label="Remote control users..." enabled="false" data="manageRemoteUsers" />
+				</menuitem>
+				<menuitem label="Configuration" data="top" enabled="false">
+					<menuitem label="Reader..." data="ConfigReader" />
+					<menuitem label="Editor..." data="ConfigEditor" />
+					<menuitem label="Facebook application..." data="ConfigFacebook" />
+					<menuitem label="Public keys..." data="ConfigPKey" />
+					<menuitem label="Fonts..." data="ConfigFonts" />
+					<menuitem label="Interface language..." data="ConfigLanguage" />
+				</menuitem>
+			</fx:XMLList>
+		</mx:XMLListCollection>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.events.MenuEvent;
+		import mx.collections.XMLListCollection;
+		import flash.events.Event;
+		import mx.resources.ResourceBundle;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {	
+			this.rebuild();
+			resourceManager.addEventListener(Event.CHANGE, onChange);
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Process a menu command.
+		 * @param	command	the command
+		 * @param	parameter	command parameters
+		 */
+		public function process(command:String, parameter:*):void {
+			switch (command) {
+				// window menu
+				case "toggleTools":
+					setToggle(parameter, "Window", "1");
+					break;
+				case "togglePlaylist":
+					setToggle(parameter, "Window", "0");
+					break;
+				case "toggleProperties":
+					setToggle(parameter, "Window", "2");
+					break;
+				case "toggleTimeline":
+					setToggle(parameter, "Window", "3");
+					break;
+				case "toggleCommunity":
+					setToggle(parameter, "Window", "4");
+					break;
+			}
+		}
+		
+		/**
+		 * Enable menu access to community.
+		 */
+		public function enableMenu():void {
+			setEnabled(true, "Community");
+			setEnabled(true, "Window");
+		}
+		
+		/**
+		 * Disable menu access.
+		 */
+		public function disableMenu():void {
+			setEnabled(false, "Community");
+			setEnabled(false, "Stream");
+			setEnabled(false, "Edit");
+			setEnabled(false, "Window");
+			setEnabled(false, "Configuration");
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Set a menu item label.
+		 * @param	label	new label
+		 * @param	menu	menu name
+		 * @param	index	menu first index (null for none)
+		 * @param	index2	menu second index (null for none)
+		 */
+		private function setLabel(label:String, menu:String, index:String = null, index2:String = null):void {
+			var chosen:XML;
+			switch (menu) {
+				case "Community":
+					chosen = this.dataProvider.getItemAt(0);
+					break;
+				case "Stream":
+					chosen = this.dataProvider.getItemAt(1);
+					break;
+				case "Edit":
+					chosen = this.dataProvider.getItemAt(2);
+					break;
+				case "Window":
+					chosen = this.dataProvider.getItemAt(3);
+					break;
+				case "User":
+					chosen = this.dataProvider.getItemAt(4);
+					break;
+				case "Configuration":
+					chosen = this.dataProvider.getItemAt(5);
+					break;
+			}
+			if (index == null) {
+				chosen.@label = label;
+			} else if (index2 == null) {
+				chosen.menuitem[uint(index)].@label = label;
+			} else {
+				chosen.menuitem[uint(index)].menuitem[uint(index2)].@label = label;
+			}
+		}
+		
+		/**
+		 * Enable/disable menu items.
+		 * @param	enabled	is menu enabled?
+		 * @param	menu	menu name
+		 * @param	index	menu first index (null for none)
+		 * @param	index2	menu second index (null for none)
+		 */
+		public function setEnabled(enabled:Boolean, menu:String, index:String = null, index2:String = null):void {
+			var chosen:XML;
+			switch (menu) {
+				case "Community":
+					chosen = this.dataProvider.getItemAt(0);
+					break;
+				case "Stream":
+					chosen = this.dataProvider.getItemAt(1);
+					break;
+				case "Edit":
+					chosen = this.dataProvider.getItemAt(2);
+					break;
+				case "Window":
+					chosen = this.dataProvider.getItemAt(3);
+					break;
+				case "User":
+					chosen = this.dataProvider.getItemAt(4);
+					break;
+				case "Configuration":
+					chosen = this.dataProvider.getItemAt(5);
+					break;
+			}
+			if (index == null) {
+				chosen.@enabled = enabled;
+			} else if (index2 == null) {
+				chosen.menuitem[uint(index)].@enabled = enabled;
+			} else {
+				chosen.menuitem[uint(index)].menuitem[uint(index2)].@enabled = enabled;
+			}
+		}
+		
+		/**
+		 * Set a check menu toggle.
+		 * @param	toggle	toggle state
+		 * @param	menu	menu name
+		 * @param	index	menu first index (null for none)
+		 * @param	index2	menu second index (null for none)
+		 */
+		private function setToggle(toggle:Boolean, menu:String, index:String = null, index2:String = null):void {
+			var chosen:XML;
+			switch (menu) {
+				case "Community":
+					chosen = this.dataProvider.getItemAt(0);
+					break;
+				case "Stream":
+					chosen = this.dataProvider.getItemAt(1);
+					break;
+				case "Edit":
+					chosen = this.dataProvider.getItemAt(2);
+					break;
+				case "Window":
+					chosen = this.dataProvider.getItemAt(3);
+					break;
+				case "User":
+					chosen = this.dataProvider.getItemAt(4);
+					break;
+				case "Configuration":
+					chosen = this.dataProvider.getItemAt(5);
+					break;
+			}
+			if (index == null) {
+				chosen.@toggled = toggle;
+			} else if (index2 == null) {
+				chosen.menuitem[uint(index)].@toggled = toggle;
+			} else {
+				chosen.menuitem[uint(index)].menuitem[uint(index2)].@toggled = toggle;
+			}
+		}
+		
+		/**
+		 * Rebuild menu data.
+		 */
+		private function rebuild():void {
+			// community
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY'), "Community");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_NEW'), "Community", "0");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_OPEN'), "Community", "1");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_PROPERTY'), "Community", "2");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_CATEGORIES'), "Community", "3");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_VARIABLES'), "Community", "4");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_FILE'), "Community", "5");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_NAVIGATION'), "Community", "6");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_EDITION'), "Community", "7");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_PERMISSIONS'), "Community", "8");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_DELETE'), "Community", "9");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_IMPORT'), "Community", "11");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_REPUBLISH'), "Community", "12");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_COMMENTS'), "Community", "14");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_RATES'), "Community", "15");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_STATS'), "Community", "16");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_VIEW'), "Community", "18");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_LINKS'), "Community", "19");
+			// stream
+			setLabel(resourceManager.getString('language', 'MENU_STREAM'), "Stream");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_NEW'), "Stream", "0");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_OPEN'), "Stream", "1");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_SAVE'), "Stream", "2");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_SAVEAS'), "Stream", "3");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_PUBLISH'), "Stream", "4");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_PROPERTY'), "Stream", "6");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_TIME'), "Stream", "7");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_NAVIGATION'), "Stream", "8");
+			setLabel(resourceManager.getString('language', 'MENU_COMMUNITY_GEOLOCATION'), "Stream", "9");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_REVISION'), "Stream", "10");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_GUIDES'), "Stream", "11");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_IMPORT'), "Stream", "13");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_TEXT'), "Stream", "13", "0");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_PARAGRAPH'), "Stream", "13", "1");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_PICTURE'), "Stream", "13", "2");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_VIDEO'), "Stream", "13", "3");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_AUDIO'), "Stream", "13", "4");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_PLAYLIST'), "Stream", "13", "5");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_ADDKEY'), "Stream", "15");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_ADDEMPTYKEY'), "Stream", "16");
+			setLabel(resourceManager.getString('language', 'MENU_STREAM_VIEW'), "Stream", "18");
+			// edit
+			setLabel(resourceManager.getString('language', 'MENU_EDIT'), "Edit");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_SCALE'), "Edit", "0");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_ALIGN'), "Edit", "2");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_CENTER'), "Edit", "2", "0");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_LEFT'), "Edit", "2", "1");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_RIGHT'), "Edit", "2", "2");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DISTRIBUTE'), "Edit", "3");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DTOP'), "Edit", "3", "0");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DVCENTER'), "Edit", "3", "1");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DBOTTOM'), "Edit", "3", "2");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DLEFT'), "Edit", "3", "4");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DHCENTER'), "Edit", "3", "5");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_DRIGHT'), "Edit", "3", "6");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_ARRANGE'), "Edit", "4");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_AFRONT'), "Edit", "4", "0");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_AFORWARD'), "Edit", "4", "1");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_ABACKWARD'), "Edit", "4", "2");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_ABACK'), "Edit", "4", "3");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_COLOR'), "Edit", "6");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BLEND'), "Edit", "7");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BNORMAL'), "Edit", "7", "0");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BADD'), "Edit", "7", "1");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BALPHA'), "Edit", "7", "2");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BDARKEN'), "Edit", "7", "3");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BDIFFERENCE'), "Edit", "7", "4");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BERASE'), "Edit", "7", "5");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BHLIGHT'), "Edit", "7", "6");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BINVERT'), "Edit", "7", "7");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BLAYER'), "Edit", "7", "8");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BLIGHTEN'), "Edit", "7", "9");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BMULTIPLY'), "Edit", "7", "10");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BOVERLAY'), "Edit", "7", "11");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BSCREEN'), "Edit", "7", "12");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_BSUBTRACT'), "Edit", "7", "13");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_FILTER'), "Edit", "8");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_FDSHADOW'), "Edit", "8", "0");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_FBEVEL'), "Edit", "8", "1");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_FBLUR'), "Edit", "8", "2");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_FGLOW'), "Edit", "8", "3");
+			setLabel(resourceManager.getString('language', 'MENU_EDIT_CODE'), "Edit", "10");
+			// window
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW'), "Window");
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW_PLAYLIST'), "Window", "0");
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW_TOOLS'), "Window", "1");
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW_PROPERTIES'), "Window", "2");
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW_TIMELINE'), "Window", "3");
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW_COMMUNITY'), "Window", "4");
+			setLabel(resourceManager.getString('language', 'MENU_WINDOW_ARRANGE'), "Window", "6");
+			// user
+			setLabel(resourceManager.getString('language', 'MENU_USER'), "User");
+			setLabel(resourceManager.getString('language', 'MENU_USER_LOGIN'), "User", "0");
+			setLabel(resourceManager.getString('language', 'MENU_USER_PASSWORD'), "User", "1");
+			setLabel(resourceManager.getString('language', 'MENU_USER_MANAGE'), "User", "2");
+			setLabel(resourceManager.getString('language', 'MENU_USER_REMOTE'), "User", "3");
+			// configuration
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION'), "Configuration");
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION_READER'), "Configuration", "0");
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION_EDITOR'), "Configuration", "1");
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION_FB'), "Configuration", "2");
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION_PKEY'), "Configuration", "3");
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION_FONTS'), "Configuration", "4");
+			setLabel(resourceManager.getString('language', 'MENU_CONFIGURATION_LANGUAGE'), "Configuration", "5");
+			
+		}
+		
+		/**
+		 * Handling menu selections.
+		 */
+		private function menuHandler(evt:MenuEvent):void  {
+			if (evt.item.@data != "top") {
+				FlexGlobals.topLevelApplication.processCommand(evt.item.@data);
+			}
+		}
+		
+		/**
+		 * Language change handler.
+		 */
+		private function onChange(evt:Event):void {
+			this.rebuild();
+		}
+			
+		
+		]]>
+	</fx:Script>
+	
+</mx:MenuBar>

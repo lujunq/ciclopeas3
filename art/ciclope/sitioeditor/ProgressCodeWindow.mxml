@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   close="onClose()" width="300" title="{resourceManager.getString('language', 'PROGRESSCODE_TITLE')}">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.core.FlexGlobals;
+		
+		/**
+		 * Close tools window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleProgressCode");
+		}
+		
+		]]>
+	</fx:Script>
+	
+</s:TitleWindow>

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityStats creates a window to check the community view statistics.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="680" title="{resourceManager.getString('language', 'STAT_TITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="allStreams" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.net.URLRequest;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.FileReference;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get configuration values
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=fullList";
+			WindowServerCheck.createServer("getstats", params, onData);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Refresh stream list.
+		 */
+		private function onRefresh():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=fullList";
+			WindowServerCheck.createServer("getstats", params, onData);
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Initial data received.
+		 */
+		private function onData(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'STAT_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// stream list
+					var index:uint;
+					this.allStreams.removeAll();
+					for (index = 0; index < server.data.child("stream").length(); index++) {
+						this.allStreams.addItem({streamName:String(server.data.stream[index].name), streamTotal:uint(server.data.stream[index].total), streamLast:String(server.data.stream[index].last), streamTime:uint(server.data.stream[index].time), streamID:String(server.data.stream[index].id)});
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Download stat data.
+		 */
+		private function onDownload():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=download";
+			WindowServerCheck.createServer("getstats", params, onDownloadReady);
+		}
+		
+		/**
+		 * Download navigation data.
+		 */
+		private function onDownloadNav():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=downloadnav";
+			WindowServerCheck.createServer("getstats", params, onDownloadReady);
+		}
+		
+		/**
+		 * A data download link is available.
+		 */
+		private function onDownloadReady(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'STAT_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					var file:FileReference = new FileReference();
+					file.download(new URLRequest(String(server.data.link)));
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Reset community stats.
+		 */
+		private function onReset():void {
+			var confirm:WindowConfirm = new WindowConfirm();
+			confirm.setAction(WindowConfirm.ACTION_RESETSTATS, LoadedData.community.id, this.confirmReturn);
+			PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+			PopUpManager.centerPopUp(confirm);
+		}
+		
+		/**
+		 * A function to call after the reset stats confirmation is called.
+		 * @param	response	true if the user confirmed reset, false otherwise
+		 */
+		private function confirmReturn(response:Boolean):void {
+			// reload data
+			if (response) this.init();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:DataGrid id="streamList" dataProvider="{allStreams}" requestedRowCount="4" width="100%" height="300">
+			<s:columns>
+				<s:ArrayList>
+					<s:GridColumn dataField="streamName" headerText="{resourceManager.getString('language', 'STAT_STREAMNAME')}"></s:GridColumn>
+					<s:GridColumn dataField="streamTotal" headerText="{resourceManager.getString('language', 'STAT_STREAMNUMACCESS')}"></s:GridColumn>
+					<s:GridColumn dataField="streamTime" headerText="{resourceManager.getString('language', 'STAT_STREAMTIME')}"></s:GridColumn>
+					<s:GridColumn dataField="streamLast" headerText="{resourceManager.getString('language', 'STAT_STREAMLAST')}"></s:GridColumn>
+				</s:ArrayList>
+			</s:columns>
+		</s:DataGrid>
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'STAT_RESET')}" click="onReset()" />
+			<s:Button label="{resourceManager.getString('language', 'STAT_DOWNLOAD')}" click="onDownload()" />
+			<s:Button label="{resourceManager.getString('language', 'STAT_DOWNLOADNAV')}" click="onDownloadNav()" />
+			<s:Button label="{resourceManager.getString('language', 'STAT_REFRESH')}" click="onRefresh()" />
+			<s:Button label="{resourceManager.getString('language', 'STAT_CLOSE')}" click="onClose()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

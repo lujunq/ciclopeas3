@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Graphic version="2.0" viewHeight="60" viewWidth="60" ATE:version="1.0.0" flm:version="1.0.0" d:using="" pd:backgroundColor="13421772" xmlns="http://ns.adobe.com/fxg/2008" xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008" xmlns:pd="http://ns.adobe.com/xfl/2008/pd">
+  <Library/>
+  <Group d:type="layer" d:userLabel="Layer 2">
+    <Path data="M60 60 0 60 0 0 60 0 60 60">
+      <fill>
+        <SolidColor color="#FFFFFF" alpha="0"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="Layer 1">
+    <Path data="M28.15 19.95Q28.9 19 30.05 19 31.15 19 31.9 19.95 32.65 20.9 32.65 22.25L32.65 27.4 37.8 27.4Q39.15 27.4 40.1 28.2 41.05 28.95 41.05 30.05 41.05 31.15 40.1 31.95 39.15 32.7 37.8 32.7L32.65 32.7 32.65 37.85Q32.65 39.2 31.9 40.15 31.15 41.05 30.05
+ 41.05 28.9 41.05 28.15 40.15 27.35 39.2 27.35 37.85L27.35 32.7 22.2 32.7Q20.9 32.7 19.9 31.95 18.95 31.15 18.95 30.05 18.95 28.95 19.9 28.2 20.9 27.4 22.2 27.4L27.35 27.4 27.35 22.25Q27.35 20.9 28.15 19.95">
+      <fill>
+        <SolidColor color="#FFFFFF"/>
+      </fill>
+    </Path>
+  </Group>
+  <Private/>
+</Graphic>

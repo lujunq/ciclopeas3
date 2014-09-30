@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityPermissions creates a windo to manage user permissions for a single community.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="570" title="{resourceManager.getString('language', 'CW_PERMTITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="userResult" />
+		<mx:ArrayCollection id="userAuthors" />
+		<mx:ArrayCollection id="userEditors" />
+		<mx:ArrayCollection id="userAdmins" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get user list
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=list";
+			WindowServerCheck.createServer("communityuser", params, userReturn);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * A component is ready.
+		 * @param	name	the component name
+		 */
+		private function onReady(name:String):void {
+			switch(name) {
+				case "adminList":
+					this.adminList.dataProvider = null;
+					this.adminList.dataProvider = userAdmins;
+					break;
+				/*case "newPass":
+					var key:String = "";
+					for (var index:uint = 0; index < 8; index++) key += String(uint(Math.round(Math.random() * 10)));
+					this.newPass.text = key;
+					break;*/
+			}
+		}
+		
+		/**
+		 * Search for users.
+		 */
+		private function searchForUsers():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&terms=" + escape(this.searchTerms.text);
+			WindowServerCheck.createServer("usersearch", params, searchReturn);
+		}
+		
+		/**
+		 * Add an user.
+		 */
+		private function onAdd(level:String):void {
+			if (this.userList.selectedIndex >= 0) {
+				var params:String = "addlevel=" + escape(level);
+				params += "&community=" + escape(LoadedData.community.id);
+				params += "&user=" + escape(this.userList.selectedItem.data);
+				params += "&action=add";
+				WindowServerCheck.createServer("communityuser", params, userReturn);
+			}
+		}
+		
+		/**
+		 * Remove an user.
+		 */
+		private function onRemove(level:String):void {
+			var params:String;
+			switch (level) {
+				case "admin":
+					if ((this.adminList.selectedIndex >= 0) && (this.userAdmins.length > 1) && (this.adminList.selectedItem.data != UserInfo.id)) {
+						params = "addlevel=" + escape(level);
+						params += "&community=" + escape(LoadedData.community.id);
+						params += "&user=" + escape(this.adminList.selectedItem.data);
+						params += "&action=remove";
+						WindowServerCheck.createServer("communityuser", params, userReturn);
+					}
+					break;
+				case "editor":
+					if (this.editorList.selectedIndex >= 0) {
+						params = "addlevel=" + escape(level);
+						params += "&community=" + escape(LoadedData.community.id);
+						params += "&user=" + escape(this.editorList.selectedItem.data);
+						params += "&action=remove";
+						WindowServerCheck.createServer("communityuser", params, userReturn);
+					}
+					break;
+				case "author":
+					if (this.authorList.selectedIndex >= 0) {
+						params = "addlevel=" + escape(level);
+						params += "&community=" + escape(LoadedData.community.id);
+						params += "&user=" + escape(this.authorList.selectedItem.data);
+						params += "&action=remove";
+						WindowServerCheck.createServer("communityuser", params, userReturn);
+					}
+					break;
+			}
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Server response from community user list, add or remove.
+		 */
+		private function userReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CW_PERMUSERERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					this.userAuthors.removeAll();
+					this.userEditors.removeAll();
+					this.userAdmins.removeAll();
+					for (var index:uint = 0; index < server.data.child("user").length(); index++) {
+						if (String(server.data.user[index].level) == "admin") {
+							this.userAdmins.addItem( { label:String(server.data.user[index].name), data:String(server.data.user[index].data) } );
+						} else if (String(server.data.user[index].level) == "editor") {
+							this.userEditors.addItem( { label:String(server.data.user[index].name), data:String(server.data.user[index].data) } );
+						} else if (String(server.data.user[index].level) == "author") {
+							this.userAuthors.addItem( { label:String(server.data.user[index].name), data:String(server.data.user[index].data) } );
+						}
+					}
+					if (this.adminList != null) this.onReady('adminList');
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Server response from user search.
+		 */
+		private function searchReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CW_PERMSEARCHERRORTITLE'), resourceManager.getString('error', server.errorID));
+					this.userResult.removeAll();
+					break;
+				case ServerEvent.SERVER_OK:
+					this.userResult.removeAll();
+					for (var index:uint = 0; index < server.data.child("result").length(); index++) {
+						this.userResult.addItem( { label:String(server.data.result[index].label), data:String(server.data.result[index].data) } );
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label text="{resourceManager.getString('language', 'CW_PERMSEARCHABOUT')}" width="100%" />
+		<s:HGroup width="100%">
+			<s:TextInput id="searchTerms" width="70%" />
+			<s:Button width="30%" label="{resourceManager.getString('language', 'CW_PERMSEARCHDO')}" click="searchForUsers()" />
+		</s:HGroup>
+		<s:Label text="{resourceManager.getString('language', 'CW_PERMSEARCHUSERS')}" width="100%" />
+		<s:List width="100%" id="userList" height="80" dataProvider="{userResult}" />
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CW_PERMADDADMIN')}" click="onAdd('admin')" />
+			<s:Button label="{resourceManager.getString('language', 'CW_PERMADDEDITOR')}" click="onAdd('editor')" />
+			<s:Button label="{resourceManager.getString('language', 'CW_PERMADDAUTHOR')}" click="onAdd('author')" />
+		</s:HGroup>
+		<s:BorderContainer width="100%" height="110">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="{resourceManager.getString('language', 'CW_PERMAUTHORABOUT')}" width="100%" />
+					<s:Button label="{resourceManager.getString('language', 'CW_PERMOREMOVEAUTHOR')}" click="onRemove('author')" />
+				</s:HGroup>
+				<s:List width="100%" id="authorList" height="100%" dataProvider="{userAuthors}" />
+			</s:VGroup>
+		</s:BorderContainer>
+		<s:BorderContainer width="100%" height="110">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="{resourceManager.getString('language', 'CW_PERMEDITORABOUT')}" width="100%" />
+					<s:Button label="{resourceManager.getString('language', 'CW_PERMOREMOVEEDITOR')}" click="onRemove('editor')" />
+				</s:HGroup>
+				<s:List width="100%" id="editorList" height="100%" dataProvider="{userEditors}" />
+			</s:VGroup>
+		</s:BorderContainer>
+		<s:BorderContainer width="100%" height="90">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="{resourceManager.getString('language', 'CW_PERMADMINABOUT')}" width="100%" />
+					<s:Button label="{resourceManager.getString('language', 'CW_PERMOREMOVEADMIN')}" click="onRemove('admin')" />
+				</s:HGroup>
+				<s:List width="100%" id="adminList" height="100%" dataProvider="{userAdmins}" creationComplete="onReady('adminList')" />
+			</s:VGroup>
+		</s:BorderContainer>
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CW_CLOSE')}" click="onClose()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

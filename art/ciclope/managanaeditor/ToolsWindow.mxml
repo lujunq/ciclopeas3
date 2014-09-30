@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+ToolsWindow creates a window with useful shortcuts for Managana editor.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   close="onClose()" width="50">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Are the tool buttons enabled?
+		 */
+		public function get buttonsEnabled():Boolean {
+			return(this.toolButtons.enabled);
+		}
+		public function set buttonsEnabled(to:Boolean):void {
+			this.toolButtons.enabled = to;
+		}
+		
+		/**
+		 * Close tools window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleTools");
+		}
+		
+		/**
+		 * Decrease zoom.
+		 */
+		private function onZoomDown():void {
+			FlexGlobals.topLevelApplication.processCommand("zoomDown");
+		}
+		/**
+		 * Increase zoom.
+		 */
+		private function onZoomUp():void {
+			FlexGlobals.topLevelApplication.processCommand("zoomUp");
+		}
+		/**
+		 * Clear zoom.
+		 */
+		private function onZoom():void {
+			FlexGlobals.topLevelApplication.processCommand("zoomClear");
+		}
+		/**
+		 * Clear zoom.
+		 */
+		private function onAspect():void {
+			FlexGlobals.topLevelApplication.processCommand("switchAspect");
+		}
+		/**
+		 * Preview stream.
+		 */
+		private function onPreview():void {
+			FlexGlobals.topLevelApplication.processCommand("PreviewStream");
+		}
+		/**
+		 * Open player.
+		 */
+		private function onPlayer():void {
+			FlexGlobals.topLevelApplication.processCommand("OpenPlayer");
+		}
+		/**
+		 * Open HTML5 player.
+		 */
+		private function onPlayerHTML5():void {
+			FlexGlobals.topLevelApplication.processCommand("OpenPlayerHTML5");
+		}
+		
+		/**
+		 * Add a playlist to stage.
+		 * @param	type	the playlist type to add
+		 */
+		private function addPlaylist(type:String):void {
+			switch (type) {
+				case "text": FlexGlobals.topLevelApplication.processCommand("PlaylistAddText"); break;
+				case "paragraph": FlexGlobals.topLevelApplication.processCommand("PlaylistAddParagraph"); break;
+				case "picture": FlexGlobals.topLevelApplication.processCommand("PlaylistAddPicture"); break;
+				case "video": FlexGlobals.topLevelApplication.processCommand("PlaylistAddVideo"); break;
+				case "audio": FlexGlobals.topLevelApplication.processCommand("PlaylistAddAudio"); break;
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup styleName="paddingGroup" id="toolButtons" enabled="false">
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-text.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPTEXT')}" click="addPlaylist('text')"  />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-paragraph.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPARAGRAPH')}" click="addPlaylist('paragraph')"  />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-picture.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPICTURE')}" click="addPlaylist('picture')" />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-video.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPVIDEO')}" click="addPlaylist('video')"  />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-audio.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPAUDIO')}" click="addPlaylist('audio')"  />
+		<mx:HRule width="100%" />
+		<s:Button width="38" height="22" icon="@Embed('icon/tools-zommout.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPZOUT')}" click="onZoomDown()"  />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-zoom.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPZOOM')}" click="onZoom()" />
+		<s:Button width="38" height="22" icon="@Embed('icon/tools-zoomin.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPZIN')}" click="onZoomUp()" />
+		<mx:HRule width="100%" />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-aspect.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPASPECT')}" click="onAspect()"  />
+		<mx:HRule width="100%" />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-view.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPVIEW')}" click="onPreview()" />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-player.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPLAYER')}" click="onPlayer()" />
+		<s:Button width="38" height="30" icon="@Embed('icon/tools-playerhtml5.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPLAYERHTML5')}" click="onPlayerHTML5()" />
+	</s:VGroup>
+	
+</s:TitleWindow>

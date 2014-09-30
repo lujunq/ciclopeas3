@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowAddPlaylist creates a window for adding elements to a playlist (or create a new one withe the selected element).
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:managana="art.ciclope.managanaeditor.*"
+			   creationComplete="init()"
+			   width="620" height="400" title="Add Playlist">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="playlistList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.Event;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.util.LoadedFile;
+		import art.ciclope.managanaeditor.data.SelectedFile;
+		import art.ciclope.managana.ManaganaFont;
+		import art.ciclope.managana.data.DISElementFile;
+		import art.ciclope.managanaeditor.data.DISElementED;
+		import art.ciclope.managanaeditor.data.DISElementFileED;
+		import art.ciclope.managanaeditor.data.DISInstanceED;
+		import art.ciclope.managanaeditor.data.DISPlaylistED;
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		import art.ciclope.managanaeditor.FileList;
+		
+		// VARIABLES
+		
+		/**
+		 * File type to add.
+		 */
+		public var _fileType:String;
+		/**
+		 * The playlist to add. Leave empty to create a new playlist and add it to the stage.
+		 */
+		public var playlistToAdd:String = "";
+		/**
+		 * An element to add.
+		 */
+		public var element:DISElementED;
+		
+		// METHODS
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// populate playlist list
+			this.playlistList.addItem( { label:resourceManager.getString('language', 'PLW_NEW'), data:"" } );
+			for (var index:String in LoadedData.stream.playlists) {
+				this.playlistList.addItem( { label:LoadedData.stream.playlists[index].name, data:index } );
+			}
+			this.playlistTo.selectedIndex = 0;
+		}
+		
+		/**
+		 * The file type to list.
+		 */
+		public function get fileType():String {
+			return (this._fileType);
+		}
+		public function set fileType(to:String):void {
+			this._fileType = to;
+			switch (to) {
+				case LoadedFile.TYPE_PICTURE:
+					if (this.element == null) this.title = resourceManager.getString('language', 'PLW_TITLEPICTURE');
+						else this.title = resourceManager.getString('language', 'PLW_TITLEEDITPICTURE');
+					break;
+				case LoadedFile.TYPE_TEXT:
+					if (this.element == null) this.title = resourceManager.getString('language', 'PLW_TITLETEXT');
+						else this.title = resourceManager.getString('language', 'PLW_TITLEEDITTEXT');
+					break;
+				case LoadedFile.TYPE_PARAGRAPH:
+					if (this.element == null) this.title = resourceManager.getString('language', 'PLW_TITLEPARAGRAPH');
+						else this.title = resourceManager.getString('language', 'PLW_TITLEEDITPARAGRAPH');
+					break;
+				case LoadedFile.TYPE_AUDIO:
+					if (this.element == null) this.title = resourceManager.getString('language', 'PLW_TITLEAUDIO');
+						else this.title = resourceManager.getString('language', 'PLW_TITLEEDITAUDIO');
+					break;
+				case LoadedFile.TYPE_VIDEO:
+					if (this.element == null) this.title = resourceManager.getString('language', 'PLW_TITLEVIDEO');
+						else this.title = resourceManager.getString('language', 'PLW_TITLEEDITVIDEO');
+					break;
+			}
+			try { this.fileList.fileType = to; } catch (e:Error) { }
+		}
+		
+		/**
+		 * The file list became available.
+		 */
+		private function filelistReady():void {
+			this.fileList.addEventListener(Event.CLOSE, onFileListClose);
+			if (this.element != null) {
+				switch (element.type) {
+					case "paragraph":
+						this.fileType = LoadedFile.TYPE_PARAGRAPH;
+						break;
+					case "text":
+						this.fileType = LoadedFile.TYPE_TEXT;
+						break;
+					case "audio":
+						this.fileType = LoadedFile.TYPE_AUDIO;
+						break;
+					case "picture":
+						this.fileType = LoadedFile.TYPE_PICTURE;
+						break;
+					case "video":
+						this.fileType = LoadedFile.TYPE_VIDEO;
+						break;
+				}
+				this.fileList.element = this.element;
+				this.addButton.label = resourceManager.getString('language', 'PLW_SAVE');
+			}
+			try { this.fileList.fileType = this.fileType; } catch (e:Error) { }
+			//this.fileList.fileType = this.fileType;
+		}
+		
+		/**
+		 * Add a playlist to the stage.
+		 */
+		private function onAdd():void {
+			var selected:SelectedFile = this.fileList.selected;
+			if (selected == null) {
+				Warning.createWarning(resourceManager.getString('language', 'PLW_TITLEERROR'), resourceManager.getString('language', 'PLW_ERRORNOFILE'));
+			} else {
+				if (this.element != null) {
+					var newName:String = StringFunctions.noSpecial(elName.text);
+					this.element.file[0].path = selected.path;
+					this.element.file[0].format = selected.format;
+					if (newName != this.element.id) {
+						delete(LoadedData.stream.playlists[this.playlistToAdd].elements[this.element.id]);
+						this.element.id = newName;
+						LoadedData.stream.playlists[this.playlistToAdd].elements[this.element.id] = this.element;
+					}
+					selected.kill();
+					this.fileList.removeEventListener(Event.CLOSE, onFileListClose);
+					this.fileList.kill();
+					this._fileType = null;
+					FlexGlobals.topLevelApplication.processCommand("redraw");
+					PopUpManager.removePopUp(this);
+					FlexGlobals.topLevelApplication.processCommand("PlaylistEditPlaylist", this.playlistToAdd);
+				} else if (this.playlistToAdd == "") {
+					var feedName:String = selected.name;
+					if (this.elStartName.text != "") selected.name = StringFunctions.noSpecial(this.elStartName.text);
+					if (this.playlistTo.selectedIndex == 0) {
+						while (LoadedData.stream.playlists[selected.playlist] != null) selected.playlist += "_2";
+						LoadedData.stream.playlists[selected.playlist] = new DISPlaylistED();
+						LoadedData.stream.playlists[selected.playlist].name = selected.playlist;
+						LoadedData.stream.playlists[selected.playlist].id = selected.playlist;
+						LoadedData.stream.playlists[selected.playlist].author = UserInfo.author;
+					} else {
+						selected.playlist = this.playlistTo.selectedItem.data;
+					}
+					while (LoadedData.stream.playlists[selected.playlist].elements[selected.name] != null) selected.name += "_2";
+					if (selected.feedType != "") {
+						LoadedData.stream.playlists[selected.playlist].elements[selected.name] = new DISElementED(selected.name, selected.type, 10, feedName, selected.type, selected.feedReference);
+					} else {
+						LoadedData.stream.playlists[selected.playlist].elements[selected.name] = new DISElementED(selected.name, selected.type);
+					}
+					if (selected.feedType != "") {
+						LoadedData.stream.playlists[selected.playlist].elements[selected.name].file.push(new DISElementFileED(selected.feedPost, selected.format, LoadedData.community.language, true, feedName, selected.feedType, selected.feedField));
+					} else {
+						LoadedData.stream.playlists[selected.playlist].elements[selected.name].file.push(new DISElementFileED(selected.path, selected.format, LoadedData.community.language, false));
+					}
+					LoadedData.stream.playlists[selected.playlist].elements[selected.name].order = LoadedData.stream.playlists[selected.playlist].numElements - 1;
+					var instance:DISInstanceED = new DISInstanceED();
+					instance.id = selected.name;
+					while (FlexGlobals.topLevelApplication.processCommand("getInstance", instance.id) != null) {
+						instance.id = instance.id + "_2";
+					}
+					instance.playlist = selected.playlist;
+					instance.element = selected.name;
+					instance.fontface = ManaganaFont.fontList[0];
+					instance.order = uint(FlexGlobals.topLevelApplication.processCommand("getNextOrder"));
+					if (LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] != null) LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id].kill();
+					LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] = instance;
+					FlexGlobals.topLevelApplication.processCommand("redraw");
+					selected.kill();
+					this.fileList.removeEventListener(Event.CLOSE, onFileListClose);
+					this.fileList.kill();
+					this._fileType = null;
+					FlexGlobals.topLevelApplication.processCommand("selectImage", FlexGlobals.topLevelApplication.processCommand("getInstance", instance.id));
+					PopUpManager.removePopUp(this);
+				} else {
+					if (this.elStartName.text != "") selected.name = StringFunctions.noSpecial(this.elStartName.text);
+					if (LoadedData.stream.playlists[this.playlistToAdd] == null) {
+						Warning.createWarning(resourceManager.getString('language', 'PLAYLIST_ADDERRORTITLE'), resourceManager.getString('language', 'PLAYLIST_ADDERROR'));
+					} else {
+						// is there an element with selected name?
+						while (LoadedData.stream.playlists[this.playlistToAdd].elements[selected.name] != null) {
+							selected.name += "_2";
+						}
+						// add new element
+						if (selected.feedType != "") {
+							LoadedData.stream.playlists[this.playlistToAdd].elements[selected.name] = new DISElementED(selected.name, selected.type, 10, selected.name, selected.type, selected.feedReference);
+						} else {
+							LoadedData.stream.playlists[this.playlistToAdd].elements[selected.name] = new DISElementED(selected.name, selected.type);
+						}
+						if (selected.feedType != "") {
+							LoadedData.stream.playlists[this.playlistToAdd].elements[selected.name].file.push(new DISElementFileED(selected.feedPost, selected.format, LoadedData.community.language, true, selected.name, selected.feedType, selected.feedField));
+						} else {
+							LoadedData.stream.playlists[this.playlistToAdd].elements[selected.name].file.push(new DISElementFileED(selected.path, selected.format, LoadedData.community.language, false));
+						}
+						LoadedData.stream.playlists[this.playlistToAdd].elements[selected.name].order = LoadedData.stream.playlists[this.playlistToAdd].numElements - 1;
+					}
+					selected.kill();
+					this.fileList.removeEventListener(Event.CLOSE, onFileListClose);
+					this.fileList.kill();
+					this._fileType = null;
+					FlexGlobals.topLevelApplication.processCommand("PlaylistUpdate", this.playlistToAdd);
+					PopUpManager.removePopUp(this);
+				}
+			}
+		}
+		
+		/**
+		 * Close window.
+		 */
+		private function onCancel():void {
+			this.fileList.removeEventListener(Event.CLOSE, onFileListClose);
+			this.fileList.kill();
+			this._fileType = null;
+			this.playlistToAdd = null;
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * The file list requested window close.
+		 */
+		private function onFileListClose(evt:Event):void {
+			this.onCancel();
+		}
+		
+		/**
+		 * A component is ready.
+		 * @param	name	the component name
+		 */
+		private function onComponent(name:String):void {
+			switch (name) {
+				case 'componentGroup':
+					if (this.newItemSet != null) {
+						if (this.element != null) {
+							try { this.componentGroup.removeElement(this.newItemSet); } catch (e:Error) { }
+						}
+						if (this.playlistToAdd != "") {
+							try {
+								if (this.playlistTo != null) this.newItemSet.removeElement(this.playlistTo);
+								if (this.playlistLabel != null) this.newItemSet.removeElement(this.playlistLabel);
+							} catch (e:Error) { }
+						}
+					}
+					if (this.elNameSet != null) {
+						if (this.element == null) {
+							try { this.componentGroup.removeElement(this.elNameSet); } catch (e:Error) { }
+						}
+					}
+					break;
+				case 'newItemSet':
+					if (this.componentGroup != null) {
+						if (this.element != null) {
+							try { this.componentGroup.removeElement(this.newItemSet); } catch (e:Error) { }
+						}
+					}
+					if (this.playlistToAdd != "") {
+						try {
+							if (this.playlistTo != null) this.newItemSet.removeElement(this.playlistTo);
+							if (this.playlistLabel != null) this.newItemSet.removeElement(this.playlistLabel);
+						} catch (e:Error) { }
+					}
+					break;
+				case 'playlistTo':
+					if (this.newItemSet != null) {
+						if (this.playlistToAdd != "") {
+							try {
+								this.newItemSet.removeElement(this.playlistTo);
+							} catch (e:Error) { }
+						}
+					}
+					break;
+				case 'playlistLabel':
+					if (this.newItemSet != null) {
+						if (this.playlistToAdd != "") {
+							try {
+								this.newItemSet.removeElement(this.playlistLabel);
+							} catch (e:Error) { }
+						}
+					}
+					break;
+				case 'elNameSet':
+					if (this.componentGroup != null) {
+						if (this.element == null) {
+							try { this.componentGroup.removeElement(this.elNameSet); } catch (e:Error) { }
+						}
+					}
+					break;
+				case 'elName':
+					if (this.element != null) this.elName.text = this.element.id;
+					break;
+				case 'elWarning':
+					if (this.element == null) this.mainGroup.removeElement(this.elWarning);
+					break;
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup" id="mainGroup">
+		<managana:FileList id="fileList" width="100%" height="100%" creationComplete="filelistReady()" />
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle" id="componentGroup" creationComplete="onComponent('componentGroup')">
+			<s:HGroup id="newItemSet" width="100%" verticalAlign="middle" horizontalAlign="right" creationComplete="onComponent('newItemSet')">
+				<s:Label id="playlistLabel" text="{resourceManager.getString('language', 'PLW_ONPLAYLIST')}" width="20%" textAlign="right" creationComplete="onComponent('playlistLabel')" />
+				<s:DropDownList id="playlistTo" width="40%" dataProvider="{playlistList}" creationComplete="onComponent('playlistTo')" />
+				<s:Label id="elStartLabel" text="{resourceManager.getString('language', 'PLW_ELNAME')}" width="20%" textAlign="right" creationComplete="onComponent('elStartLabel')" />
+				<s:TextInput id="elStartName" width="20%" text="" creationComplete="onComponent('elStartName')" />
+			</s:HGroup>
+			<s:HGroup id="elNameSet" width="100%" verticalAlign="middle" creationComplete="onComponent('elNameSet')">
+				<s:Label text="{resourceManager.getString('language', 'PLW_ELEMENTNAME')}" width="40%" textAlign="right" />
+				<s:TextInput id="elName" width="60%" text="" creationComplete="onComponent('elName')" />
+			</s:HGroup>
+			<s:Button label="{resourceManager.getString('language', 'PLW_CANCEL')}" click="onCancel()" />
+			<s:Button id="addButton" label="{resourceManager.getString('language', 'PLW_ADD')}" click="onAdd()" />
+		</s:HGroup>
+		<s:Label id="elWarning" text="{resourceManager.getString('language', 'PLW_ELWARNING')}" width="100%" creationComplete="onComponent('elWarning')" textAlign="right" />
+	</s:VGroup>
+</s:TitleWindow>

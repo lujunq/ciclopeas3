@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowConfigMailing creates a window to manage e-mail configurations.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="600" title="{resourceManager.getString('language', 'CONF_MAILTITLE')}">
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get configuration values
+			WindowServerCheck.createServer("getconfig", "", onConfig);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Add an user.
+		 */
+		private function onSave():void {
+			var params:String = "action=mailing";
+			params += "&MAILSENDER=" + escape(this.sender.text);
+			params += "&MAILRECOVERSUBJECT=" + escape(this.recoversubject.text);
+			params += "&MAILRECOVERBODY=" + escape(this.recoverbody.text);
+			params += "&MAILNEWSUBJECT=" + escape(this.newsubject.text);
+			params += "&MAILNEWBODY=" + escape(this.newbody.text);
+			params += "&MAILNEWBODYSUBSCRIBER=" + escape(this.newbodysub.text);
+			WindowServerCheck.createServer("saveconfig", params, onSaveReturn);
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * System configuration values received.
+		 */
+		private function onConfig(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					for (var index:uint = 0; index < server.data.child("config").length(); index++) {
+						switch (String(server.data.config[index].name)) {
+							case 'MAILSENDER':
+								this.sender.text = String(server.data.config[index].value);
+								break;
+							case 'MAILRECOVERSUBJECT':
+								this.recoversubject.text = String(server.data.config[index].value);
+								break;
+							case 'MAILRECOVERBODY':
+								this.recoverbody.text = String(server.data.config[index].value);
+								break;
+							case 'MAILNEWSUBJECT':
+								this.newsubject.text = String(server.data.config[index].value);
+								break;
+							case 'MAILNEWBODY':
+								this.newbody.text = String(server.data.config[index].value);
+								break;
+							case 'MAILNEWBODYSUBSCRIBER':
+								this.newbodysub.text = String(server.data.config[index].value);
+								break;
+						}
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Server response from creatw new user attempt.
+		 */
+		private function onSaveReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_OKTITLE'), resourceManager.getString('language', 'CONF_OKMESSAGE'));
+					break;
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILSENDER')}" />
+		<s:TextInput id="sender" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILNEWSUBJECT')}" />
+		<s:TextInput id="newsubject" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILNEWBODY')}" />
+		<s:TextArea id="newbody" width="100%" height="55" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILNEWBODYSUBS')}" />
+		<s:TextArea id="newbodysub" width="100%" height="55" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILRECOVERSUBJECT')}" />
+		<s:TextInput id="recoversubject" width="100%" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILRECOVERBODY')}" />
+		<s:TextArea id="recoverbody" width="100%" height="55" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILNEWBODYABOUT')}" />
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILRECOVERBODYABOUT')}" />
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CONF_CLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'CONF_SAVE')}" click="onSave()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

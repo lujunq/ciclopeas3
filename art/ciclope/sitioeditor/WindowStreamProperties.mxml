@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   width="400" height="320" borderVisible="true" title="{resourceManager.getString('language', 'STW_PROPTITLE')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="tweenTypes">
+			<fx:String>linear</fx:String> 
+            <fx:String>easeInSine</fx:String> 
+            <fx:String>easeOutSine</fx:String> 
+            <fx:String>easeInOutSine</fx:String>
+			<fx:String>easeInQuint</fx:String> 
+            <fx:String>easeOutQuint</fx:String> 
+            <fx:String>easeInOutQuint</fx:String> 
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="fadeTypes">
+			<fx:String>fade</fx:String> 
+            <fx:String>center</fx:String> 
+		</mx:ArrayCollection>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		
+		// VARIABLES
+		
+		private var _previousfile:String;		// previous file name
+		private var _publish:Boolean;			// did last stream save also published?
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+		}
+		
+		/**
+		 * Get data from loaded stream information.
+		 */
+		private function getData(name:String):void {
+			switch (name) {
+				case "sTitle":
+					this.sTitle.text = LoadedData.stream.title;
+					break;
+				case "sFile":
+					this.sFile.text = LoadedData.stream.id;
+					this._previousfile = LoadedData.stream.id;
+					break;
+				case "sTags":
+					this.sTags.text = LoadedData.stream.tags;
+					break;
+				case "sAbout":
+					this.sAbout.text = LoadedData.stream.about;
+					break;
+				case "sSpeed":
+					this.sSpeed.value = LoadedData.stream.speed;
+					break;
+				case "sEntropy":
+					this.sEntropy.value = LoadedData.stream.entropy;
+					break;
+				case "sDistortion":
+					this.sDistortion.value = LoadedData.stream.distortion;
+					break;
+				case "sTweening":
+					for (var index:uint = 0; index < this.tweenTypes.length; index++) {
+						if (this.tweenTypes[index] == LoadedData.stream.tweening) this.sTweening.selectedIndex = index;
+					}
+					avoidComboEdit(this.sTweening);
+					break;
+				case "sFade":
+					for (index = 0; index < this.fadeTypes.length; index++) {
+						if (this.fadeTypes[index] == LoadedData.stream.fade) this.sFade.selectedIndex = index;
+					}
+					avoidComboEdit(this.sFade);
+					break;
+			}
+		}
+		
+		/**
+		 * Avoid user defined values on combo box.
+		 * @param	combo	the combo box to lock user custom values
+		 */
+		private function avoidComboEdit(combo:ComboBox):void {
+			combo.textInput.editable = false;
+		}
+		
+		/**
+		 * Provide a file name according to the title.
+		 */
+		private function checkFile():void {
+			if ((this.sFile.text == "") && (this.sTitle.text != "")) this.sFile.text = StringFunctions.noSpecial(this.sTitle.text);
+		}
+		
+		/**
+		 * Check given file name and replace any invalid chars.
+		 */
+		private function checkFileName():void {
+			this.sFile.text = StringFunctions.noSpecial(this.sFile.text);
+		}
+		
+		/**
+		 * Save stream on server.
+		 * @param	newStream	is this a new stream?
+		 * @param	publish	also publish?
+		 * @param	onserver function to call on server return
+		 */
+		public static function saveStream(newStream:Boolean, publish:Boolean, onserver:Function):void {
+			var param:String = "community=" + LoadedData.community.id;
+			param += "&newStream=" + newStream;
+			param += "&publish=" + publish;
+			param += "&title=" + LoadedData.stream.title;
+			param += "&id=" + LoadedData.stream.id;
+			param += "&tags=" + LoadedData.stream.tags;
+			param += "&about=" + LoadedData.stream.about;
+			param += "&speed=" + LoadedData.stream.speed;
+			param += "&entropy=" + LoadedData.stream.entropy;
+			param += "&distortion=" + LoadedData.stream.distortion;
+			param += "&tweening=" + LoadedData.stream.tweening;
+			param += "&fade=" + LoadedData.stream.fade;
+			param += "&target=" + LoadedData.stream.target;
+			param += "&playlists=" + LoadedData.stream.playlistxml;
+			param += "&keyframes=" + LoadedData.stream.keyframexml;
+			WindowServerCheck.createServer("savestream", param, onserver);
+		}
+		
+		/**
+		 * Override a stream on server.
+		 */
+		private function overrideStream():void {
+			WindowStreamProperties.saveStream(false, this._publish, this.onServer);
+		}
+		
+		/**
+		 * Get server response.
+		 */
+		private function onServer(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				if (server.errorID == 'ERSTREAM-1') {
+					Warning.createWarning(resourceManager.getString('language', 'CW_NEWWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID), Warning.TYPE_OKCANCEL, overrideStream);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'CW_NEWWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID));
+				}
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				PopUpManager.removePopUp(this);
+				LoadedData.stream.newStream = false;
+				if (this._publish) {
+					FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_PUBLISHED') + " " + LoadedData.stream.title));
+				} else {
+					FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_SAVED') + " " + LoadedData.stream.title));
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Close window without saving.
+		 */
+		private function onCancel():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Get stream properties changes.
+		 */
+		private function onOK():void {
+			if (this.sTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOTITLE'));
+			} else if (this.sFile.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOFILE'));
+			} else {
+				if (this.sFile.text != this._previousfile) LoadedData.stream.newStream = true;
+				LoadedData.stream.title = this.sTitle.text;
+				LoadedData.stream.id = this.sFile.text;
+				LoadedData.stream.tags = this.sTags.text;
+				LoadedData.stream.about = this.sAbout.text;
+				if (this.sSpeed) LoadedData.stream.speed = this.sSpeed.value;
+				if (this.sEntropy) LoadedData.stream.entropy = this.sEntropy.value;
+				if (this.sDistortion) LoadedData.stream.distortion = this.sDistortion.value;
+				if (this.sTweening) LoadedData.stream.tweening = this.sTweening.selectedItem;
+				if (this.sFade) LoadedData.stream.fade = this.sFade.selectedItem;
+				PopUpManager.removePopUp(this);
+			}
+		}
+		
+		/**
+		 * Save stream properties.
+		 */
+		private function onSave():void {
+			if (this.sTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOTITLE'));
+			} else if (this.sFile.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOFILE'));
+			} else {
+				if (this.sFile.text != this._previousfile) LoadedData.stream.newStream = true;
+				LoadedData.stream.title = this.sTitle.text;
+				LoadedData.stream.id = this.sFile.text;
+				LoadedData.stream.tags = this.sTags.text;
+				LoadedData.stream.about = this.sAbout.text;
+				if (this.sSpeed) LoadedData.stream.speed = this.sSpeed.value;
+				if (this.sEntropy) LoadedData.stream.entropy = this.sEntropy.value;
+				if (this.sDistortion) LoadedData.stream.distortion = this.sDistortion.value;
+				if (this.sTweening) LoadedData.stream.tweening = this.sTweening.selectedItem;
+				if (this.sFade) LoadedData.stream.fade = this.sFade.selectedItem;
+				this._publish = false;
+				WindowStreamProperties.saveStream(LoadedData.stream.newStream, false, this.onServer);
+			}
+		}
+		
+		/**
+		 * Save stream properties an publish it.
+		 */
+		private function onPublish():void {
+			if (this.sTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOTITLE'));
+			} else if (this.sFile.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOFILE'));
+			} else {
+				if (this.sFile.text != this._previousfile) LoadedData.stream.newStream = true;
+				LoadedData.stream.title = this.sTitle.text;
+				LoadedData.stream.id = this.sFile.text;
+				LoadedData.stream.tags = this.sTags.text;
+				LoadedData.stream.about = this.sAbout.text;
+				if (this.sSpeed) LoadedData.stream.speed = this.sSpeed.value;
+				if (this.sEntropy) LoadedData.stream.entropy = this.sEntropy.value;
+				if (this.sDistortion) LoadedData.stream.distortion = this.sDistortion.value;
+				if (this.sTweening) LoadedData.stream.tweening = this.sTweening.selectedItem;
+				if (this.sFade) LoadedData.stream.fade = this.sFade.selectedItem;
+				this._publish = true;
+				WindowStreamProperties.saveStream(LoadedData.stream.newStream, true, this.onServer);
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_PROPTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TITLE')}"/>
+						<s:TextInput id="sTitle" width="100%" focusOut="checkFile()" creationComplete="getData('sTitle')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_FILE')}"/>
+						<s:TextInput id="sFile" width="100%" creationComplete="getData('sFile')" focusOut="checkFileName()" />
+						<s:Label text=".xml"/>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TAGS')}"/>
+						<s:TextInput id="sTags" width="100%" creationComplete="getData('sTags')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_ABOUT')}"/>
+						<s:TextArea id="sAbout" width="100%" height="60" creationComplete="getData('sAbout')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_ANIMTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_SPEED')}"/>
+						<s:NumericStepper id="sSpeed" maximum="60" minimum="1" stepSize="1" value="3" creationComplete="getData('sSpeed')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TWEEN')}"/>
+						<s:ComboBox id="sTweening" selectedIndex="0" dataProvider="{tweenTypes}" creationComplete="getData('sTweening')"  />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_FADE')}"/>
+						<s:ComboBox id="sFade" selectedIndex="0" dataProvider="{fadeTypes}" creationComplete="getData('sFade')"  />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_ENTROPY')}"/>
+						<s:NumericStepper id="sEntropy" enabled="false" maximum="10" minimum="0"
+										  stepSize="1" value="0" creationComplete="getData('sEntropy')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_DISTORTION')}"/>
+						<s:NumericStepper id="sDistortion" enabled="false" maximum="10" minimum="0"
+										  stepSize="1" value="0" creationComplete="getData('sDistortion')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TARGET')}"/>
+						<s:List id="sTarget" width="100%" height="60" enabled="false" creationComplete="getData('sTarget')" ></s:List>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_CATTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_ABOUTCATEGORIES')}"/>
+					<s:List id="sCategories" width="100%" height="100%" allowMultipleSelection="true" creationComplete="getData('sCategories')" ></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_GUIDETAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_LOWERGUIDE')}" />
+					<s:List id="sLower" width="100%" height="100%" creationComplete="getData('sLower')"></s:List>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_UPPERGUIDE')}" />
+					<s:List id="sUpper" width="100%" height="100%" creationComplete="getData('sUpper')"></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_SAVEOK')}" click="onSave()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_PUBLISHOK')}" click="onPublish()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_OK')}" click="onOK()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

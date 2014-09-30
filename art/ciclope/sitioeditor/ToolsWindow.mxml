@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   close="onClose()" width="50">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.core.FlexGlobals;
+		
+		/**
+		 * Close tools window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleTools");
+		}
+		
+		/**
+		 * Decrease zoom.
+		 */
+		private function onZoomDown():void {
+			FlexGlobals.topLevelApplication.processCommand("zoomDown");
+		}
+		/**
+		 * Increase zoom.
+		 */
+		private function onZoomUp():void {
+			FlexGlobals.topLevelApplication.processCommand("zoomUp");
+		}
+		/**
+		 * Clear zoom.
+		 */
+		private function onZoom():void {
+			FlexGlobals.topLevelApplication.processCommand("zoomClear");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup styleName="paddingGroup">
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-picture.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPICTURE')}" />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-text.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPTEXT')}"  />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-paragraph.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPARAGRAPH')}"  />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-video.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPVIDEO')}"  />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-audio.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPAUDIO')}"  />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-other.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPOTHER')}"  />
+		<mx:HRule width="100%" />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-zommout.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPZOUT')}" click="onZoomDown()"  />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-zoom.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPZOOM')}" click="onZoom()" />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-zoomin.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPZIN')}" click="onZoomUp()" />
+		<mx:HRule width="100%" />
+		<s:Button width="38" height="38" icon="@Embed('icon/tools-view.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPVIEW')}"  />
+	</s:VGroup>
+	
+</s:TitleWindow>

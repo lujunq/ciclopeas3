@@ -1,0 +1,734 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamProperties creates a window to handle stream properties.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:mana="art.ciclope.managanaeditor.*"
+			   creationComplete="init()" width="740" height="430" borderVisible="true" title="{resourceManager.getString('language', 'STW_PROPTITLE')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="tweenTypes">
+			<fx:String>linear</fx:String> 
+            <fx:String>easeInSine</fx:String> 
+            <fx:String>easeOutSine</fx:String> 
+            <fx:String>easeInOutSine</fx:String>
+			<fx:String>easeInQuint</fx:String> 
+            <fx:String>easeOutQuint</fx:String> 
+            <fx:String>easeInOutQuint</fx:String> 
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="fadeTypes">
+			<fx:String>fade</fx:String> 
+            <fx:String>center</fx:String>
+			<fx:String>none</fx:String>
+			<fx:String>target</fx:String>
+			<fx:String>swipeleft</fx:String>
+			<fx:String>swiperight</fx:String>
+			<fx:String>swipeup</fx:String>
+			<fx:String>swipedown</fx:String>
+			<fx:String>fromleft</fx:String>
+			<fx:String>fromright</fx:String>
+			<fx:String>fromup</fx:String>
+			<fx:String>fromdown</fx:String>
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="streamGuides" />
+		<mx:ArrayCollection id="streamAspects" />
+		<mx:ArrayCollection id="streamCategories" />
+		<mx:ArrayCollection id="streamRemotes" />
+		<mx:ArrayCollection id="metaList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import art.ciclope.managanaeditor.data.DISMetaED;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _previousfile:String;		// previous file name
+		private var _publish:Boolean;			// did last stream save also published?
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// load published stream list
+			WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+			// load categories
+			WindowServerCheck.createServer("categorylist", ("community=" + escape(LoadedData.community.id)), this.categoryReturn);
+			// load meta data fields and values
+			this.metaList.removeAll();
+			for (var index:uint = 0; index < LoadedData.community.meta.length; index++) {
+				if (LoadedData.stream.meta['meta' + LoadedData.community.meta[index].id] != null) {
+					this.metaList.addItem( { metaname:LoadedData.community.meta[index].name, metavalue:LoadedData.stream.meta['meta' + LoadedData.community.meta[index].id].value, metaindex:LoadedData.community.meta[index].id} );
+				} else {
+					this.metaList.addItem( { metaname:LoadedData.community.meta[index].name, metavalue:"", metaindex:LoadedData.community.meta[index].id} );
+				}
+			}
+		}
+		
+		/**
+		 * Category information received.
+		 * @param	server	the server information object
+		 */
+		private function categoryReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try to load again
+				WindowServerCheck.createServer("categorylist", ("community=" + escape(LoadedData.community.id)), this.categoryReturn);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// clear previous data
+				this.streamCategories.removeAll();
+				// add first list entries
+				this.streamCategories.addItem( { label: resourceManager.getString('language', 'STW_NOCATEGORY'), data:"" } );
+				// add loaded category names
+				for (var index:uint = 0; index < server.data.child("category").length(); index++) {
+					this.streamCategories.addItem( { label: String(server.data.category[index]), data: String(server.data.category[index]) } );
+				}
+				// is the category list already availabe?
+				if (this.sCategories != null) {
+					this.sCategories.selectedIndex = 0;
+					for (index = 0; index < this.streamCategories.length; index++) {
+						if (this.streamCategories[index].data == LoadedData.stream.category) this.sCategories.selectedIndex = index;
+					}
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Stream list information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try to load again
+				WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// clear previous data
+				this.streamGuides.removeAll();
+				this.streamAspects.removeAll();
+				this.streamRemotes.removeAll();
+				// add first list entries
+				this.streamGuides.addItem( { label: resourceManager.getString('language', 'STW_NOGUIDE'), data:"" } );
+				this.streamRemotes.addItem( { label: resourceManager.getString('language', 'STW_REMOTECURRENT'), data:"" } );
+				this.streamAspects.addItem( { label: resourceManager.getString('language', 'STW_ASPECTTHIS'), data:LoadedData.stream.id } );
+				// add loaded stream names
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.streamGuides.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.streamAspects.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.streamRemotes.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+				}
+				// are guide stream lists already availabe?
+				if (this.sLower != null) {
+					this.sLower.selectedIndex = 0;
+					for (index = 0; index < this.streamGuides.length; index++) {
+						if (this.streamGuides[index].data == LoadedData.stream.guidedownid) this.sLower.selectedIndex = index;
+					}
+				}
+				if (this.sUpper != null) {
+					this.sUpper.selectedIndex = 0;
+					for (index = 0; index < this.streamGuides.length; index++) {
+						if (this.streamGuides[index].data == LoadedData.stream.guideupid) this.sUpper.selectedIndex = index;
+					}
+				}
+				// are aspect stream lists already availabe?
+				if (this.sPortrait != null) {
+					this.sPortrait.selectedIndex = 0;
+					for (index = 0; index < this.streamAspects.length; index++) {
+						if ((this.streamAspects[index].data != LoadedData.stream.id) && (this.streamAspects[index].data == LoadedData.stream.portraitID)) this.sPortrait.selectedIndex = index;
+					}
+				}
+				if (this.sLandscape != null) {
+					this.sLandscape.selectedIndex = 0;
+					for (index = 0; index < this.streamAspects.length; index++) {
+						if ((this.streamAspects[index].data != LoadedData.stream.id) && (this.streamAspects[index].data == LoadedData.stream.landscapeID)) this.sLandscape.selectedIndex = index;
+					}
+				}
+				// is the remote list already available?
+				if (this.sRemote != null) {
+					this.sRemote.selectedIndex = 0;
+					for (index = 0; index < this.streamRemotes.length; index++) {
+						if (this.streamRemotes[index].data == LoadedData.stream.remoteStream) this.sRemote.selectedIndex = index;
+					}
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Get data from loaded stream information.
+		 */
+		private function getData(name:String):void {
+			switch (name) {
+				case "sTitle":
+					this.sTitle.text = LoadedData.stream.title;
+					break;
+				case "sFile":
+					this.sFile.text = LoadedData.stream.id;
+					this._previousfile = LoadedData.stream.id;
+					break;
+				case "sTags":
+					this.sTags.text = LoadedData.stream.tags;
+					break;
+				case "sAbout":
+					this.sAbout.text = LoadedData.stream.about;
+					break;
+				case "sSpeed":
+					this.sSpeed.value = LoadedData.stream.speed;
+					break;
+				case "sEntropy":
+					this.sEntropy.value = LoadedData.stream.entropy;
+					break;
+				case "sDistortion":
+					this.sDistortion.value = LoadedData.stream.distortion;
+					break;
+				case "sTweening":
+					for (var index:uint = 0; index < this.tweenTypes.length; index++) {
+						if (this.tweenTypes[index] == LoadedData.stream.tweening) this.sTweening.selectedIndex = index;
+					}
+					avoidComboEdit(this.sTweening);
+					break;
+				case "sFade":
+					for (index = 0; index < this.fadeTypes.length; index++) {
+						if (this.fadeTypes[index] == LoadedData.stream.fade) this.sFade.selectedIndex = index;
+					}
+					avoidComboEdit(this.sFade);
+					break;
+				case "sLower":
+					this.sLower.selectedIndex = 0;
+					for (index = 0; index < this.streamGuides.length; index++) {
+						if (this.streamGuides[index].data == LoadedData.stream.guidedownid) this.sLower.selectedIndex = index;
+					}
+					break;
+				case "sUpper":
+					this.sUpper.selectedIndex = 0;
+					for (index = 0; index < this.streamGuides.length; index++) {
+						if (this.streamGuides[index].data == LoadedData.stream.guideupid) this.sUpper.selectedIndex = index;
+					}
+					break;
+				case "sLandscape":
+					this.sLandscape.selectedIndex = 0;
+					for (index = 0; index < this.streamAspects.length; index++) {
+						if ((this.streamAspects[index].data != LoadedData.stream.id) && (this.streamAspects[index].data == LoadedData.stream.landscapeID)) this.sLandscape.selectedIndex = index;
+					}
+					break;
+				case "sPortrait":
+					this.sPortrait.selectedIndex = 0;
+					for (index = 0; index < this.streamAspects.length; index++) {
+						if ((this.streamAspects[index].data != LoadedData.stream.id) && (this.streamAspects[index].data == LoadedData.stream.portraitID)) this.sPortrait.selectedIndex = index;
+					}
+					break;
+				case "sRemote":
+					this.sRemote.selectedIndex = 0;
+					for (index = 0; index < this.streamRemotes.length; index++) {
+						if (this.streamRemotes[index].data == LoadedData.stream.remoteStream) this.sRemote.selectedIndex = index;
+					}
+					break;
+				case "sCategories":
+					this.sCategories.selectedIndex = 0;
+					for (index = 0; index < this.streamCategories.length; index++) {
+						if (this.streamCategories[index].data == LoadedData.stream.category) this.sCategories.selectedIndex = index;
+					}
+					break;
+				case "codeWindow":
+					this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+					this.codeWindow.code = LoadedData.stream.pcode;
+					break;
+				case "codeWindowF":
+					this.codeWindowF.addEventListener(Event.CHANGE, this.codeFChange);
+					this.codeWindowF.code = LoadedData.stream.functionA;
+					break;
+			}
+		}
+		
+		/**
+		 * The text at progress code editor changed.
+		 */
+		private function codeChange(evt:Event):void {
+			LoadedData.stream.pcode = this.codeWindow.code;
+		}
+		
+		/**
+		 * The text at progress code editor for custom functions changed.
+		 */
+		private function codeFChange(evt:Event):void {
+			if (this.fButtonA.selected) LoadedData.stream.functionA = this.codeWindowF.code;
+			if (this.fButtonB.selected) LoadedData.stream.functionB = this.codeWindowF.code;
+			if (this.fButtonC.selected) LoadedData.stream.functionC = this.codeWindowF.code;
+			if (this.fButtonD.selected) LoadedData.stream.functionD = this.codeWindowF.code;
+			if (this.fButtonMWUp.selected) LoadedData.stream.mouseWUp = this.codeWindowF.code;
+			if (this.fButtonMWDown.selected) LoadedData.stream.mouseWDown = this.codeWindowF.code;
+		}
+		
+		/**
+		 * A custom function button was selected.
+		 * @param	button	the selected function
+		 */
+		private function selectFunction(button:String):void {
+			switch (button) {
+				case 'A':
+					this.codeWindowF.code = LoadedData.stream.functionA;
+					this.fButtonA.selected = true;
+					this.fButtonB.selected = false;
+					this.fButtonC.selected = false;
+					this.fButtonD.selected = false;
+					this.fButtonMWUp.selected = false;
+					this.fButtonMWDown.selected = false;
+					break;
+				case 'B':
+					this.codeWindowF.code = LoadedData.stream.functionB;
+					this.fButtonA.selected = false;
+					this.fButtonB.selected = true;
+					this.fButtonC.selected = false;
+					this.fButtonD.selected = false;
+					this.fButtonMWUp.selected = false;
+					this.fButtonMWDown.selected = false;
+					break;
+				case 'C':
+					this.codeWindowF.code = LoadedData.stream.functionC;
+					this.fButtonA.selected = false;
+					this.fButtonB.selected = false;
+					this.fButtonC.selected = true;
+					this.fButtonD.selected = false;
+					this.fButtonMWUp.selected = false;
+					this.fButtonMWDown.selected = false;
+					break;
+				case 'D':
+					this.codeWindowF.code = LoadedData.stream.functionD;
+					this.fButtonA.selected = false;
+					this.fButtonB.selected = false;
+					this.fButtonC.selected = false;
+					this.fButtonD.selected = true;
+					this.fButtonMWUp.selected = false;
+					this.fButtonMWDown.selected = false;
+					break;
+				case 'mwup':
+					this.codeWindowF.code = LoadedData.stream.mouseWUp;
+					this.fButtonA.selected = false;
+					this.fButtonB.selected = false;
+					this.fButtonC.selected = false;
+					this.fButtonD.selected = false;
+					this.fButtonMWUp.selected = true;
+					this.fButtonMWDown.selected = false;
+					break;
+				case 'mwdown':
+					this.codeWindowF.code = LoadedData.stream.mouseWDown;
+					this.fButtonA.selected = false;
+					this.fButtonB.selected = false;
+					this.fButtonC.selected = false;
+					this.fButtonD.selected = false;
+					this.fButtonMWUp.selected = false;
+					this.fButtonMWDown.selected = true;
+					break;
+			}
+		}
+		
+		/**
+		 * Change current stream data.
+		 * @param	name	data to change
+		 */
+		private function changeData(name:String):void {
+			switch (name) {
+				case "sLower":
+					LoadedData.stream.guidedownid = String(this.streamGuides[this.sLower.selectedIndex].data);
+					break;
+				case "sUpper":
+					LoadedData.stream.guideupid = String(this.streamGuides[this.sUpper.selectedIndex].data);
+					break;
+				case "sLandscape":
+					LoadedData.stream.landscapeID = String(this.streamAspects[this.sLandscape.selectedIndex].data);
+					break;
+				case "sPortrait":
+					LoadedData.stream.portraitID = String(this.streamAspects[this.sPortrait.selectedIndex].data);
+					break;
+				case "sCategories":
+					LoadedData.stream.category = String(this.streamCategories[this.sCategories.selectedIndex].data);
+					break;
+				case "sRemote":
+					LoadedData.stream.remoteStream = String(this.streamRemotes[this.sRemote.selectedIndex].data);
+					break;
+			}
+		}
+		
+		/**
+		 * Avoid user defined values on combo box.
+		 * @param	combo	the combo box to lock user custom values
+		 */
+		private function avoidComboEdit(combo:ComboBox):void {
+			combo.textInput.editable = false;
+		}
+		
+		/**
+		 * Provide a file name according to the title.
+		 */
+		private function checkFile():void {
+			if ((this.sFile.text == "") && (this.sTitle.text != "")) this.sFile.text = StringFunctions.noSpecial(this.sTitle.text);
+		}
+		
+		/**
+		 * Check given file name and replace any invalid chars.
+		 */
+		private function checkFileName():void {
+			this.sFile.text = StringFunctions.noSpecial(this.sFile.text);
+		}
+		
+		/**
+		 * Save stream on server.
+		 * @param	newStream	is this a new stream?
+		 * @param	publish	also publish?
+		 * @param	onserver function to call on server return
+		 */
+		public static function saveStream(newStream:Boolean, publish:Boolean, onserver:Function):void {
+			var param:String = "community=" + LoadedData.community.id;
+			param += "&newStream=" + newStream;
+			param += "&publish=" + publish;
+			param += "&title=" + escape(LoadedData.stream.title);
+			param += "&id=" + LoadedData.stream.id;
+			param += "&tags=" + escape(LoadedData.stream.tags);
+			param += "&about=" + escape(LoadedData.stream.about);
+			param += "&speed=" + LoadedData.stream.speed;
+			param += "&entropy=" + LoadedData.stream.entropy;
+			param += "&distortion=" + LoadedData.stream.distortion;
+			param += "&tweening=" + LoadedData.stream.tweening;
+			param += "&fade=" + LoadedData.stream.fade;
+			param += "&target=" + LoadedData.stream.target;
+			param += "&playlists=" + escape(LoadedData.stream.playlistxml);
+			param += "&keyframes=" + escape(LoadedData.stream.keyframexml);
+			param += "&guideup=" + LoadedData.stream.guideupid;
+			param += "&guidedown=" + LoadedData.stream.guidedownid;
+			if (LoadedData.stream.landscapeID != "") {
+				param += "&landscape=" + LoadedData.stream.landscapeID;
+			} else {
+				param += "&landscape=" + LoadedData.stream.id;
+			}
+			if (LoadedData.stream.portraitID != "") {
+				param += "&portrait=" + LoadedData.stream.portraitID;
+			} else {
+				param += "&portrait=" + LoadedData.stream.id;
+			}
+			param += "&category=" + escape(LoadedData.stream.category);
+			param += "&xnext=" + escape(LoadedData.stream.xnext);
+			param += "&xprev=" + escape(LoadedData.stream.xprev);
+			param += "&ynext=" + escape(LoadedData.stream.ynext);
+			param += "&yprev=" + escape(LoadedData.stream.yprev);
+			param += "&znext=" + escape(LoadedData.stream.znext);
+			param += "&zprev=" + escape(LoadedData.stream.zprev);
+			param += "&pcode=" + escape(LoadedData.stream.pcode);
+			param += "&fa=" + escape(LoadedData.stream.functionA);
+			param += "&fb=" + escape(LoadedData.stream.functionB);
+			param += "&fc=" + escape(LoadedData.stream.functionC);
+			param += "&fd=" + escape(LoadedData.stream.functionD);
+			param += "&mwup=" + escape(LoadedData.stream.mouseWUp);
+			param += "&mwdown=" + escape(LoadedData.stream.mouseWDown);
+			param += "&remotestream=" + escape(LoadedData.stream.remoteStream);
+			// custom meta data
+			var totalmeta:uint = 0;
+			for (var imeta:String in LoadedData.stream.meta) {
+				param += "&metaname" + totalmeta + "=" + escape(LoadedData.stream.meta[imeta].name);
+				param += "&metaindex" + totalmeta + "=" + LoadedData.stream.meta[imeta].id;
+				param += "&metavalue" + totalmeta + "=" + escape(LoadedData.stream.meta[imeta].value);
+				totalmeta++;				
+			}
+			param += "&totalmeta=" + totalmeta;
+			// voting data
+			param += "&votetype=" + LoadedData.stream.votetype;
+			param += "&votereference=" + LoadedData.stream.votereference;
+			param += "&votedefault=" + LoadedData.stream.voteDefault;
+			if (LoadedData.stream.startaftervote) param += "&startaftervote=1";
+				else param += "&startaftervote=0";
+			for (var ivote:uint = 0; ivote < 9; ivote++) {
+				param += "&votepx" + (ivote + 1) + "=" + LoadedData.stream.voteoptions[ivote].px;
+				param += "&votepy" + (ivote + 1) + "=" + LoadedData.stream.voteoptions[ivote].py;
+				if (LoadedData.stream.voteoptions[ivote].visible) param += "&voteshow" + (ivote + 1) + "=1";
+					else param += "&voteshow" + (ivote + 1) + "=0";
+				param += "&voteaction" + (ivote + 1) + "=" + escape(LoadedData.stream.voteoptions[ivote].action);
+			}
+			WindowServerCheck.createServer("savestream", param, onserver);
+		}
+		
+		/**
+		 * Override a stream on server.
+		 */
+		private function overrideStream():void {
+			WindowStreamProperties.saveStream(false, this._publish, this.onServer);
+		}
+		
+		/**
+		 * Get server response.
+		 */
+		private function onServer(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				if (server.errorID == 'ERSTREAM-1') {
+					Warning.createWarning(resourceManager.getString('language', 'STW_SAVETITLEERROR'), resourceManager.getString('error', server.errorID), Warning.TYPE_OKCANCEL, overrideStream);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'STW_SAVETITLEERROR'), resourceManager.getString('error', server.errorID));
+				}
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+				PopUpManager.removePopUp(this);
+				LoadedData.stream.newStream = false;
+				if (this._publish) {
+					FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_PUBLISHED') + " " + LoadedData.stream.title));
+				} else {
+					FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_SAVED') + " " + LoadedData.stream.title));
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Close window without saving.
+		 */
+		private function onCancel():void {
+			if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Get stream properties changes.
+		 */
+		private function onOK():void {
+			if (this.sTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOTITLE'));
+			} else if (this.sFile.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOFILE'));
+			} else {
+				if (this.sFile.text != this._previousfile) LoadedData.stream.newStream = true;
+				LoadedData.stream.title = this.sTitle.text;
+				LoadedData.stream.id = this.sFile.text;
+				LoadedData.stream.tags = this.sTags.text;
+				LoadedData.stream.about = this.sAbout.text;
+				if (this.sSpeed) LoadedData.stream.speed = this.sSpeed.value;
+				if (this.sEntropy) LoadedData.stream.entropy = this.sEntropy.value;
+				if (this.sDistortion) LoadedData.stream.distortion = this.sDistortion.value;
+				if (this.sTweening) LoadedData.stream.tweening = this.sTweening.selectedItem;
+				if (this.sFade) LoadedData.stream.fade = this.sFade.selectedItem;
+				if (this.metaGrid != null) {
+					for (var index:uint = 0; index < this.metaList.length; index++) {
+						if (LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex] != null) {
+							LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex].value = this.metaList.getItemAt(index).metavalue;
+						} else if (this.metaList.getItemAt(index).metavalue != "") {
+							LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex] = new DISMetaED(this.metaList.getItemAt(index).metaname, this.metaList.getItemAt(index).metaindex, this.metaList.getItemAt(index).metavalue);
+						}
+					}
+				}
+				if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+				PopUpManager.removePopUp(this);
+			}
+		}
+		
+		/**
+		 * Save stream properties.
+		 */
+		private function onSave():void {
+			if (this.sTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOTITLE'));
+			} else if (this.sFile.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOFILE'));
+			} else {
+				if (this.sFile.text != this._previousfile) LoadedData.stream.newStream = true;
+				LoadedData.stream.title = this.sTitle.text;
+				if (LoadedData.stream.id == "") {
+					// new stream
+					LoadedData.stream.id = this.sFile.text;
+				} else if (LoadedData.stream.id != this.sFile.text) {
+					// save as
+					if (LoadedData.stream.landscapeID == LoadedData.stream.id) LoadedData.stream.landscapeID = this.sFile.text;
+					if (LoadedData.stream.portraitID == LoadedData.stream.id) LoadedData.stream.portraitID = this.sFile.text;
+					LoadedData.stream.id = this.sFile.text;
+				}
+				LoadedData.stream.tags = this.sTags.text;
+				LoadedData.stream.about = this.sAbout.text;
+				if (this.metaGrid != null) {
+					for (var index:uint = 0; index < this.metaList.length; index++) {
+						if (LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex] != null) {
+							LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex].value = this.metaList.getItemAt(index).metavalue;
+						} else if (this.metaList.getItemAt(index).metavalue != "") {
+							LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex] = new DISMetaED(this.metaList.getItemAt(index).metaname, this.metaList.getItemAt(index).metaindex, this.metaList.getItemAt(index).metavalue);
+						}
+					}
+				}
+				if (this.sSpeed) LoadedData.stream.speed = this.sSpeed.value;
+				if (this.sEntropy) LoadedData.stream.entropy = this.sEntropy.value;
+				if (this.sDistortion) LoadedData.stream.distortion = this.sDistortion.value;
+				if (this.sTweening) LoadedData.stream.tweening = this.sTweening.selectedItem;
+				if (this.sFade) LoadedData.stream.fade = this.sFade.selectedItem;
+				this._publish = false;
+				WindowStreamProperties.saveStream(LoadedData.stream.newStream, false, this.onServer);
+			}
+		}
+		
+		/**
+		 * Save stream properties an publish it.
+		 */
+		private function onPublish():void {
+			if (this.sTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOTITLE'));
+			} else if (this.sFile.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'STW_ERRORTITLE'), resourceManager.getString('language', 'STW_NOFILE'));
+			} else {
+				if (this.sFile.text != this._previousfile) LoadedData.stream.newStream = true;
+				LoadedData.stream.title = this.sTitle.text;
+				if (LoadedData.stream.id == "") {
+					// new stream
+					LoadedData.stream.id = this.sFile.text;
+				} else if (LoadedData.stream.id != this.sFile.text) {
+					// save as
+					if (LoadedData.stream.landscapeID == LoadedData.stream.id) LoadedData.stream.landscapeID = this.sFile.text;
+					if (LoadedData.stream.portraitID == LoadedData.stream.id) LoadedData.stream.portraitID = this.sFile.text;
+					LoadedData.stream.id = this.sFile.text;
+				}
+				LoadedData.stream.tags = this.sTags.text;
+				LoadedData.stream.about = this.sAbout.text;
+				if (this.metaGrid != null) {
+					for (var index:uint = 0; index < this.metaList.length; index++) {
+						if (LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex] != null) {
+							LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex].value = this.metaList.getItemAt(index).metavalue;
+						} else if (this.metaList.getItemAt(index).metavalue != "") {
+							LoadedData.stream.meta['meta' + this.metaList.getItemAt(index).metaindex] = new DISMetaED(this.metaList.getItemAt(index).metaname, this.metaList.getItemAt(index).metaindex, this.metaList.getItemAt(index).metavalue);
+						}
+					}
+				}
+				if (this.sSpeed) LoadedData.stream.speed = this.sSpeed.value;
+				if (this.sEntropy) LoadedData.stream.entropy = this.sEntropy.value;
+				if (this.sDistortion) LoadedData.stream.distortion = this.sDistortion.value;
+				if (this.sTweening) LoadedData.stream.tweening = this.sTweening.selectedItem;
+				if (this.sFade) LoadedData.stream.fade = this.sFade.selectedItem;
+				this._publish = true;
+				WindowStreamProperties.saveStream(LoadedData.stream.newStream, true, this.onServer);
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_PROPTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TITLE')}"/>
+						<s:TextInput id="sTitle" width="100%" focusOut="checkFile()" creationComplete="getData('sTitle')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_FILE')}"/>
+						<s:TextInput id="sFile" width="100%" creationComplete="getData('sFile')" focusOut="checkFileName()" />
+						<s:Label text=".xml"/>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TAGS')}"/>
+						<s:TextInput id="sTags" width="100%" creationComplete="getData('sTags')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_ABOUT')}"/>
+						<s:TextArea id="sAbout" width="100%" height="120" creationComplete="getData('sAbout')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_ANIMTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_SPEED')}"/>
+						<s:NumericStepper id="sSpeed" maximum="60" minimum="1" stepSize="1" value="1" creationComplete="getData('sSpeed')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_TWEEN')}"/>
+						<s:ComboBox id="sTweening" selectedIndex="0" dataProvider="{tweenTypes}" creationComplete="getData('sTweening')"  />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_FADE')}"/>
+						<s:ComboBox id="sFade" selectedIndex="0" dataProvider="{fadeTypes}" creationComplete="getData('sFade')"  />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_ENTROPY')}"/>
+						<s:NumericStepper id="sEntropy" maximum="10" minimum="0"
+										  stepSize="1" value="0" creationComplete="getData('sEntropy')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="80" text="{resourceManager.getString('language', 'STW_DISTORTION')}"/>
+						<s:NumericStepper id="sDistortion" maximum="10" minimum="0"
+										  stepSize="1" value="0" creationComplete="getData('sDistortion')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_CATTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:List id="sCategories" width="100%" height="100%" creationComplete="getData('sCategories')" change="changeData('sCategories')" dataProvider="{streamCategories}" ></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_METATAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<mx:DataGrid id="metaGrid" width="100%" height="100%" editable="true" dataProvider="{metaList}">
+						<mx:columns>
+							<mx:DataGridColumn dataField="metaname" editable="false" headerText="{resourceManager.getString('language', 'STW_METANAME')}" />
+							<mx:DataGridColumn dataField="metavalue" editable="true" headerText="{resourceManager.getString('language', 'STW_METAVALUE')}" />
+						</mx:columns>
+					</mx:DataGrid>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_GUIDETAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_LOWERGUIDE')}" />
+					<s:List id="sLower" width="100%" height="100%" creationComplete="getData('sLower')" change="changeData('sLower')" dataProvider="{streamGuides}"></s:List>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_UPPERGUIDE')}" />
+					<s:List id="sUpper" width="100%" height="100%" creationComplete="getData('sUpper')" change="changeData('sUpper')" dataProvider="{streamGuides}"></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_ASPECTTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_ASPECTLANDSCAPE')}" />
+					<s:List id="sLandscape" width="100%" height="100%" creationComplete="getData('sLandscape')" change="changeData('sLandscape')" dataProvider="{streamAspects}"></s:List>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_ASPECTPORTRAIT')}" />
+					<s:List id="sPortrait" width="100%" height="100%" creationComplete="getData('sPortrait')" change="changeData('sPortrait')" dataProvider="{streamAspects}"></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_REMOTE')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'STW_REMOTEABOUT')}" />
+					<s:List id="sRemote" width="100%" height="100%" creationComplete="getData('sRemote')" change="changeData('sRemote')" dataProvider="{streamRemotes}"></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_FUNCTIONTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" height="100%">
+						<s:VGroup width="15%" horizontalAlign="center">
+							<s:ToggleButton width="70" height="38" id="fButtonA" selected="true" icon="@Embed('icon/FunctionButtonA.png')" click="selectFunction('A')" />
+							<s:ToggleButton width="70" height="38" id="fButtonB" selected="false" icon="@Embed('icon/FunctionButtonB.png')" click="selectFunction('B')" />
+							<s:ToggleButton width="70" height="38" id="fButtonC" selected="false" icon="@Embed('icon/FunctionButtonC.png')" click="selectFunction('C')" />
+							<s:ToggleButton width="70" height="38" id="fButtonD" selected="false" icon="@Embed('icon/FunctionButtonD.png')" click="selectFunction('D')" />
+							<s:ToggleButton width="70" height="38" id="fButtonMWUp" selected="false" icon="@Embed('icon/FunctionButtonMWUp.png')" click="selectFunction('mwup')" />
+							<s:ToggleButton width="70" height="38" id="fButtonMWDown" selected="false" icon="@Embed('icon/FunctionButtonMWDown.png')" click="selectFunction('mwdown')" />
+						</s:VGroup>
+						<s:VGroup width="85%">
+							<mana:ProgressCode id="codeWindowF" width="100%" height="100%" creationComplete="getData('codeWindowF')" />
+						</s:VGroup>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_CODETAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<mana:ProgressCode id="codeWindow" width="100%" height="100%" creationComplete="getData('codeWindow')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_SAVEOK')}" click="onSave()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_PUBLISHOK')}" click="onPublish()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_OK')}" click="onOK()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

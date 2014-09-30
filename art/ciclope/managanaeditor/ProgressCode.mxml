@@ -1,0 +1,1342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+ProgressCode creates a component capable of editing progress code for elements or instances.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/halo" 
+			   creationComplete="init()">
+	
+	<fx:Declarations>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.core.FlexGlobals;
+		import mx.collections.ArrayCollection;
+		import flash.events.Event;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managana.ManaganaParser;
+		import art.ciclope.managanaeditor.*;
+		
+		// EVENTS
+	
+		/**
+		 * Data download finished.
+		 */
+		[Event( name = "CHANGE", type = "flash.events.Event" )]
+		
+		// VARIABLES
+		
+		private var _parser:ManaganaParser;			// a parser to check code
+		private var _code:String = "";				// a holder for the progress code
+		private var _htmlCom:Array = new Array();	// community html box content
+		private var _htmlUsr:Array = new Array();	// user html box content
+		
+		// DATA
+		
+		[Bindable]
+		private var communityStreams:ArrayCollection;
+		[Bindable]
+		private var streamInstances:ArrayCollection;
+		[Bindable]
+		private var parserList:ArrayCollection;
+		[Bindable]
+		private var streamList:ArrayCollection;
+		[Bindable]
+		private var codeList:ArrayCollection;
+		[Bindable]
+		private var elementList:ArrayCollection;
+		[Bindable]
+		private var transitionList:ArrayCollection;
+		[Bindable]
+		private var propertyList:ArrayCollection;
+		[Bindable]
+		private var blendModes:ArrayCollection;
+		[Bindable]
+		private var messageTypes:ArrayCollection;
+		[Bindable]
+		private var communityActions:ArrayCollection;
+		[Bindable]
+		private var externalFeeds:ArrayCollection;
+		[Bindable]
+		private var getPropertyList:ArrayCollection;
+		[Bindable]
+		private var postFields:ArrayCollection;
+		[Bindable]
+		private var htmlBoxFromData:ArrayCollection;
+		[Bindable]
+		private var htmlBoxFolderListData:ArrayCollection;
+		[Bindable]
+		private var systemActions:ArrayCollection;
+		
+		
+		// PROPERTIES
+		
+		/**
+		 * The current progress code.
+		 */
+		public function get code():String {
+			if (this.codeText != null) return (this.codeText.text);
+				else return (this._code);
+		}
+		public function set code(to:String):void {
+			if (this.codeText != null) this.codeText.text = to;
+				else this._code = to;
+		}
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			// data
+			this.streamInstances = new ArrayCollection();
+			this.communityStreams = new ArrayCollection();
+			this.externalFeeds = new ArrayCollection();
+			this.parserList = new ArrayCollection();
+			this.parserList.addItem("COMMUNITY");
+			this.parserList.addItem("STREAM");
+			this.parserList.addItem("INSTANCE");
+			this.parserList.addItem("MESSAGE");
+			this.parserList.addItem("CODE");
+			this.parserList.addItem("SYSTEM");
+			this.systemActions = new ArrayCollection();
+			this.systemActions.addItem("print");
+			this.systemActions.addItem("showClock");
+			this.systemActions.addItem("hideClock");
+			this.systemActions.addItem("showRate");
+			this.systemActions.addItem("hideRate");
+			this.systemActions.addItem("showComments");
+			this.systemActions.addItem("hideComments");
+			this.systemActions.addItem("showBookmarks");
+			this.systemActions.addItem("hideBookmarks");
+			this.systemActions.addItem("showNotes");
+			this.systemActions.addItem("hideNotes");
+			this.communityActions = new ArrayCollection();
+			this.communityActions.addItem("loadCommunity");
+			this.communityActions.addItem("showLowerGuide");
+			this.communityActions.addItem("hideLowerGuide");
+			this.communityActions.addItem("showUpperGuide");
+			this.communityActions.addItem("hideUpperGuide");
+			this.communityActions.addItem("showMainLayer");
+			this.communityActions.addItem("hideMainLayer");
+			this.streamList = new ArrayCollection();
+			this.streamList.addItem("clearTransition");
+			this.streamList.addItem("gotoKeyframe");
+			this.streamList.addItem("historyBack");
+			this.streamList.addItem("historyNext");
+			this.streamList.addItem("load");
+			this.streamList.addItem("nextX");
+			this.streamList.addItem("nextY");
+			this.streamList.addItem("nextZ");
+			this.streamList.addItem("pause");
+			this.streamList.addItem("play");
+			this.streamList.addItem("previousX");
+			this.streamList.addItem("previousY");
+			this.streamList.addItem("previousZ");
+			this.streamList.addItem("transition");
+			this.elementList = new ArrayCollection();
+			this.elementList.addItem("clearAllSets");
+			this.elementList.addItem("clearElement");
+			this.elementList.addItem("clearFullScreen");
+			this.elementList.addItem("clearSet");
+			this.elementList.addItem("clearSubtitle");
+			this.elementList.addItem("clearURL");
+			this.elementList.addItem("clearWebcam");
+			this.elementList.addItem("element");
+			this.elementList.addItem("forceLoop");
+			this.elementList.addItem("fullScreen");
+			this.elementList.addItem("hide");
+			this.elementList.addItem("hideSubtitle");
+			this.elementList.addItem("mediaURL");
+			this.elementList.addItem("next");
+			this.elementList.addItem("pause");
+			this.elementList.addItem("play");
+			this.elementList.addItem("previous");
+			this.elementList.addItem("runCode");
+			this.elementList.addItem("scrollBottom");
+			this.elementList.addItem("scrollDown");
+			this.elementList.addItem("scrollTop");
+			this.elementList.addItem("scrollUp");
+			this.elementList.addItem("seek");
+			this.elementList.addItem("set");
+			this.elementList.addItem("setSubtitle");
+			this.elementList.addItem("show");
+			this.elementList.addItem("showSubtitle");
+			this.elementList.addItem("toggleSubtitle");
+			this.elementList.addItem("unforceLoop");
+			this.elementList.addItem("webcam");
+			this.transitionList = new ArrayCollection();
+			this.transitionList.addItem("center");
+			this.transitionList.addItem("fade");
+			this.transitionList.addItem("fromdown");
+			this.transitionList.addItem("fromleft");
+			this.transitionList.addItem("fromright");
+			this.transitionList.addItem("fromup");
+			this.transitionList.addItem("none");
+			this.transitionList.addItem("swipedown");
+			this.transitionList.addItem("swipeleft");
+			this.transitionList.addItem("swiperight");
+			this.transitionList.addItem("swipeup");
+			this.transitionList.addItem("target");
+			this.propertyList = new ArrayCollection();
+			this.propertyList.addItem("x");
+			this.propertyList.addItem("y");
+			this.propertyList.addItem("z");
+			this.propertyList.addItem("width");
+			this.propertyList.addItem("height");
+			this.propertyList.addItem("rx");
+			this.propertyList.addItem("ry");
+			this.propertyList.addItem("rz");
+			this.propertyList.addItem("alpha");
+			this.propertyList.addItem("blend");
+			this.propertyList.addItem("volume");
+			this.propertyList.addItem("red");
+			this.propertyList.addItem("green");
+			this.propertyList.addItem("blue");
+			this.getPropertyList = new ArrayCollection();
+			this.getPropertyList.addItem("x");
+			this.getPropertyList.addItem("y");
+			this.getPropertyList.addItem("z");
+			this.getPropertyList.addItem("width");
+			this.getPropertyList.addItem("height");
+			this.getPropertyList.addItem("rx");
+			this.getPropertyList.addItem("ry");
+			this.getPropertyList.addItem("rz");
+			this.getPropertyList.addItem("alpha");
+			this.getPropertyList.addItem("blend");
+			this.getPropertyList.addItem("volume");
+			this.getPropertyList.addItem("red");
+			this.getPropertyList.addItem("green");
+			this.getPropertyList.addItem("blue");
+			this.getPropertyList.addItem("element");
+			this.blendModes = new ArrayCollection();
+			this.blendModes.addItem("add");
+			this.blendModes.addItem("alpha");
+			this.blendModes.addItem("darken");
+			this.blendModes.addItem("difference");
+			this.blendModes.addItem("erase");
+			this.blendModes.addItem("hardlight");
+			this.blendModes.addItem("invert");
+			this.blendModes.addItem("layer");
+			this.blendModes.addItem("lighten");
+			this.blendModes.addItem("multiply");
+			this.blendModes.addItem("normal");
+			this.blendModes.addItem("overlay");
+			this.blendModes.addItem("screen");
+			this.blendModes.addItem("subtract");
+			this.messageTypes = new ArrayCollection();
+			this.messageTypes.addItem("openurl");
+			this.messageTypes.addItem("htmlbox");
+			this.messageTypes.addItem("openfeedlink");
+			this.messageTypes.addItem("sharefacebook");
+			this.messageTypes.addItem("sharetwitter");
+			this.messageTypes.addItem("sharegplus");
+			this.messageTypes.addItem("custom");
+			this.messageTypes.addItem("send");
+			this.messageTypes.addItem("startPCodeSend");
+			this.messageTypes.addItem("endPCodeSend");
+			this.codeList = new ArrayCollection();
+			this.codeList.addItem("addToComValue");
+			this.codeList.addItem("addToNum");
+			this.codeList.addItem("clearAllNumbers");
+			this.codeList.addItem("clearAllStrings");
+			this.codeList.addItem("clearAllValues");
+			this.codeList.addItem("clearComValues");
+			this.codeList.addItem("clearNumber");
+			this.codeList.addItem("clearString");
+			this.codeList.addItem("clearTimers");
+			this.codeList.addItem("divideComValue");
+			this.codeList.addItem("divideNum");
+			this.codeList.addItem("else");
+			this.codeList.addItem("endIf");
+			this.codeList.addItem("getCategory");
+			this.codeList.addItem("getCommunityID");
+			this.codeList.addItem("getComValues");
+			this.codeList.addItem("getInstanceProp");
+			this.codeList.addItem("getPostCount");
+			this.codeList.addItem("getStreamID");
+			this.codeList.addItem("ifComValues");
+			this.codeList.addItem("ifHistoryBack");
+			this.codeList.addItem("ifIsMeta");
+			this.codeList.addItem("ifNumDifferent");
+			this.codeList.addItem("ifNumEqual");
+			this.codeList.addItem("ifNumExist");
+			this.codeList.addItem("ifNumHigher");
+			this.codeList.addItem("ifNumHigherOrEqual");
+			this.codeList.addItem("ifNumLower");
+			this.codeList.addItem("ifNumLowerOrEqual");
+			this.codeList.addItem("ifPlayerDesktop");
+			this.codeList.addItem("ifPlayerMobile");
+			this.codeList.addItem("ifPlayerShowtime");
+			this.codeList.addItem("ifPlayerUnknown");
+			this.codeList.addItem("ifPlayerWeb");
+			this.codeList.addItem("ifPostData");
+			this.codeList.addItem("ifStrDifferent");
+			this.codeList.addItem("ifStrEqual");
+			this.codeList.addItem("ifStrExist");
+			this.codeList.addItem("ifUserLogged");
+			this.codeList.addItem("loadValues");
+			this.codeList.addItem("runMouseWDown");
+			this.codeList.addItem("runMouseWUp");
+			this.codeList.addItem("mergeToStr");
+			this.codeList.addItem("multiplyComValue");
+			this.codeList.addItem("multiplyNum");
+			this.codeList.addItem("runFeedCode");
+			this.codeList.addItem("runFunctionA");
+			this.codeList.addItem("runFunctionB");
+			this.codeList.addItem("runFunctionC");
+			this.codeList.addItem("runFunctionD");
+			this.codeList.addItem("saveValues");
+			this.codeList.addItem("setComValue");
+			this.codeList.addItem("setNumber");
+			this.codeList.addItem("setRandomNum");
+			this.codeList.addItem("setString");
+			this.codeList.addItem("subtractFromComValue");
+			this.codeList.addItem("subtractFromNum");
+			this.codeList.addItem("wait");
+			this.postFields = new ArrayCollection();
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDPICTUREFIELD'), data:"picture" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDVIDEOFIELD'), data:"video" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDAUDIOFIELD'), data:"audio" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDTITLEFIELD'), data:"title" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDTEXTFIELD'), data:"text" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDLINKFIELD'), data:"link" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDAUTHORFIELD'), data:"author" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDRAWDATEFIELD'), data:"dateRAW" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATEYYYY'), data:"dateYYYY" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATEMM'), data:"dateMM" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATEDD'), data:"dateDD" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATETIMEYYYY'), data:"timeYYYY" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATETIMEMM'), data:"timeMM" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATETIMEDD'), data:"timeDD" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDTIME'), data:"time" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDAY'), data:"DAY" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDMONTH'), data:"MONTH" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDYEAR'), data:"YEAR" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDHOUR'), data:"HOUR" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDMINUTE'), data:"MINUTE" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA1'), data:"extra1" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA2'), data:"extra2" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA3'), data:"extra3" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA4'), data:"extra4" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA5'), data:"extra5" } );
+			this.postFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDFULLTEXT'), data:"fulltext" } );
+			// html box
+			this.htmlBoxFromData = new ArrayCollection();
+			this.htmlBoxFolderListData = new ArrayCollection();
+			// initialize
+			this._parser = new ManaganaParser();
+			this.drop0.selectedIndex = 0;
+			this.drop0Change();
+			this.codeText.text = this._code;
+		}
+		
+		/**
+		 * Change on first dropdown.
+		 */
+		private function drop0Change():void {
+			// remove param forms
+			while (this.commandParams.numElements > 0) this.commandParams.removeElementAt(0);
+			// check code groups
+			switch (String(this.drop0.selectedItem)) {
+				case "COMMUNITY":
+					this.drop1.textInput.enabled = false;
+					this.drop1.dataProvider = this.communityActions;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_ACTION');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.visible = this.label2.visible = false;
+					this.commandParams.addElement(this.param_community);
+					this.label_community.text = resourceManager.getString('language', 'PROGRESSCODE_COMURL');
+					this.commandParams.addElement(this.param_community2);
+					this.label_community2.text = resourceManager.getString('language', 'PROGRESSCODE_COMSTREAM');
+					break;
+				case "SYSTEM":
+					this.drop1.textInput.enabled = false;
+					this.drop1.dataProvider = this.systemActions;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_ACTION');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.visible = this.label2.visible = false;
+					break;
+				case "STREAM":
+					this.drop1.textInput.enabled = false;
+					this.drop1.dataProvider = this.streamList;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_ACTION');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.visible = this.label2.visible = false;
+					break;
+				case "INSTANCE":
+					this.loadInstances();
+					this.drop1.textInput.enabled = true;
+					this.drop1.dataProvider = this.streamInstances;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_INSTANCE');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.dataProvider = this.elementList;
+					this.drop2.selectedIndex = 0;
+					this.label2.text = resourceManager.getString('language', 'PROGRESSCODE_ACTION');
+					this.drop2.visible = this.label2.visible = true;
+					break;
+				case "MESSAGE":
+					this.drop1.textInput.enabled = false;
+					this.drop1.dataProvider = this.messageTypes;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_TYPE');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.visible = this.label2.visible = false;
+					this.commandParams.addElement(this.param_message);
+					this.label_message.text = resourceManager.getString('language', 'PROGRESSCODE_LINKTEXT');
+					break;
+				case "CODE":
+					this.drop1.textInput.enabled = false;
+					this.drop1.dataProvider = this.codeList;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_TYPE');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.visible = this.label2.visible = false;
+					this.param_code.removeAllElements();
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARADD');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+					break;
+			}
+		}
+		
+		/**
+		 * Change on second dropdown.
+		 */
+		private function drop1Change():void {
+			// remove param forms
+			while (this.commandParams.numElements > 0) this.commandParams.removeElementAt(0);
+			// check command group
+			if (this.drop0.selectedItem == "SYSTEM") {
+				switch (this.drop1.selectedItem) {
+					case "print":
+					case "showClock":
+					case "hideClock":
+					case "showRate":
+					case "hideRate":
+					case "showComments":
+					case "hideComments":
+					case "showBookmarks":
+					case "hideBookmarks":
+					case "showNotes":
+					case "hideNotes":
+						// do nothing
+						break;
+				}
+			} else if (this.drop0.selectedItem == "STREAM") {
+				switch (this.drop1.selectedItem) {
+					case "clearTransition":
+					case "play":
+					case "pause":
+					case "nextX":
+					case "nextY":
+					case "nextZ":
+					case "previousX":
+					case "previousY":
+					case "previousZ":
+						// do nothing
+						break;
+					case "load":
+						if (this.communityStreams.length == 0) this.updateLists();
+						this.param_stream.removeAllElements();
+						this.param_stream.addElement(this.label_stream);
+						this.param_stream.addElement(this.drop_stream);
+						this.commandParams.addElement(this.param_stream);
+						this.drop_stream.dataProvider = this.communityStreams;
+						this.drop_stream.selectedIndex = 0;
+						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_STREAMLOAD');
+						break;
+					case "gotoKeyframe":
+						this.param_stream.removeAllElements();
+						this.param_stream.addElement(this.label_stream);
+						this.param_stream.addElement(this.numeric_keyframe);
+						this.commandParams.addElement(this.param_stream);
+						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_GOTOKEYFRAME');
+						break;
+					case "transition":
+						this.param_stream.removeAllElements();
+						this.param_stream.addElement(this.label_stream);
+						this.param_stream.addElement(this.drop_stream);
+						this.commandParams.addElement(this.param_stream);
+						this.drop_stream.dataProvider = this.transitionList;
+						this.drop_stream.selectedIndex = 0;
+						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_STREAMTRANSITION');
+						break;
+				}
+			} else if (this.drop0.selectedItem == "INSTANCE") {
+				this.drop2.selectedIndex = 0;
+			} else if (this.drop0.selectedItem == "CODE") {
+				this.param_code.removeAllElements();
+				if (this.drop1.selectedItem == "wait") {
+					this.param_code.addElement(this.pcode_numeric);
+					this.commandParams.addElement(this.param_code);
+				} else if ((this.drop1.selectedItem == "clearNumber") || (this.drop1.selectedItem == "ifNumExist")) {
+					this.param_code.addElement(this.pcode_text);
+					this.label_code2.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.text_code2.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if ((this.drop1.selectedItem == "clearString") || (this.drop1.selectedItem == "ifStrExist")) {
+					this.param_code.addElement(this.pcode_text);
+					this.label_code2.text = resourceManager.getString('language', 'PROGRESSCODE_STRINGNAME');
+					this.text_code2.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "setString") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_STRINGNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_STRINGVALUE');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "setNumber") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERVALUE');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "0";
+					this.commandParams.addElement(this.param_code);
+				} else if ((this.drop1.selectedItem == "ifNumEqual") || (this.drop1.selectedItem == "ifNumDifferent") || (this.drop1.selectedItem == "ifNumLower") || (this.drop1.selectedItem == "ifNumHigher") || (this.drop1.selectedItem == "ifNumLowerOrEqual") || (this.drop1.selectedItem == "ifNumHigherOrEqual")) {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_IFNUM1');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_IFNUM2');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if ((this.drop1.selectedItem == "ifStrEqual") || (this.drop1.selectedItem == "ifStrDifferent")) {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_IFSTR1');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_IFSTR2');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "addToNum") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_NUMADD');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "subtractFromNum") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_NUMSUB');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "multiplyNum") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_NUMMUL');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "divideNum") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_NUMDIV');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "mergeToStr") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_STRINGNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_STRMRG');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if ((this.drop1.selectedItem == "getStreamID") || (this.drop1.selectedItem == "getCommunityID") || (this.drop1.selectedItem == "getCategory")) {
+					this.param_code.addElement(this.pcode_text);
+					this.label_code2.text = resourceManager.getString('language', 'PROGRESSCODE_VARTORECEIVE');
+					this.text_code2.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "getInstanceProp") {
+					this.param_code.addElement(this.pcode_property);
+					this.param_code.addElement(this.pcode_property2);
+					this.text_code4a.text = "";
+					this.loadInstances();
+					this.combo_code4.textInput.enabled = true;
+					this.combo_code4.dataProvider = this.streamInstances;
+					this.drop_code4.dataProvider = this.getPropertyList;
+					this.drop_code4.selectedIndex = 0;
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "setRandomNum") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_NUMBERNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_CODERANDMAX');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "10";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "setComValue") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARSET');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "addToComValue") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARADD');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "subtractFromComValue") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARSUB');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "multiplyComValue") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARMULT');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "divideComValue") {
+					this.param_code.addElement(this.pcode_set);
+					this.label_code3a.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARNAME');
+					this.label_code3b.text = resourceManager.getString('language', 'PROGRESSCODE_COMVARDIV');
+					this.text_code3a.text = "";
+					this.text_code3b.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "ifIsMeta") {
+					this.param_code.addElement(this.pcode_text);
+					this.label_code2.text = resourceManager.getString('language', 'PROGRESSCODE_METAFIELD');
+					this.text_code2.text = "";
+					this.commandParams.addElement(this.param_code);
+				} else if (this.drop1.selectedItem == "runFeedCode") {
+					// get current external feeds
+					this.externalFeeds.removeAll();
+					for (var ifeed:uint = 0; ifeed < LoadedData.community.feeds.length; ifeed++) {
+						this.externalFeeds.addItem( { label: (LoadedData.community.feeds[ifeed].name + " (" + LoadedData.community.feeds[ifeed].type + ")"), name: LoadedData.community.feeds[ifeed].name, type: LoadedData.community.feeds[ifeed].type, reference: LoadedData.community.feeds[ifeed].reference } );
+					}
+					// show feeds interface
+					this.commandParams.addElement(this.pcode_property3);
+				} else if (this.drop1.selectedItem == "ifPostData") {
+					// get current external feeds
+					this.externalFeeds.removeAll();
+					for (var ifeedpost:uint = 0; ifeedpost < LoadedData.community.feeds.length; ifeedpost++) {
+						this.externalFeeds.addItem( { label: (LoadedData.community.feeds[ifeedpost].name + " (" + LoadedData.community.feeds[ifeedpost].type + ")"), name: LoadedData.community.feeds[ifeedpost].name, type: LoadedData.community.feeds[ifeedpost].type, reference: LoadedData.community.feeds[ifeedpost].reference } );
+					}
+					// show feeds interface
+					this.commandParams.addElement(this.pcode_property5);
+				} else if (this.drop1.selectedItem == "getPostCount") {
+					// get current external feeds
+					this.externalFeeds.removeAll();
+					for (var ifeedc:uint = 0; ifeedc < LoadedData.community.feeds.length; ifeedc++) {
+						this.externalFeeds.addItem( { label: (LoadedData.community.feeds[ifeedc].name + " (" + LoadedData.community.feeds[ifeedc].type + ")"), name: LoadedData.community.feeds[ifeedc].name, type: LoadedData.community.feeds[ifeedc].type, reference: LoadedData.community.feeds[ifeedc].reference } );
+					}
+					// show feeds interface
+					this.commandParams.addElement(this.pcode_property4);
+				}
+			} else if (this.drop0.selectedItem == "MESSAGE") {
+				if (this.drop1.selectedItem == "openurl") {
+					this.commandParams.addElement(this.param_message);
+					this.label_message.text = resourceManager.getString('language', 'PROGRESSCODE_LINKTEXT');
+				} else if (this.drop1.selectedItem == "htmlbox") {
+					this.commandParams.addElement(this.param_message3);
+					this.updateHTMLBoxLists();
+				} else if (this.drop1.selectedItem == "send") {
+					this.commandParams.addElement(this.param_message);
+					this.label_message.text = resourceManager.getString('language', 'PROGRESSCODE_SENDTEXT');
+				} else if (this.drop1.selectedItem == "openfeedlink") {
+					// get current external feeds
+					this.externalFeeds.removeAll();
+					for (var ifeedl:uint = 0; ifeedl < LoadedData.community.feeds.length; ifeedl++) {
+						this.externalFeeds.addItem( { label: (LoadedData.community.feeds[ifeedl].name + " (" + LoadedData.community.feeds[ifeedl].type + ")"), name: LoadedData.community.feeds[ifeedl].name, type: LoadedData.community.feeds[ifeedl].type, reference: LoadedData.community.feeds[ifeedl].reference } );
+					}
+					// show feeds interface
+					this.commandParams.addElement(this.param_message2);
+				} else if (this.drop1.selectedItem == "custom") {
+					//try {
+						this.commandParams.addElement(this.param_message);
+						this.label_message.text = resourceManager.getString('language', 'PROGRESSCODE_MESSAGETEXT');
+					//} catch (e:Error) { }
+				} else {
+					// nothing
+				}
+			} else if (this.drop0.selectedItem == "COMMUNITY") {
+				if (this.drop1.selectedItem == "loadCommunity") {
+					this.commandParams.addElement(this.param_community);
+					this.label_community.text = resourceManager.getString('language', 'PROGRESSCODE_COMURL');
+					this.commandParams.addElement(this.param_community2);
+					this.label_community2.text = resourceManager.getString('language', 'PROGRESSCODE_COMSTREAM');
+				} else {
+					// nothing
+				}
+			}
+		}
+		
+		/**
+		 * Change on third dropdown.
+		 */
+		private function drop2Change():void {
+			// remove param forms
+			while (this.commandParams.numElements > 0) this.commandParams.removeElementAt(0);
+			// check command group
+			switch (this.drop2.selectedItem) {
+				case "runCode":
+				case "webcam":
+				case "clearWebcam":
+				case "forceLoop":
+				case "unforceLoop":
+				case "fullScreen":
+				case "clearFullScreen":
+				case "hideSubtitle":
+				case "showSubtitle":
+				case "toggleSubtitle":
+				case "next":
+				case "pause":
+				case "play":
+				case "previous":
+				case "hide":
+				case "show":
+				case "clearAllSets":
+				case "clearElement":
+				case "clearURL":
+				case "clearSubtitle":
+				case "scrollUp":
+				case "scrollDown":
+				case "scrollTop":
+				case "scrollBottom":
+					// do nothing
+					break;
+				case "element":
+					this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_PLAYLISTELEMENT');
+					this.commandParams.addElement(this.param_playlist1);
+					break;
+				case "seek":
+					this.label_playlist5.text = resourceManager.getString('language', 'PROGRESSCODE_PLAYLISTSEEK');
+					this.commandParams.addElement(this.param_playlist5);
+					break;
+				case "mediaURL":
+					this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_MEDIAURL');
+					this.commandParams.addElement(this.param_playlist1);
+					break;
+				case "setSubtitle":
+					this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_SUBTITLE');
+					this.commandParams.addElement(this.param_playlist1);
+					break;
+				case "clearSet":
+					this.label_playlist2.text = resourceManager.getString('language', 'PROGRESSCODE_CLEARSET');
+					this.commandParams.addElement(this.param_playlist2);
+					this.drop_playlist2.dataProvider = this.propertyList;
+					this.drop_playlist2.selectedIndex = 0;
+					break;
+				case "set":
+					this.label_playlist4.text = resourceManager.getString('language', 'PROGRESSCODE_SET');
+					this.commandParams.addElement(this.param_playlist4);
+					this.drop_playlist4.selectedIndex = 0;
+					this.drop4Change();
+					break;
+			}
+		}
+		
+		/**
+		 * Set property dropdown change.
+		 */
+		private function drop4Change():void {
+			// remove property inputs
+			while (this.values_playlist4.numElements > 0) this.values_playlist4.removeElementAt(0);
+			// add proper input
+			switch (this.drop_playlist4.selectedItem) {
+				case "x":
+				case "y":
+				case "z":
+				case "width":
+				case "height":
+					this.values_playlist4.addElement(this.position_playlist4);
+					this.position_playlist4.value = 0;
+					break;
+				case "rx":
+				case "ry":
+				case "rz":
+					this.values_playlist4.addElement(this.rotation_playlist4);
+					this.rotation_playlist4.value = 0;
+					break;
+				case "alpha":
+				case "volume":
+					this.values_playlist4.addElement(this.percent_playlist4);
+					this.percent_playlist4.value = 100;
+					break;
+				case "red":
+				case "green":
+				case "blue":
+					this.values_playlist4.addElement(this.color_playlist4);
+					this.color_playlist4.value = 0;
+					break;
+				case "blend":
+					this.values_playlist4.addElement(this.blend_playlist4);
+					this.blend_playlist4.selectedIndex = 0;
+					break;
+			}
+		}
+		
+		/**
+		 * Check the current code for errors.
+		 */
+		private function checkCode():void {
+			if (this._parser.checkCode(this.codeText.text)) {
+				this.checkResult.text = resourceManager.getString('language', 'PROGRESSCODE_CHECKOK');
+			} else {
+				this.checkResult.text = resourceManager.getString('language', 'PROGRESSCODE_CHECKERROR');
+			}
+		}
+		
+		/**
+		 * Add progress code to selected item.
+		 */
+		private function addCode():void {
+			var code:String = String(this.drop0.selectedItem) + "->";
+			// code group
+			switch (String(this.drop0.selectedItem)) {
+				case "COMMUNITY":
+					switch (this.drop1.selectedItem) {
+						case "loadCommunity":
+							code += this.drop1.selectedItem + "->" + this.communityParam.text + "->" + this.communityParam2.text;
+							this.communityParam.text = "";
+							this.communityParam2.text = "";
+							break;
+						case "showLowerGuide":
+						case "hideLowerGuide":
+						case "showUpperGuide":
+						case "hideUpperGuide":
+						case "showMainLayer":
+						case "hideMainLayer":
+							code += this.drop1.selectedItem;
+							break
+					}
+					break;
+				case "SYSTEM":
+					switch (this.drop1.selectedItem) {
+						case "print":
+						case "showClock":
+						case "hideClock":
+						case "showRate":
+						case "hideRate":
+						case "showComments":
+						case "hideComments":
+						case "showBookmarks":
+						case "hideBookmarks":
+						case "showNotes":
+						case "hideNotes":
+							code += this.drop1.selectedItem;
+							break;
+					}
+					break;
+				case "STREAM":
+					switch (this.drop1.selectedItem) {
+						case "clearTransition":
+						case "play":
+						case "pause":
+						case "nextX":
+						case "nextY":
+						case "nextZ":
+						case "previousX":
+						case "previousY":
+						case "previousZ":
+						case "historyNext":
+						case "historyBack":
+							code += this.drop1.selectedItem;
+							break;
+						case "load":
+							if (this.drop_stream.selectedIndex >= 0) {
+								code += this.drop1.selectedItem + "->" + this.drop_stream.selectedItem.data;
+							} else {
+								code = "";
+							}
+							break;
+						case "gotoKeyframe":
+							code += this.drop1.selectedItem + "->" + this.numeric_keyframe.value;
+							break;
+						case "transition":
+							if (this.drop_stream.selectedIndex >= 0) {
+								code += this.drop1.selectedItem + "->" + this.drop_stream.selectedItem;
+							} else {
+								code = "";
+							}
+							break;
+					}
+					break;
+				case "INSTANCE":
+					switch (this.drop2.selectedItem) {
+						case "runCode":
+						case "webcam":
+						case "clearWebcam":
+						case "forceLoop":
+						case "unforceLoop":
+						case "fullScreen":
+						case "clearFullScreen":
+						case "hideSubtitle":
+						case "showSubtitle":
+						case "toggleSubtitle":
+						case "next":
+						case "pause":
+						case "play":
+						case "previous":
+						case "hide":
+						case "show":
+						case "clearAllSets":
+						case "clearElement":
+						case "clearURL":
+						case "clearSubtitle":
+						case "scrollUp":
+						case "scrollDown":
+						case "scrollTop":
+						case "scrollBottom":
+							if (this.drop1.textInput.text != "") {
+								code += this.drop1.textInput.text + "->" + this.drop2.selectedItem;
+							} else {
+								code += this.drop1.selectedItem + "->" + this.drop2.selectedItem;
+							}
+							break;
+						case "element":
+						case "mediaURL":
+						case "setSubtitle":
+							if (this.text_playlist1.text != "") {
+								if (this.drop1.textInput.text != "") {
+									code += this.drop1.textInput.text + "->" + this.drop2.selectedItem + "->" + this.text_playlist1.text;
+								} else {
+									code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + this.text_playlist1.text;
+								}
+								this.text_playlist1.text = "";
+							} else {
+								code = "";
+							}
+							break;
+						case "seek":
+							code += this.drop1.textInput.text + "->" + this.drop2.selectedItem + "->" + String(this.num_playlist5.value);
+							break;
+						case "clearSet":
+							if (this.drop1.textInput.text != "") {
+								code += this.drop1.textInput.text  + "->" + this.drop2.selectedItem + "->" + this.drop_playlist2.selectedItem;
+							} else {
+								code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + this.drop_playlist2.selectedItem;
+							}
+							break;
+						case "set":
+							if (this.drop1.textInput.text != "") {
+								code += this.drop1.textInput.text + "->" + this.drop2.selectedItem + "->";
+							} else {
+								code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->";
+							}
+							switch (this.drop_playlist4.selectedItem) {
+								case "x":
+								case "y":
+								case "z":
+								case "width":
+								case "height":
+									code += this.drop_playlist4.selectedItem + "->" + this.position_playlist4.value;
+									break;
+								case "rx":
+								case "ry":
+								case "rz":
+									code += this.drop_playlist4.selectedItem + "->" + this.rotation_playlist4.value;
+									break;
+								case "alpha":
+								case "volume":
+									code += this.drop_playlist4.selectedItem + "->" + (this.percent_playlist4.value / 100);
+									break;
+								case "red":
+								case "green":
+								case "blue":
+									code += this.drop_playlist4.selectedItem + "->" + this.color_playlist4.value;
+									break;
+								case "blend":
+									code += this.drop_playlist4.selectedItem + "->" + this.blend_playlist4.selectedItem;
+									break;
+							}
+							break;
+					}
+					break;
+				case "MESSAGE":
+					switch (this.drop1.selectedItem) {
+						case "htmlbox":
+							if (this.list_message3b.dataProvider.length > 0) {
+								if (this.list_message3b.selectedItem.data != "") {
+									code += this.drop1.selectedItem + "->" + this.list_message3.selectedItem.data + "->" + this.list_message3b.selectedItem.data;
+								} else {
+									code = "";
+								}
+							} else {
+								code = "";
+							}
+							break;
+						case "openurl":
+						case "custom":
+						case "send":
+							code += this.drop1.selectedItem + "->" + this.messageContent.text;
+							this.messageContent.text = "";
+							break
+						case "openfeedlink":
+							if ((this.externalFeeds.length > 0) && (this.list_message2.selectedIndex >= 0)) {
+								code += this.drop1.selectedItem + "->" + this.list_message2.selectedItem.type + "->" + this.list_message2.selectedItem.name + "->" + this.numeric_message2.value;
+							}
+							break;
+						case "sharefacebook":
+						case "sharetwitter":
+						case "sharegplus":
+						case "startPCodeSend":
+						case "endPCodeSend":
+							code += this.drop1.selectedItem;
+							break
+					}
+					break;
+				case "CODE":
+					switch (this.drop1.selectedItem) {
+						case "clearTimers":
+						case "clearAllNumbers":
+						case "clearAllStrings":
+						case "clearAllValues":
+						case "endIf":
+						case "else":
+						case "saveValues":
+						case "loadValues":
+						case "getComValues":
+						case "clearComValues":
+						case "ifComValues":
+						case "ifUserLogged":
+						case "ifPlayerDesktop":
+						case "ifPlayerMobile":
+						case "ifPlayerShowtime":
+						case "ifPlayerUnknown":
+						case "ifPlayerWeb":
+						case "ifHistoryNext":
+						case "ifHistoryBack":
+						case "runFunctionA":
+						case "runFunctionB":
+						case "runFunctionC":
+						case "runFunctionD":
+						case "runMouseWUp":
+						case "runMouseWDown":
+							code += this.drop1.selectedItem;
+							break;
+						case "wait":
+							code += this.drop1.selectedItem + "->" + this.time_code.value;
+							this.time_code.value = 1;
+							break;
+						case "clearNumber":
+						case "clearString":
+						case "ifNumExist":
+						case "ifStrExist":
+						case "getStreamID":
+						case "getCommunityID":
+						case "getCategory":
+						case "ifIsMeta":
+							code += this.drop1.selectedItem + "->" + this.text_code2.text;
+							break;
+						case "ifNumEqual":
+						case "ifNumDifferent":
+						case "ifNumLower":
+						case "ifNumHigher":
+						case "ifNumLowerOrEqual":
+						case "ifNumHigherOrEqual":
+						case "ifStrEqual":
+						case "ifStrDifferent":
+						case "setNumber":
+						case "setString":
+						case "addToNum":
+						case "subtractFromNum":
+						case "multiplyNum":
+						case "divideNum":
+						case "mergeToStr":
+						case "setRandomNum":
+						case "setComValue":
+						case "addToComValue":
+						case "subtractFromComValue":
+						case "multiplyComValue":
+						case "divideComValue":
+							code += this.drop1.selectedItem + "->" + this.text_code3a.text + "->" + this.text_code3b.text;
+							break;
+						case "getInstanceProp":
+							code += this.drop1.selectedItem + "->" + this.text_code4a.text + "->" + this.combo_code4.textInput.text + "->" + this.drop_code4.selectedItem;
+							break;
+						case "runFeedCode":
+							if ((this.externalFeeds.length > 0) && (this.list_code5.selectedIndex >= 0)) {
+								code += this.drop1.selectedItem + "->" + this.list_code5.selectedItem.type + "->" + this.list_code5.selectedItem.name + "->" + this.numeric_code5.value;
+							}
+							break;
+						case "getPostCount":
+							if ((this.externalFeeds.length > 0) && (this.list_code6.selectedIndex >= 0)) {
+								code += this.drop1.selectedItem + "->" + this.text_code6.text + "->" + this.list_code6.selectedItem.type + "->" + this.list_code6.selectedItem.name;
+							}
+							break;
+						case "ifPostData":
+							if ((this.externalFeeds.length > 0) && (this.list_code7.selectedIndex >= 0)) {
+								code += this.drop1.selectedItem + "->" + this.list_code7.selectedItem.type + "->" + this.list_code7.selectedItem.name + "->" + this.numeric_code7.value + "->" + this.list_code7b.selectedItem.data;
+							}
+							break;
+					}
+					break;
+			}
+			// add code to current text
+			if (code != "") {
+				if (this.codeText.text == "") this.codeText.text = code + "|";
+				else this.codeText.appendText("\n" + code + "|");
+				this.update();
+			}
+		}
+		
+		/**
+		 * Update published streams and instance names lists.
+		 */
+		public function updateLists():void {
+			WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+		}
+		
+		/**
+		 * Update HTML box content lists.
+		 */
+		public function updateHTMLBoxLists():void {
+			WindowServerCheck.createServer("htmlboxcontent", ("community=" + escape(LoadedData.community.id)), this.htmlBoxReturn);
+		}
+		
+		/**
+		 * List information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try again
+				WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+			} else {
+				// get stream data
+				this.communityStreams.removeAll();
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.communityStreams.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+				}
+				this.loadInstances();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * HTML box content information received.
+		 * @param	server	the server information object
+		 */
+		private function htmlBoxReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try again
+				this.updateHTMLBoxLists();
+			} else {
+				// get lists data
+				this.htmlBoxFolderListData.removeAll();
+				this.htmlBoxFromData.removeAll();
+				// from
+				this.htmlBoxFromData.addItem( { label: resourceManager.getString('language', 'PROGRESSCODE_HTMLCOMMUNITY'), data: "community" } );
+				this.htmlBoxFromData.addItem( { label: resourceManager.getString('language', 'PROGRESSCODE_HTMLMYSQL'), data: UserInfo.id } );
+				this.list_message3.selectedIndex = 0;
+				// community
+				while (this._htmlCom.length > 0) this._htmlCom.shift();
+				for (var index:uint = 0; index < server.data.child("community").length(); index++) {
+					this._htmlCom.push(String(server.data.community[index]));
+				}
+				// user
+				while (this._htmlUsr.length > 0) this._htmlUsr.shift();
+				for (index = 0; index < server.data.child("user").length(); index++) {
+					this._htmlUsr.push(String(server.data.user[index]));
+				}
+				this.changeHTMLBoxFrom();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Change the HTML Box from selection.
+		 */
+		private function changeHTMLBoxFrom():void {
+			var index:uint;
+			this.htmlBoxFolderListData.removeAll();
+			if (this.list_message3.selectedIndex == 0) { // community
+				for (index = 0; index < this._htmlCom.length; index++) this.htmlBoxFolderListData.addItem( { label: this._htmlCom[index], data: this._htmlCom[index] } );
+			} else { // user
+				for (index = 0; index < this._htmlUsr.length; index++) this.htmlBoxFolderListData.addItem( { label: this._htmlUsr[index], data: this._htmlUsr[index] } );				
+			}
+			this.list_message3b.selectedIndex = 0;
+		}
+		
+		/**
+		 * Get instances names.
+		 */
+		public function loadInstances():void {
+			this.streamInstances.removeAll();
+			if (FlexGlobals.topLevelApplication.view != null) {
+				var instances:Array = FlexGlobals.topLevelApplication.view.instanceNames;
+				for (var index:uint = 0; index < instances.length; index++) {
+					this.streamInstances.addItem(instances[index]);
+				}
+				if (this.drop0.selectedItem == "INSTANCE") this.drop1.selectedIndex = 0;
+			}
+		}
+		
+		/**
+		 * Warn listeners about code text update.
+		 */
+		private function update():void {
+			this.dispatchEvent(new Event(Event.CHANGE));
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:HGroup width="100%">
+		<s:VGroup width="33%">
+			<s:Label text="{resourceManager.getString('language', 'PROGRESSCODE_GROUP')}" />
+			<s:DropDownList id="drop0" width="100%" dataProvider="{parserList}" change="drop0Change()"></s:DropDownList>
+		</s:VGroup>
+		<s:VGroup width="34%">
+			<s:Label text="" id="label1" />
+			<s:ComboBox width="100%" id="drop1" change="drop1Change()" />
+		</s:VGroup>
+		<s:VGroup width="33%">
+			<s:Label text="" id="label2" />
+			<s:DropDownList width="100%" id="drop2" change="drop2Change()"></s:DropDownList>
+		</s:VGroup>
+		<s:VGroup>
+			<s:Label text=""/>
+			<s:Button width="60" label="{resourceManager.getString('language', 'PROGRESSCODE_ADD')}" click="addCode()" />
+		</s:VGroup>
+	</s:HGroup>
+	<s:VGroup width="100%" id="commandParams">
+		<s:VGroup width="100%" id="param_code">
+			<s:HGroup id="pcode_numeric" width="100%" verticalAlign="middle">
+				<s:Label id="label_code" text="{resourceManager.getString('language', 'PROGRESSCODE_TIMEWAIT')}" />
+				<s:NumericStepper id="time_code" minimum="1" maximum="100000" value="1" width="100%" />
+			</s:HGroup>
+			<s:HGroup id="pcode_text" width="100%" verticalAlign="middle">
+				<s:Label id="label_code2" text="{resourceManager.getString('language', 'PROGRESSCODE_TIMEWAIT')}" />
+				<s:TextInput id="text_code2" width="100%" />
+			</s:HGroup>
+			<s:HGroup id="pcode_set" width="100%" verticalAlign="middle">
+				<s:Label id="label_code3a" text="{resourceManager.getString('language', 'PROGRESSCODE_TIMEWAIT')}" />
+				<s:TextInput id="text_code3a" width="50%" />
+				<s:Label id="label_code3b" text="{resourceManager.getString('language', 'PROGRESSCODE_TIMEWAIT')}" />
+				<s:TextInput id="text_code3b" width="50%" />
+			</s:HGroup>
+			<s:HGroup id="pcode_property" width="100%" verticalAlign="middle">
+				<s:Label id="label_code4a" text="{resourceManager.getString('language', 'PROGRESSCODE_VARTORECEIVE')}" />
+				<s:TextInput id="text_code4a" width="100%" />
+			</s:HGroup>
+			<s:HGroup id="pcode_property2" width="100%" verticalAlign="middle">
+				<s:Label id="label_code4b" text="{resourceManager.getString('language', 'PROGRESSCODE_CODEINSTANCENAME')}" />
+				<s:ComboBox id="combo_code4"  width="50%" />
+				<s:Label id="label_code4c" text="{resourceManager.getString('language', 'PROGRESSCODE_CODEINSTANCEPROP')}" />
+				<s:DropDownList width="50%" id="drop_code4" />
+			</s:HGroup>
+			<s:VGroup width="100%" id="pcode_property3">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label id="label_code5" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDLINKTEXT')}" />
+					<s:DropDownList id="list_code5" dataProvider="{externalFeeds}" width="100%" />
+					<s:Label id="label_code5b" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDPOSTNUMBER')}" />
+					<s:NumericStepper id="numeric_code5" minimum="0" maximum="20" value="0" />
+				</s:HGroup>
+			</s:VGroup>
+			<s:VGroup width="100%" id="pcode_property4">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label id="label_code6" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDCOUNTVAR')}" />
+					<s:TextInput id="text_code6" width="80" />
+					<s:Label id="label_code6b" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDLINKTEXT')}" />
+					<s:DropDownList id="list_code6" dataProvider="{externalFeeds}" width="100%" />
+				</s:HGroup>
+			</s:VGroup>
+			<s:VGroup width="100%" id="pcode_property5">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label id="label_code7" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDLINKTEXT')}" />
+					<s:DropDownList id="list_code7" dataProvider="{externalFeeds}" width="100%" />
+					<s:Label id="label_code7b" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDPOSTNUMBER')}" />
+					<s:NumericStepper id="numeric_code7" minimum="0" maximum="20" value="0" />
+				</s:HGroup>
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label id="label_code7c" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDPOSTFIELD')}" />
+					<s:DropDownList id="list_code7b" dataProvider="{postFields}" width="100%" />
+				</s:HGroup>
+			</s:VGroup>
+			
+			
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_message">
+			<s:Label id="label_message" text="{resourceManager.getString('language', 'PROGRESSCODE_MESSAGETEXT')}" />
+			<s:TextArea width="100%" height="40" id="messageContent" />
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_message2">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label id="label_message2" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDLINKTEXT')}" />
+				<s:DropDownList id="list_message2" dataProvider="{externalFeeds}" width="100%" />
+				<s:Label id="label_message2b" text="{resourceManager.getString('language', 'PROGRESSCODE_FEEDPOSTNUMBER')}" />
+				<s:NumericStepper id="numeric_message2" minimum="0" maximum="20" value="0" />
+			</s:HGroup>
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_message3">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label text="{resourceManager.getString('language', 'PROGRESSCODE_HTMLFROM')}" />
+				<s:DropDownList id="list_message3" width="50%" dataProvider="{htmlBoxFromData}" change="changeHTMLBoxFrom()" />
+				<s:Label text="{resourceManager.getString('language', 'PROGRESSCODE_HTMLTARGET')}" />
+				<s:DropDownList id="list_message3b" width="50%" dataProvider="{htmlBoxFolderListData}" />
+			</s:HGroup>
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_community">
+			<s:Label id="label_community" text="{resourceManager.getString('language', 'PROGRESSCODE_COMURL')}" />
+			<s:TextInput width="100%" id="communityParam" />
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_community2">
+			<s:Label id="label_community2" text="{resourceManager.getString('language', 'PROGRESSCODE_COMSTREAM')}" />
+			<s:TextInput width="100%" id="communityParam2" />
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_stream">
+			<s:Label id="label_stream" text="" />
+			<s:DropDownList width="100%" id="drop_stream" selectedIndex="0"></s:DropDownList>
+			<s:NumericStepper width="100%" id="numeric_keyframe" minimum="1" maximum="1000" value="1" />
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_playlist1">
+			<s:Label id="label_playlist1" text="" />
+			<s:TextInput width="100%" id="text_playlist1" />
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_playlist2">
+			<s:Label id="label_playlist2" text="" />
+			<s:DropDownList width="100%" id="drop_playlist2"></s:DropDownList>
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_playlist3">
+			<s:Label id="label_playlist3" text="" />
+			<s:TextArea width="100%" height="30" id="text_playlist3" />
+		</s:VGroup>
+		<s:VGroup width="100%" id="param_playlist4">
+			<s:Label id="label_playlist4" text="" />
+			<s:HGroup width="100%">
+				<s:DropDownList width="50%" id="drop_playlist4" dataProvider="{propertyList}" change="drop4Change()"></s:DropDownList>
+				<s:Group id="values_playlist4">
+					<s:NumericStepper id="position_playlist4" minimum="-10000" maximum="10000" value="0" />
+					<s:NumericStepper id="rotation_playlist4" minimum="0" maximum="360" value="0" />
+					<s:NumericStepper id="percent_playlist4" minimum="0" maximum="100" value="100" />
+					<s:NumericStepper id="color_playlist4" minimum="0" maximum="255" value="0" />
+					<s:DropDownList width="100%" id="blend_playlist4" dataProvider="{blendModes}"></s:DropDownList>
+				</s:Group>
+			</s:HGroup>
+		</s:VGroup>
+		<s:HGroup width="100%" id="param_playlist5" verticalAlign="middle">
+			<s:Label id="label_playlist5" text="" />
+			<s:NumericStepper id="num_playlist5" minimum="0" value="0" maximum="100000" width="100%" />
+		</s:HGroup>
+	</s:VGroup>
+	<s:TextArea width="100%" height="100%" id="codeText" change="update()" />
+	<s:HGroup horizontalAlign="right" width="100%" verticalAlign="middle">
+		<s:Label text="" id="checkResult" textAlign="right" color="0xCCCCCC" width="200" />
+		<s:Label text="" width="5" />
+		<s:Button label="{resourceManager.getString('language', 'PROGRESSCODE_CHECK')}" click="checkCode()" />
+		<s:Button label="{resourceManager.getString('language', 'PROGRESSCODE_UPDATELISTS')}" click="updateLists()" />
+	</s:HGroup>
+</s:VGroup>

@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+Warning creates a multi use warning window for Managana editor.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/halo"
+			   creationComplete="init()">
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.display.DisplayObject;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// STATIC STATEMENTS
+		
+		/**
+		 * Show a warning window.
+		 * @param	warning	a Warning object to show
+		 */
+		public static function showWarning(warning:Warning):void {
+			PopUpManager.addPopUp(warning, DisplayObject(FlexGlobals.topLevelApplication), true);
+			PopUpManager.centerPopUp(warning);
+		}
+		
+		/**
+		 * Create and show a warning window.
+		 * @param	title	window title
+		 * @param	message	warning message
+		 */
+		public static function createWarning(title:String, message:String, type:String="TYPE_OK", okAction:Function=null, okParameter:String=null):void {
+			var window:Warning = new Warning();
+			window.warnTitle = title;
+			window.warnMessage = message;
+			window._type = type;
+			window.okaction = okAction;
+			window.okparameter = okParameter;
+			PopUpManager.addPopUp(window, DisplayObject(FlexGlobals.topLevelApplication), true);
+			PopUpManager.centerPopUp(window);
+		}
+		
+		/**
+		 * Warning type: fatal (no way to close the window).
+		 */
+		public static const TYPE_FATAL:String = "TYPE_FATAL";
+		/**
+		 * Warning type: OK only.
+		 */
+		public static const TYPE_OK:String = "TYPE_OK";
+		/**
+		 * Warning type: OK and CANCEL buttons.
+		 */
+		public static const TYPE_OKCANCEL:String = "TYPE_OKCANCEL";
+		/**
+		 * Warning type: OK, CANCEL and an extra button.
+		 */
+		public static const TYPE_OKCANCELEXTRA:String = "TYPE_OKCANCELEXTRA";
+		/**
+		 * Warning type: EXTRA button only..
+		 */
+		public static const TYPE_EXTRA:String = "TYPE_EXTRA";
+		
+		// VARIABLES
+		
+		private var _ready:Boolean = false;				// is this control ready?
+		private var _title:String = "";					// window title
+		private var _text:String = "";					// waring text
+		private var _okvisible:Boolean = false;			// is OK button visible?
+		private var _cancelvisible:Boolean = false;		// is CANCEL button visible?
+		private var _extravisible:Boolean = false;		// is EXTRA button visible?
+		private var _type:String = "TYPE_FATAL";		// warning show type
+		
+		// PUBLIC VARIABLES
+		
+		/**
+		 * Function to call on OK click.
+		 */
+		private var okaction:Function;
+		/**
+		 * Parameter to pass while calling ok function.
+		 */
+		private var okparameter:String;
+		/**
+		 * Function to call on CANCEL click.
+		 */
+		private var cancelaction:Function;
+		/**
+		 * Parameter to pass while calling cancel function.
+		 */
+		private var cancelparameter:String;
+		/**
+		 * Text to show on yellow extra button.
+		 */
+		private var extra:String;
+		/**
+		 * Function to call on EXTRA click.
+		 */
+		private var extraaction:Function;
+		/**
+		 * Parameter to pass while calling extra function.
+		 */
+		private var extraparameter:String;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this._ready = true;
+			this.closeButton.visible = false;
+			this.warnTitle = this._title;
+			this.warnMessage = this._text;
+			this.setType(this._type);
+		}
+		
+		// PROPERTIES
+		
+		/**
+		 * Warning window title.
+		 */
+		public function get warnTitle():String {
+			return (this._title);
+		}
+		public function set warnTitle(to:String):void {
+			if (this._ready) {
+				this.title = to;
+				PopUpManager.centerPopUp(this);
+			}
+			this._title = to;
+		}
+		
+		/**
+		 * Warning window message.
+		 */
+		public function get warnMessage():String {
+			return (this._text);
+		}
+		public function set warnMessage(to:String):void {
+			if (this._ready) {
+				this.textmessage.text = to;
+				PopUpManager.centerPopUp(this);
+			}
+			this._text = to;
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Set the waning type (buttons to show)
+		 * @param	to	the chosen type according to type constants
+		 */
+		public function setType(to:String):void {
+			switch (to) {
+				case Warning.TYPE_FATAL:
+					this._okvisible = false;
+					this._extravisible = false;
+					this._cancelvisible = false;
+					break;
+				case Warning.TYPE_OK:
+					this._okvisible = true;
+					this._extravisible = false;
+					this._cancelvisible = false;
+					break;
+				case Warning.TYPE_OKCANCEL:
+					this._okvisible = true;
+					this._extravisible = false;
+					this._cancelvisible = true;
+					break;
+				case Warning.TYPE_OKCANCELEXTRA:
+					this._okvisible = true;
+					this._extravisible = true;
+					this._cancelvisible = true;
+					break;
+				case Warning.TYPE_EXTRA:
+					this._okvisible = false;
+					this._extravisible = true;
+					this._cancelvisible = false;
+					break;
+			}
+			this._type = to;
+			if (this._ready) {
+				this.okbutton.visible = this._okvisible;
+				//this.cancelbutton.visible = this._cancelvisible;
+				//this.extrabutton.visible = this._extravisible;
+				if (!this._cancelvisible) this.buttons.removeElement(this.cancelbutton);
+				if (!this._extravisible) this.buttons.removeElement(this.extrabutton);
+				if (!this._okvisible) this.buttons.removeElement(this.okbutton);
+				if (this._type == TYPE_FATAL) this.verticalgroup.removeElement(this.buttons);
+				PopUpManager.centerPopUp(this);
+			}
+		}
+		
+		/**
+		 * Release mwmmory used by this object.
+		 */
+		public function kill():void {
+			this._title = null;
+			this._text = null;
+			this.okaction = null;
+			this.okparameter = null;
+			this.cancelaction = null;
+			this.cancelparameter = null;
+			this.extra = null;
+			this.extraaction = null;
+			this.extraparameter = null;
+			this._type = null;
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Call on OK button press.
+		 */
+		private function onOK():void {
+			if (this.okaction != null) {
+				if (this.okparameter != null) this.okaction(this.okparameter);
+					else this.okaction();
+			}
+			PopUpManager.removePopUp(this);
+			this.kill();
+		}
+		
+		/**
+		 * Call on CANCEL button press.
+		 */
+		private function onCANCEL():void {
+			if (this.cancelaction != null) {
+				if (this.cancelparameter != null) this.cancelaction(this.cancelparameter);
+					else this.cancelaction();
+			}
+			PopUpManager.removePopUp(this);
+			this.kill();
+		}
+		
+		/**
+		 * Call on EXTRA button press.
+		 */
+		private function onEXTRA():void {
+			if (this.extraaction != null) {
+				if (this.extraparameter != null) this.extraaction(this.extraparameter);
+					else this.extraaction();
+			}
+			PopUpManager.removePopUp(this);
+			this.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:Group styleName="paddingGroup">
+		<s:VGroup id="verticalgroup">
+			<s:Label id="textmessage" width="100%" maxWidth="400" />
+			<s:HGroup id="buttons" horizontalAlign="right" width="100%">
+				<s:Button id="cancelbutton" label="{resourceManager.getString('language', 'CANCEL')}" click="onCANCEL()" styleName="warningCANCEL" />
+				<s:Button id="extrabutton" label="" click="onEXTRA()" styleName="warningEXTRA" visible="false" />
+				<s:Button id="okbutton" label="{resourceManager.getString('language', 'OK')}" click="onOK()" styleName="warningOK" />
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+	
+	
+</s:TitleWindow>

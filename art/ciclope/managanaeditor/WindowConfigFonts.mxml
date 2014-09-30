@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowConfigRecover creates a window to manage password recovering configurations.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="600" height="550" title="{resourceManager.getString('language', 'CONF_FONTSTITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="fontList" />
+		<mx:ArrayCollection id="fontListHTML" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.FileReference;
+		import flash.net.URLRequest;
+		import flash.net.URLVariables;
+		import flash.events.*;
+		import flash.utils.setTimeout;
+		import flash.display.Loader;
+		import flash.display.LoaderInfo;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managana.ManaganaFont;
+		
+		// VARIABLES
+		
+		private var _file:FileReference;		// for local file search
+		private var _tech:String = 'flash';		// font technology used
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			this._file = new FileReference();
+			this._file.addEventListener(Event.CANCEL, onUploadCancel);
+            this._file.addEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.addEventListener(Event.OPEN, onUploadOpen);
+            this._file.addEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.addEventListener(Event.SELECT, onUploadSelect);
+            this._file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+			WindowServerCheck.createServer("fonts", ("ac=list&user=" + escape(UserInfo.email)), this.listReturn);
+		}
+		
+		/**
+		 * Community variables information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// no custom fonts
+				this.fontList.removeAll();
+				this.fontListHTML.removeAll();
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// clear previous data
+				this.fontList.removeAll();
+				this.fontListHTML.removeAll();
+				// get current fonts
+				var fonts:Array = ManaganaFont.fontList;
+				// add loaded names
+				for (var index:uint = 0; index < server.data.child("font").length(); index++) {
+					if (fonts.indexOf(server.data.font[index].name) < 0) {
+						// font not found, load the file
+						var font:Loader = new Loader();
+						font.contentLoaderInfo.addEventListener(Event.INIT, fontInit);
+						font.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, fontError);
+						font.load(new URLRequest("font/" + server.data.font[index].file));
+					}
+					if (String(server.data.font[index].tech) == 'html') {
+						this.fontListHTML.addItem({dataName: String(server.data.font[index].name), dataFile: String(server.data.font[index].file), dataAbout: String(server.data.font[index].about), dataTech: String(server.data.font[index].tech), dataType: String(server.data.font[index].type) });
+					} else {
+						this.fontList.addItem( { dataName: String(server.data.font[index].name), dataFile: String(server.data.font[index].file), dataAbout: String(server.data.font[index].about), dataTech: String(server.data.font[index].tech), dataType: String(server.data.font[index].type) } );
+					}
+				}
+			}
+			this.fontList.refresh();
+			this.fontListHTML.refresh();
+			server.kill();
+		}
+		
+		/**
+		 * Font file loaded.
+		 */
+		private function fontInit(evt:Event):void {
+			var linfo:LoaderInfo = evt.target as LoaderInfo;
+			linfo.removeEventListener(Event.INIT, fontInit);
+			linfo.removeEventListener(IOErrorEvent.IO_ERROR, fontError);
+			// update the intance properties font list
+			FlexGlobals.topLevelApplication.processCommand("updateFontList");
+		}
+		
+		/**
+		 * Font file load error.
+		 */
+		private function fontError(evt:Event):void {
+			// ignore the font file
+			var linfo:LoaderInfo = evt.target as LoaderInfo;
+			linfo.removeEventListener(Event.INIT, fontInit);
+			linfo.removeEventListener(IOErrorEvent.IO_ERROR, fontError);
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			this._file.removeEventListener(Event.CANCEL, onUploadCancel);
+            this._file.removeEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.removeEventListener(Event.OPEN, onUploadOpen);
+            this._file.removeEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.removeEventListener(Event.SELECT, onUploadSelect);
+            this._file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+			this._file = null;
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Look for a local swf font file.
+		 */
+		private function searchFile(tech:String):void {
+			if (tech == 'html') {
+				this._tech = 'html';
+				this._file.browse(new Array(new FileFilter(resourceManager.getString('language', 'CONF_FONTFILETITLEHTML'), "*.ttf; *.otf")));
+			} else {
+				this._tech = 'flash';
+				this._file.browse(new Array(new FileFilter(resourceManager.getString('language', 'CONF_FONTFILETITLE'), "*.swf")));
+			}
+		}
+		
+		/**
+		 * Upload finished.
+		 */
+		private function onUploadComplete(evt:DataEvent):void {
+			try {
+				var data:XML = new XML(evt.data);
+				if (data.error.@id != "0") {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', data.error.@id));
+				}
+			} catch (e:Error) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-0'));
+			}
+			this.fontGroup.enabled = true;
+			this.fontGroupHTML.enabled = true;
+			this.busy.visible = false;
+			this.busy2.visible = false;
+			this.newAbout.text = "";
+			this.newFile.text = "";
+			this.newName.text = "";
+			this.newAboutHTML.text = "";
+			this.newFileHTML.text = "";
+			this.newNameHTML.text = "";
+			this.newTypeHTML.selectedIndex = 0;
+			WindowServerCheck.createServer("fonts", ("ac=list&user=" + escape(UserInfo.email)), this.listReturn);
+		}
+		
+		/**
+		 * Upload progress.
+		 */
+		private function onUploadProgress(evt:ProgressEvent):void {
+			this.busy.text = resourceManager.getString('language', 'CONF_FONTSENDING') + " " + uint(100 * evt.bytesLoaded / evt.bytesTotal) + "%";
+			this.busy2.text = resourceManager.getString('language', 'CONF_FONTSENDING') + " " + uint(100 * evt.bytesLoaded / evt.bytesTotal) + "%";
+			// bug: guess the file send finish by percent uploaded
+			if ((100 * evt.bytesLoaded / evt.bytesTotal) > 99) setTimeout(forceUploadEnd, 3000);
+		}
+		
+		/**
+		 * Bug: force upload end considering file send progress
+		 */
+		private function forceUploadEnd():void {
+			this.fontGroup.enabled = true;
+			this.fontGroupHTML.enabled = true;
+			this.busy.visible = false;
+			this.busy2.visible = false;
+			this.newAbout.text = "";
+			this.newFile.text = "";
+			this.newName.text = "";
+			this.newAboutHTML.text = "";
+			this.newFileHTML.text = "";
+			this.newNameHTML.text = "";
+			this.newTypeHTML.selectedIndex = 0;
+			WindowServerCheck.createServer("fonts", ("ac=list&user=" + escape(UserInfo.email)), this.listReturn);
+		}
+		
+		/**
+		 * A file was selected for upload.
+		 */
+		private function onUploadSelect(evt:Event):void {
+			try {
+				if (this._file.size <= (EditorOptions.uploadMax * 1024 * 1024)) {
+					if (this._tech == 'html') {
+						this.newFileHTML.text = this._file.name;
+					} else {
+						this.newFile.text = this._file.name;
+					}
+				} else {
+					this.newFile.text = "";
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-3'));
+				}
+			} catch (e:Error) {
+				this.newFile.text = "";
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-4'));
+			}
+		}
+		
+		/**
+		 * Upload started.
+		 */
+		private function onUploadOpen(evt:Event):void {
+			// do nothing
+		}
+		
+		/**
+		 * File upload error.
+		 */
+		private function onUploadError(evt:Event):void {
+			Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-0'));
+			this.fontGroup.enabled = true;
+			this.fontGroupHTML.enabled = true;
+			this.busy.visible = false;
+			this.busy2.visible = false;
+			WindowServerCheck.createServer("fonts", ("ac=list&user=" + escape(UserInfo.email)), this.listReturn);
+		}
+		
+		/**
+		 * File upload cancel.
+		 */
+		private function onUploadCancel(evt:Event):void {
+			// do nothing
+		}
+		
+		private function sendFont(tech:String):void {
+			// check new font fields
+			var ok:Boolean = true;
+			var param:String = "ac=new&user=" + escape(UserInfo.email);
+			if (tech == 'html') {
+				this._tech = 'html';
+				if ((this.newNameHTML.text == "") || (this.newFileHTML.text == "")) {
+					Warning.createWarning(resourceManager.getString('language', 'CONF_FONTSENDERRORTITLE'), resourceManager.getString('error', 'ERCONF-2'));
+					ok = false;
+				} else {
+					param += "&name=" + escape(this.newNameHTML.text);
+					param += "&file=" + StringFunctions.noSpecial(this._file.name);
+					param += "&about=" + escape(this.newAboutHTML.text);
+					param += "&type=" + escape(this.newTypeHTML.selectedItem.data);
+					param += "&tech=" + escape(this._tech);
+				}
+			} else {
+				this._tech = 'flash';
+				if ((this.newName.text == "") || (this.newFile.text == "")) {
+					Warning.createWarning(resourceManager.getString('language', 'CONF_FONTSENDERRORTITLE'), resourceManager.getString('error', 'ERCONF-2'));
+					ok = false;
+				} else {
+					param += "&name=" + escape(this.newName.text);
+					param += "&file=" + StringFunctions.noSpecial(this._file.name);
+					param += "&about=" + escape(this.newAbout.text);
+					param += "&type=";
+					param += "&tech=" + escape(this._tech);
+				}
+			}
+			if (ok) {
+				// send font
+				var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("fonts"));
+				uploadRequest.data = new URLVariables(param);
+				uploadRequest.method = EditorOptions.method;
+				this._file.upload(uploadRequest);
+				this.fontGroup.enabled = false;
+				this.fontGroupHTML.enabled = false;
+				this.busy.visible = true;
+				this.busy.text = resourceManager.getString('language', 'CONF_FONTSENDING') + " 0%";
+				this.busy2.visible = true;
+				this.busy2.text = resourceManager.getString('language', 'CONF_FONTSENDING') + " 0%";
+			}
+		}
+		
+		/**
+		 * Delete the selected font.
+		 */
+		private function deleteFont(tech:String):void {
+			if (tech == 'html') {
+				if (this.loadedFontsHTML.selectedIndex < 0) {
+					Warning.createWarning(resourceManager.getString('language', 'CONF_FONTSENDERRORTITLE'), resourceManager.getString('error', 'ERCONF-3'));
+				} else {
+					WindowServerCheck.createServer("fonts", ("ac=delete&tech=html&user=" + escape(UserInfo.email) + "&font=" + escape(this.loadedFontsHTML.selectedItem.dataFile)), this.listReturn);
+				}
+			} else {
+				if (this.loadedFonts.selectedIndex < 0) {
+					Warning.createWarning(resourceManager.getString('language', 'CONF_FONTSENDERRORTITLE'), resourceManager.getString('error', 'ERCONF-3'));
+				} else {
+					WindowServerCheck.createServer("fonts", ("ac=delete&tech=flash&user=" + escape(UserInfo.email) + "&font=" + escape(this.loadedFonts.selectedItem.dataFile)), this.listReturn);
+				}
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator id="fontsTab" width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'CONF_FONTSFLASH')}">
+				<s:VGroup x="0" y="0" id="fontGroup" width="100%" height="100%" styleName="paddingGroup">
+					<mx:DataGrid id="loadedFonts" width="100%" height="200" dataProvider="{fontList}">
+						<mx:columns>
+							<mx:DataGridColumn width="100" dataField="dataName" headerText="{resourceManager.getString('language', 'CONF_FONTSNAMECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn width="100" dataField="dataFile" headerText="{resourceManager.getString('language', 'CONF_FONTSFILECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn dataField="dataAbout" headerText="{resourceManager.getString('language', 'CONF_FONTSABOUTCOLUMN')}"></mx:DataGridColumn>
+						</mx:columns>
+					</mx:DataGrid>
+					<s:Button width="100%" label="{resourceManager.getString('language', 'CONF_FONTSDELETE')}" click="deleteFont('flash')" />
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_FONTSADD')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDNAME')}" />
+						<s:TextInput id="newName" width="90%" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDABOUT')}" />
+						<s:TextInput id="newAbout" width="90%" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDFILE')}" />
+						<s:TextInput id="newFile" enabled="false" width="70%" />
+						<s:Button width="20%" label="{resourceManager.getString('language', 'CONF_FONTSADDSEARCH')}" click="searchFile('flash')" />
+					</s:HGroup>
+					<s:Button width="100%" label="{resourceManager.getString('language', 'CONF_FONTSADDSUBMIT')}" click="sendFont('flash')" />
+					<s:Label text="" />
+					<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+						<s:Label visible="false" id="busy" width="100%" text="{resourceManager.getString('language', 'CONF_FONTSENDING')}" />
+						<s:Button label="{resourceManager.getString('language', 'CONF_CLOSE')}" click="onClose()" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'CONF_FONTSHTML')}">
+				
+				
+				<s:VGroup x="0" y="0" id="fontGroupHTML" width="100%" height="100%" styleName="paddingGroup">
+					<mx:DataGrid id="loadedFontsHTML" width="100%" height="200" dataProvider="{fontListHTML}">
+						<mx:columns>
+							<mx:DataGridColumn width="100" dataField="dataName" headerText="{resourceManager.getString('language', 'CONF_FONTSNAMECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn width="100" dataField="dataFile" headerText="{resourceManager.getString('language', 'CONF_FONTSFILECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn width="100" dataField="dataType" headerText="{resourceManager.getString('language', 'CONF_FONTSTYPECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn dataField="dataAbout" headerText="{resourceManager.getString('language', 'CONF_FONTSABOUTCOLUMN')}"></mx:DataGridColumn>
+						</mx:columns>
+					</mx:DataGrid>
+					<s:Button width="100%" label="{resourceManager.getString('language', 'CONF_FONTSDELETE')}" click="deleteFont('html')" />
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_FONTSADDHTML')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDNAME')}" />
+						<s:TextInput id="newNameHTML" width="90%" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDTYPE')}" />
+						<s:DropDownList id="newTypeHTML" width="90%" selectedIndex="0">
+							<mx:ArrayCollection>
+								<fx:Object data="regular" label="{resourceManager.getString('language', 'FONT_TYPEREGULAR')}" />
+								<fx:Object data="bold" label="{resourceManager.getString('language', 'FONT_TYPEBOLD')}" />
+								<fx:Object data="italic" label="{resourceManager.getString('language', 'FONT_TYPEITALIC')}" />
+								<fx:Object data="bolditalic" label="{resourceManager.getString('language', 'FONT_TYPEBOLDITALIC')}" />
+							</mx:ArrayCollection>
+						</s:DropDownList>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDABOUT')}" />
+						<s:TextInput id="newAboutHTML" width="90%" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="10%" text="{resourceManager.getString('language', 'CONF_FONTSADDFILE')}" />
+						<s:TextInput id="newFileHTML" enabled="false" width="70%" />
+						<s:Button width="20%" label="{resourceManager.getString('language', 'CONF_FONTSADDSEARCH')}" click="searchFile('html')" />
+					</s:HGroup>
+					<s:Button width="100%" label="{resourceManager.getString('language', 'CONF_FONTSADDSUBMIT')}" click="sendFont('html')" />
+					<s:Label text="" />
+					<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+						<s:Label visible="false" id="busy2" width="100%" text="{resourceManager.getString('language', 'CONF_FONTSENDING')}" />
+						<s:Button label="{resourceManager.getString('language', 'CONF_CLOSE')}" click="onClose()" />
+					</s:HGroup>
+				</s:VGroup>
+				
+				
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+	</s:VGroup>
+</s:TitleWindow>

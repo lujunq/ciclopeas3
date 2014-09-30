@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  creationComplete="init()">
+		  
+	<fx:Declarations>
+		<mx:ArrayCollection id="personalFiles" />
+		<mx:ArrayCollection id="communityFiles" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.net.FileReference;
+		import flash.net.FileFilter;
+		import flash.events.*;
+		import flash.net.URLRequest;
+		import flash.net.URLVariables;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.util.LoadedFile;
+		import mx.collections.ArrayCollection;
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.sitioeditor.data.SelectedFile;
+		
+		// VARIABLES
+		
+		private var _file:FileReference;		// a file uploader
+		private var _tofolder:String;			// last upload folder
+
+		// PUBLIC VARIABLES
+		
+		/**
+		 * File type to show.
+		 */
+		public var fileType:String = LoadedFile.TYPE_PICTURE;
+		
+		/**
+		 * Selected file information.
+		 */
+		public function get selected():SelectedFile {
+			var file:SelectedFile;
+			var type:String = "picture";
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE: type = 'picture'; break;
+			}
+			if (this.tabList.selectedIndex == 1) { // community file
+				if (this.fListCommunity.selectedIndex >= 0) {
+					file = new SelectedFile(LoadedData.community.id, this.fListCommunity.selectedItem.file, "community", type, this.fListCommunity.selectedItem.subtype, true);
+				}
+			} else { // personal file
+				if (this.fListPersonal.selectedIndex >= 0) {
+					file = new SelectedFile(LoadedData.community.id, this.fListPersonal.selectedItem.file, UserInfo.id, type, this.fListPersonal.selectedItem.subtype, false);
+				}
+			}
+			return (file);
+		}
+		
+		/**
+		 * Release memory used by the object.
+		 */
+		public function kill():void {
+			this._tofolder = null;
+			this.fileType = null;
+			this._file.removeEventListener(Event.CANCEL, onUploadCancel);
+            this._file.removeEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.removeEventListener(Event.OPEN, onUploadOpen);
+            this._file.removeEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.removeEventListener(Event.SELECT, onUploadSelect);
+            this._file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+			this._file = null;
+		}
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE:
+					
+					break;
+			}
+			this.removeElement(this.uploadFeedback);
+			this._file = new FileReference();
+			this._file.addEventListener(Event.CANCEL, onUploadCancel);
+            this._file.addEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.addEventListener(Event.OPEN, onUploadOpen);
+            this._file.addEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.addEventListener(Event.SELECT, onUploadSelect);
+            this._file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA,onUploadComplete);
+		}
+		
+		/**
+		 * Upload finished.
+		 */
+		private function onUploadComplete(evt:DataEvent):void {
+			var data:XML = new XML(evt.data);
+			if (data.error.@id != "0") {
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', data.error.@id));
+			}
+			this.addElement(this.tabList);
+			this.removeElement(this.uploadFeedback);
+			if (this.fListPersonal) this.refresh('personal');
+			if (this.fListCommunity) this.refresh('community');
+		}
+		
+		/**
+		 * Upload progress.
+		 */
+		private function onUploadProgress(evt:ProgressEvent):void {
+			this.uploadBar.setProgress(evt.bytesLoaded, evt.bytesTotal);
+		}
+		
+		/**
+		 * A file was selected for upload.
+		 */
+		private function onUploadSelect(evt:Event):void {
+			var param:String = "community=" + LoadedData.community.id;
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE: param += "&type=picture";
+			}
+			param += "&name=" + StringFunctions.noSpecial(this._file.name);
+			param += "&cfiles=" + (this._tofolder == "community");
+			var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("uploadfile"));
+			uploadRequest.data = new URLVariables(param);
+			uploadRequest.method = EditorOptions.method;
+			this._file.upload(uploadRequest);
+		}
+		
+		/**
+		 * Upload started.
+		 */
+		private function onUploadOpen(evt:Event):void {
+			this.removeElement(this.tabList);
+			this.addElement(this.uploadFeedback);
+		}
+		
+		/**
+		 * File upload error.
+		 */
+		private function onUploadError(evt:Event):void {
+			Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('language', 'ERFILE-0'));
+		}
+		
+		/**
+		 * File upload cancel.
+		 */
+		private function onUploadCancel(evt:Event):void {
+
+		}
+		
+		/**
+		 * Upload a file to server.
+		 * @param	to	folder to send file: personal or community
+		 */
+		private function uploadFile(to:String):void {
+			// select file type
+			var allTypes:FileFilter;
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE:
+					allTypes = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTPICTURE'), "*.jpg; *.png; *.gif; *.jpeg");
+					break;
+			}
+			// browse for file
+			this._tofolder = to;
+			this._file.browse(new Array(allTypes));
+		}
+		
+		/**
+		 * Refresh the file list.
+		 * @param	list	list ro refres: personal or community.
+		 */
+		private function refresh(list:String):void {
+			if (list == "community") {
+				this.communityFiles = new ArrayCollection();
+			} else {
+				this.personalFiles = new ArrayCollection();
+			}
+			var param:String = "community=" + LoadedData.community.id;
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE: param += "&type=picture";
+			}
+			param += "&cfiles=" + (list == "community");
+			WindowServerCheck.createServer("listfiles", param, onListAvailable);
+		}
+		
+		/**
+		 * File list available.
+		 */
+		private function onListAvailable(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_ERRORWINDOWTITLE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				var listAR:ArrayCollection;
+				if (Boolean(uint(server.data.cfiles))) listAR = this.communityFiles;
+					else listAR = this.personalFiles;
+				for (var index:uint = 0; index < server.data.child("file").length(); index++) {
+					listAR.addItem({ file: String(server.data.file[index]), size: Math.round(Number(server.data.file[index].@size) / 1024), subtype: String(server.data.file[index].@subtype)});
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Component initialize.
+		 */
+		private function initComponent(name:String):void {
+			switch (name) {
+				case "fType":
+					switch (this.fileType) {
+						case LoadedFile.TYPE_PICTURE:
+							this.fType.text = resourceManager.getString('language', 'FM_TYPEPICTURE');
+							break;
+					}
+					break;
+				case "fTypeCommunity":
+					switch (this.fileType) {
+						case LoadedFile.TYPE_PICTURE:
+							this.fTypeCommunity.text = resourceManager.getString('language', 'FM_TYPEPICTURE');
+							break;
+					}
+					break;
+				case "fUploadCommunity":
+					if ((UserInfo.level != "admin") || (UserInfo.level != "editor")) {
+						this.communityForm.removeElement(this.fUploadCommunity);
+					}
+					break;
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%" id="uploadFeedback" styleName="paddingGroup" horizontalAlign="center" verticalAlign="middle">
+		<mx:ProgressBar id="uploadBar" width="100%" label="uploading" minimum="0"/>
+	</s:VGroup>
+	<mx:TabNavigator width="100%" height="100%" id="tabList">
+		<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'FM_PERSONALTAB')}">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+				<s:Label id="fType" text="" creationComplete="initComponent('fType')"/>
+				<s:DataGrid id="fListPersonal" dataProvider="{personalFiles}" width="100%" height="100%" requestedRowCount="4" creationComplete="refresh('personal')">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+							<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+							<s:GridColumn dataField="subtype" headerText="{resourceManager.getString('language', 'FM_COLUMNSUB')}"></s:GridColumn>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				<s:Button id="fUploadPersonal" label="{resourceManager.getString('language', 'FM_UPLOAD')}" click="uploadFile('personal')" />
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'FM_COMMUNITYTAB')}">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup" id="communityForm">
+				<s:Label id="fTypeCommunity" text="" creationComplete="initComponent('fTypeCommunity')"/>
+				<s:DataGrid id="fListCommunity" dataProvider="{communityFiles}" width="100%" height="100%" requestedRowCount="4" creationComplete="refresh('community')">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+							<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+							<s:GridColumn dataField="subtype" headerText="{resourceManager.getString('language', 'FM_COLUMNSUB')}"></s:GridColumn>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				<s:Button id="fUploadCommunity" label="{resourceManager.getString('language', 'FM_UPLOAD')}" click="uploadFile('community')"/>
+			</s:VGroup>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+</s:VGroup>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityEdition creates a window to set an edition version for the current community.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   width="500" borderVisible="true" title="{resourceManager.getString('language', 'CED_TITLE')}">
+			   
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		import flash.net.navigateToURL;
+		import flash.net.URLRequest;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get a list of published streams
+			WindowServerCheck.createServer("edition", ("ac=get&community=" + escape(LoadedData.community.id)), this.edReturn);
+		}
+		
+		/**
+		 * Streams list information received.
+		 * @param	server	the server information object
+		 */
+		private function edReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try again
+				WindowServerCheck.createServer("edition", ("ac=get&community=" + escape(LoadedData.community.id)), this.edReturn);
+			} else {
+				// get edition date
+				this.cUpdate.selectedDate = new Date(int(server.data.year), (int(server.data.month) - 1), int(server.data.day));
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Save stream properties changes.
+		 */
+		private function onOK():void {
+			var year:String = String(this.cUpdate.selectedDate.getFullYear());
+			var month:String = String(this.cUpdate.selectedDate.getMonth() + 1);
+			if (month.length == 1) month = "0" + month;
+			var day:String = String(this.cUpdate.selectedDate.getDate());
+			if (day.length == 1) day = "0" + day;
+			WindowServerCheck.createServer("edition", ("ac=set&community=" + escape(LoadedData.community.id) + "&date=" + escape(year + "-" + month + "-" + day)), this.serverReturn);
+		}
+		
+		/**
+		 * Guide apply return.
+		 * @param	server	the server information object
+		 */
+		private function serverReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CED_WARNINGTITLE'), resourceManager.getString('error', server.errorID));
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CED_WARNINGTITLE'), resourceManager.getString('language', 'CED_CHANGEOK'));
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Open the selected link on browser.
+		 * @param	site	the site to open
+		 */
+		private function onURL(site:String):void {
+			switch (site) {
+				case 'url':
+					navigateToURL(new URLRequest(EditorOptions.path + "community/sitemap_" + LoadedData.community.id + ".xml"), "_blank");
+					break;
+				case 'google':
+					navigateToURL(new URLRequest('http://www.google.com/webmasters/'), "_blank");
+					break;
+				case 'sitemap':
+					navigateToURL(new URLRequest('http://en.wikipedia.org/wiki/Sitemaps'), "_blank");
+					break;
+				case 'bing':
+					navigateToURL(new URLRequest('http://www.bing.com/webmaster/'), "_blank");
+					break;
+			}
+		}
+		
+		/**
+		 * Set today the current edition time.
+		 */
+		private function setToday():void {
+			this.cUpdate.selectedDate = new Date();
+		}
+		
+		/**
+		 * Close window.
+		 */
+		private function onCANCEL():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CED_ABOUT')}" />
+		<s:Label width="100%" text="" />
+		<s:HGroup width="100%" height="100%" styleName="paddingGroup" verticalAlign="middle">
+			<s:Label width="90" text="{resourceManager.getString('language', 'CED_EDITION')}"/>
+			<mx:DateField id="cUpdate" />
+			<s:Button label="{resourceManager.getString('language', 'CED_TODAY')}" click="setToday()" />
+		</s:HGroup>
+		<s:Label width="100%" text="" />
+		<s:VGroup width="100%">
+			<s:Button width="100%" label="{resourceManager.getString('language', 'CED_OPENSITEMAP')}" click="onURL('url')" />
+			<s:Button width="100%" label="{resourceManager.getString('language', 'CED_ABOUTSITEMAP')}" click="onURL('sitemap')" />
+			<s:Button width="100%" label="{resourceManager.getString('language', 'CED_ABOUTGOOGLE')}" click="onURL('google')" />
+			<s:Button width="100%" label="{resourceManager.getString('language', 'CED_ABOUTBING')}" click="onURL('bing')" />
+		</s:VGroup>
+		<s:Label width="100%" text="" />
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'CED_SAVE')}" click="onOK()" />
+			<s:Button label="{resourceManager.getString('language', 'CED_CLOSE')}" click="onCANCEL()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

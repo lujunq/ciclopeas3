@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+TimelineKeyframe creates a keyframe button to be used on the timeline window.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/halo"
+			   width="80" height="45">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.MouseEvent;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		/**
+		 * A function to call on keyframe button click.
+		 */
+		public var keyframeClick:Function;
+		/**
+		 * A function to call on keyframe remove click.
+		 */
+		public var removeClick:Function;
+		
+		// GET/SET VALUES
+		
+		/**
+		 * The keyframe number.
+		 */
+		public function get frameNum():String {
+			return (this.keyframeIcon.label);
+		}
+		public function set frameNum(to:String):void {
+			this.keyframeIcon.label = to;
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Relase memory used by the object.
+		 */
+		public function kill():void {
+			this.keyframeClick = null;
+			this.removeClick = null;
+		}
+		
+		// EVENTS
+		
+		/**
+		 * Remove keyframe.
+		 */
+		private function remove(event:MouseEvent):void {
+			if (this.removeClick != null) this.removeClick(uint(keyframeIcon.label) - 1);
+			event.stopPropagation();
+		}
+		
+		/**
+		 * Open keyframe.
+		 */
+		private function open(event:MouseEvent):void {
+			if (this.keyframeClick != null) this.keyframeClick(uint(keyframeIcon.label) - 1);
+			event.stopPropagation();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:Button id="keyframeIcon" width="80" height="45" x="0" y="0" click="open(event);" />
+	<s:Button x="50" y="0" width="30" height="15" label="-" click="remove(event);" />
+</s:Group>

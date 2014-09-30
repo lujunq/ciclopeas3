@@ -1,0 +1,1183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityProperties creates a window to manage community properties.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				creationComplete="init()" width="800" height="550" title="{resourceManager.getString('language', 'CW_PROPERTIES')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="homeStreams"></mx:ArrayCollection>
+		<mx:ArrayCollection id="sendMethods">
+			<fx:String>post</fx:String>
+			<fx:String>get</fx:String>
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="feedTypeList">
+			<fx:String>Facebook</fx:String>
+			<fx:String>RSS2</fx:String>
+			<fx:String>Twitter</fx:String>
+			<fx:String>Wordpress</fx:String>
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="feedList" />
+		<mx:ArrayCollection id="metaList" />
+		<mx:ArrayCollection id="cGraphicsList" />
+		<mx:ArrayCollection id="graphicsFor" />
+		<mx:ArrayCollection id="voteProvider" />
+		<mx:ArrayCollection id="navxnextdata" />
+		<mx:ArrayCollection id="navxprevdata" />
+		<mx:ArrayCollection id="navynextdata" />
+		<mx:ArrayCollection id="navyprevdata" />
+		<mx:ArrayCollection id="navznextdata" />
+		<mx:ArrayCollection id="navzprevdata" />
+		<mx:ArrayCollection id="navhomedata" />
+		<mx:ArrayCollection id="navlistdata" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import art.ciclope.managanaeditor.data.DISFeedED;
+		import art.ciclope.managanaeditor.data.DISMetaED;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.display.DisplayObject;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _openAt:String;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get data
+			this.cID.text = LoadedData.community.id;
+			this.cTitle.text = LoadedData.community.title;
+			this.cWidth.text = String(LoadedData.community.width);
+			this.cHeight.text = String(LoadedData.community.height);
+			this.cPWidth.text = String(LoadedData.community.pwidth);
+			this.cPHeight.text = String(LoadedData.community.pheight);
+			this.cCopyleft.text = LoadedData.community.copyleft;
+			this.cCopyright.text = LoadedData.community.copyright;
+			this.cAbout.text = LoadedData.community.about;
+			this.cBackground.selectedColor = uint(LoadedData.community.background);
+			this.cAlpha.value = uint(LoadedData.community.alpha * 100);
+			this.cHighlight.selected = LoadedData.community.highlight;
+			this.cHighlightColor.selectedColor = uint(LoadedData.community.highlightcolor);
+			this.cLanguage.text = LoadedData.community.language;
+			var update:Array = LoadedData.community.edition.split("-");
+			this.cUpdate.text = update[1] + "/" + update[2] + "/" + update[0];
+			// fill graphics for list
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETTARGET'), data: 'target' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETICON'), data: 'icon' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE0'), data: 'vote0' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE10'), data: 'vote10' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE20'), data: 'vote20' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE30'), data: 'vote30' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE40'), data: 'vote40' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE50'), data: 'vote50' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE60'), data: 'vote60' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE70'), data: 'vote70' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE80'), data: 'vote80' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE90'), data: 'vote90' } );
+			this.graphicsFor.addItem( { label: resourceManager.getString('language', 'CW_SETVOTE100'), data: 'vote100' } );
+			// default vote list
+			this.voteProvider.removeAll();
+			this.voteProvider.addItem( { label: resourceManager.getString('language', 'CW_VOTENODEFAULT'), data: 0 } );
+			this.voteProvider.addItem( { label: "1", data: 1 } );
+			this.voteProvider.addItem( { label: "2", data: 2 } );
+			this.voteProvider.addItem( { label: "3", data: 3 } );
+			this.voteProvider.addItem( { label: "4", data: 4 } );
+			this.voteProvider.addItem( { label: "5", data: 5 } );
+			this.voteProvider.addItem( { label: "6", data: 6 } );
+			this.voteProvider.addItem( { label: "7", data: 7 } );
+			this.voteProvider.addItem( { label: "8", data: 8 } );
+			this.voteProvider.addItem( { label: "9", data: 9 } );
+			// navigation transitions
+			this.navxnextdata.removeAll();
+			this.navxnextdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navxprevdata.removeAll();
+			this.navxprevdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navynextdata.removeAll();
+			this.navynextdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navyprevdata.removeAll();
+			this.navyprevdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navznextdata.removeAll();
+			this.navznextdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navzprevdata.removeAll();
+			this.navzprevdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navhomedata.removeAll();
+			this.navhomedata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navlistdata.removeAll();
+			this.navlistdata.addItem( { label: resourceManager.getString('language', 'CW_NAVDEFAULT'), data:"" } );
+			this.navxnextdata.addItem( { label:"center", data:"center" } );
+			this.navxnextdata.addItem( { label:"fade", data:"fade" } );
+			this.navxnextdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navxnextdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navxnextdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navxnextdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navxnextdata.addItem( { label:"none", data:"none" } );
+			this.navxnextdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navxnextdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navxnextdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navxnextdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navxnextdata.addItem( { label:"target", data:"target" } );
+			this.navxprevdata.addItem( { label:"center", data:"center" } );
+			this.navxprevdata.addItem( { label:"fade", data:"fade" } );
+			this.navxprevdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navxprevdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navxprevdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navxprevdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navxprevdata.addItem( { label:"none", data:"none" } );
+			this.navxprevdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navxprevdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navxprevdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navxprevdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navxprevdata.addItem( { label:"target", data:"target" } );
+			this.navynextdata.addItem( { label:"center", data:"center" } );
+			this.navynextdata.addItem( { label:"fade", data:"fade" } );
+			this.navynextdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navynextdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navynextdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navynextdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navynextdata.addItem( { label:"none", data:"none" } );
+			this.navynextdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navynextdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navynextdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navynextdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navynextdata.addItem( { label:"target", data:"target" } );
+			this.navyprevdata.addItem( { label:"center", data:"center" } );
+			this.navyprevdata.addItem( { label:"fade", data:"fade" } );
+			this.navyprevdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navyprevdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navyprevdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navyprevdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navyprevdata.addItem( { label:"none", data:"none" } );
+			this.navyprevdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navyprevdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navyprevdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navyprevdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navyprevdata.addItem( { label:"target", data:"target" } );
+			this.navznextdata.addItem( { label:"center", data:"center" } );
+			this.navznextdata.addItem( { label:"fade", data:"fade" } );
+			this.navznextdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navznextdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navznextdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navznextdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navznextdata.addItem( { label:"none", data:"none" } );
+			this.navznextdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navznextdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navznextdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navznextdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navznextdata.addItem( { label:"target", data:"target" } );
+			this.navzprevdata.addItem( { label:"center", data:"center" } );
+			this.navzprevdata.addItem( { label:"fade", data:"fade" } );
+			this.navzprevdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navzprevdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navzprevdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navzprevdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navzprevdata.addItem( { label:"none", data:"none" } );
+			this.navzprevdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navzprevdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navzprevdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navzprevdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navzprevdata.addItem( { label:"target", data:"target" } );
+			this.navhomedata.addItem( { label:"center", data:"center" } );
+			this.navhomedata.addItem( { label:"fade", data:"fade" } );
+			this.navhomedata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navhomedata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navhomedata.addItem( { label:"fromright", data:"fromright" } );
+			this.navhomedata.addItem( { label:"fromup", data:"fromup" } );
+			this.navhomedata.addItem( { label:"none", data:"none" } );
+			this.navhomedata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navhomedata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navhomedata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navhomedata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navhomedata.addItem( { label:"target", data:"target" } );
+			this.navlistdata.addItem( { label:"center", data:"center" } );
+			this.navlistdata.addItem( { label:"fade", data:"fade" } );
+			this.navlistdata.addItem( { label:"fromdown", data:"fromdown" } );
+			this.navlistdata.addItem( { label:"fromleft", data:"fromleft" } );
+			this.navlistdata.addItem( { label:"fromright", data:"fromright" } );
+			this.navlistdata.addItem( { label:"fromup", data:"fromup" } );
+			this.navlistdata.addItem( { label:"none", data:"none" } );
+			this.navlistdata.addItem( { label:"swipedown", data:"swipedown" } );
+			this.navlistdata.addItem( { label:"swipeleft", data:"swipeleft" } );
+			this.navlistdata.addItem( { label:"swiperight", data:"swiperight" } );
+			this.navlistdata.addItem( { label:"swipeup", data:"swipeup" } );
+			this.navlistdata.addItem( { label:"target", data:"target" } );
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Set the current open tab.
+		 * @param	to	the tab name (String)
+		 */
+		public function setTab(to:*):void {
+			if (this.propTabs != null) {
+				switch (String(to)) {
+					case "properties":
+						this.propTabs.selectedIndex = 0;
+						break;
+					case "home":
+						this.propTabs.selectedIndex = 1;
+						break;
+					case "feeds":
+						this.propTabs.selectedIndex = 2;
+						break;
+					case "meta":
+						this.propTabs.selectedIndex = 3;
+						break;
+					case "graphics":
+						this.propTabs.selectedIndex = 4;
+						break;
+				}
+			} else {
+				this._openAt = String(to);
+			}
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Check if a given DIS folder name is valid.
+		 * @param	id	the name to check
+		 * @return	true if the name is valid
+		 */
+		private function checkID(id:String):Boolean {
+			if (id == "") {
+				return (false);
+			} else {
+				return (id == escape(id));
+			}
+		}
+		
+		/**
+		 * Check if provided width and height are valid values.
+		 * @param	width	width to check
+		 * @param	height	height tp check
+		 * @return	true if the size is valid
+		 */
+		private function checkView(width:Number, height:Number):Boolean {
+			if ((width <= 0) || (height <= 0)) {
+				return (false);
+			} else {
+				return (true);
+			}
+		}
+		
+		/**
+		 * Save community data.
+		 */
+		private function saveCommunity():void {
+			// check for provided data
+			if (this.cTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'CW_ERWINDOW'), resourceManager.getString('language', 'CW_ERNOTITLE'));
+			} else if (!checkID(this.cID.text)) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_ERWINDOW'), resourceManager.getString('language', 'CW_ERNOID'));
+			} else if (!checkView(Number(this.cWidth.text), Number(this.cHeight.text))) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_ERWINDOW'), resourceManager.getString('language', 'CW_ERNOSIZE'));
+			} else {
+				// ask server for community creation
+				var parameters:String = "title=" + escape(this.cTitle.text);
+				parameters += "&id=" + escape(this.cID.text);
+				parameters += "&width=" + escape(this.cWidth.text);
+				parameters += "&height=" + escape(this.cHeight.text);
+				parameters += "&pwidth=" + escape(this.cPWidth.text);
+				parameters += "&pheight=" + escape(this.cPHeight.text);
+				parameters += "&copyleft=" + escape(this.cCopyleft.text);
+				parameters += "&copyright=" + escape(this.cCopyright.text);
+				parameters += "&about=" + escape(this.cAbout.text);
+				parameters += "&background=" + escape(String(this.cBackground.selectedColor));
+				parameters += "&alpha=" + escape(String(this.cAlpha.value));
+				parameters += "&highlight=" + escape(String(this.cHighlight.selected));
+				parameters += "&highlightcolor=" + escape(String(this.cHighlightColor.selectedColor));
+				parameters += "&language=" + escape(this.cLanguage.text);
+				parameters += "&edition=" + escape(this.cUpdate.text);
+				parameters += "&index=" + LoadedData.community.index;
+				parameters += "&defaultvote=" + LoadedData.community.voteDefault;
+				if (LoadedData.community.voteRecord) parameters += "&voterecord=1";
+					else parameters += "&voterecord=0";
+				if (this.homeStreamList != null) parameters += "&home=" + escape(this.homeStreamList.selectedItem.data);
+					else parameters += "&home=" + escape(LoadedData.community.home);
+				parameters += "&feedcount=" + LoadedData.community.feeds.length;
+				for (var index:uint = 0; index < LoadedData.community.feeds.length; index++) {
+					parameters += "&feedname" + index + "=" + escape(LoadedData.community.feeds[index].name);
+					parameters += "&feedtype" + index + "=" + escape(LoadedData.community.feeds[index].type);
+					parameters += "&feedreference" + index + "=" + escape(LoadedData.community.feeds[index].reference);
+				}
+				if (this.gIcon != null) {
+					parameters += "&savegraphic=true";
+					if (this.gIcon.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gIcon=";
+					} else {
+						parameters += "&gIcon=" + escape(this.gIcon.text);
+					}
+					if (this.gTarget.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gTarget=";
+					} else {
+						parameters += "&gTarget=" + escape(this.gTarget.text);
+					}
+					if (this.gVote0.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote0=";
+					} else {
+						parameters += "&gVote0=" + escape(this.gVote0.text);
+					}
+					if (this.gVote10.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote10=";
+					} else {
+						parameters += "&gVote10=" + escape(this.gVote10.text);
+					}
+					if (this.gVote20.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote20=";
+					} else {
+						parameters += "&gVote20=" + escape(this.gVote20.text);
+					}
+					if (this.gVote30.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote30=";
+					} else {
+						parameters += "&gVote30=" + escape(this.gVote30.text);
+					}
+					if (this.gVote40.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote40=";
+					} else {
+						parameters += "&gVote40=" + escape(this.gVote40.text);
+					}
+					if (this.gVote50.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote50=";
+					} else {
+						parameters += "&gVote50=" + escape(this.gVote50.text);
+					}
+					if (this.gVote60.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote60=";
+					} else {
+						parameters += "&gVote60=" + escape(this.gVote60.text);
+					}
+					if (this.gVote70.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote70=";
+					} else {
+						parameters += "&gVote70=" + escape(this.gVote70.text);
+					}
+					if (this.gVote80.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote80=";
+					} else {
+						parameters += "&gVote80=" + escape(this.gVote80.text);
+					}
+					if (this.gVote90.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote90=";
+					} else {
+						parameters += "&gVote90=" + escape(this.gVote90.text);
+					}
+					if (this.gVote100.text == resourceManager.getString('language', 'CW_DEFAULT')) {
+						parameters += "&gVote100=";
+					} else {
+						parameters += "&gVote100=" + escape(this.gVote100.text);
+					}
+				} else {
+					parameters += "&savegraphic=false";
+				}
+				if (this.cssText != null) {
+					LoadedData.community.css = this.cssText.text;
+					FlexGlobals.topLevelApplication.processCommand("applyCSS");
+				}
+				parameters += "&css=" + escape(LoadedData.community.css);
+				// navigation
+				parameters += "&navxnext=" + escape(LoadedData.community.navxnext);
+				parameters += "&navxprev=" + escape(LoadedData.community.navxprev);
+				parameters += "&navynext=" + escape(LoadedData.community.navynext);
+				parameters += "&navyprev=" + escape(LoadedData.community.navyprev);
+				parameters += "&navznext=" + escape(LoadedData.community.navznext);
+				parameters += "&navzprev=" + escape(LoadedData.community.navzprev);
+				parameters += "&navhome=" + escape(LoadedData.community.navhome);
+				parameters += "&navlist=" + escape(LoadedData.community.navlist);
+				WindowServerCheck.createServer("savecommunity", parameters, this.serverReturn);
+			}
+		}
+		
+		/**
+		 * Server information return.
+		 * @param	server	the server information object
+		 */
+		private function serverReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_PROPWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				LoadedData.community.getData(server.data);
+				PopUpManager.removePopUp(this);
+				FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'CW_PROPOK') + " " + LoadedData.community.title));
+				FlexGlobals.topLevelApplication.showCommunity();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Load a list of published streams.
+		 */
+		private function loadStreamList():void {
+			this.homeStreamList.enabled = false;
+			WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+		}
+		
+		/**
+		 * Stream list information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_PROPWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				this.homeStreams.removeAll();
+				this.homeStreams.addItem( { label:resourceManager.getString('language', 'CW_SELECTHOMENONE'), data:"" } );
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.homeStreams.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+				}
+				this.homeStreamList.selectedIndex = 0;
+				for (index = 0; index < this.homeStreams.length; index++) {
+					if (this.homeStreams.getItemAt(index).data == LoadedData.community.home) this.homeStreamList.selectedIndex = index;
+				}
+				this.homeStreamList.enabled = true;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Load the current feed list.
+		 */
+		private function loadFeedList():void {
+			this.feedList.removeAll();
+			for (var index:uint = 0; index < LoadedData.community.feeds.length; index++) {
+				this.feedList.addItem( { label: (LoadedData.community.feeds[index].name + " (" + LoadedData.community.feeds[index].type + ")"), name: LoadedData.community.feeds[index].name, type: LoadedData.community.feeds[index].type, reference: LoadedData.community.feeds[index].reference } );
+			}
+		}
+		
+		/**
+		 * Add a new feed to the community.
+		 */
+		private function feedNew():void {
+			if ((this.feedName.text != "") && (this.feedType.selectedIndex >= 0) && (this.feedReference.text != "")) {
+				LoadedData.community.feeds.push(new DISFeedED(this.feedName.text, this.feedType.selectedItem, this.feedReference.text));
+				this.loadFeedList();
+				this.feedName.text = "";
+				this.feedType.selectedIndex = -1;
+				this.feedReference.text = "";
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CW_NEWFEEDERRORTITLE'), resourceManager.getString('language', 'CW_NEWFEEDERROR'));
+			}
+		}
+		
+		/**
+		 * Remove a feed from the community.
+		 */
+		private function feedDelete():void {
+			if (this.cFeedList.selectedIndex >= 0) {
+				LoadedData.community.feeds.splice(this.cFeedList.selectedIndex, 1);
+				this.loadFeedList();
+			}
+		}
+		
+		/**
+		 * Edit data about an external feed.
+		 */
+		private function feedEdit():void {
+			if (this.cFeedList.selectedIndex >= 0) {
+				this.feedName.text = this.cFeedList.selectedItem.name;
+				for (var index:uint = 0; index < this.feedTypeList.length; index++) {
+					if (this.feedTypeList[index] == this.cFeedList.selectedItem.type) this.feedType.selectedIndex = index;
+				}
+				this.feedReference.text = this.cFeedList.selectedItem.reference;
+			}
+		}
+		
+		/**
+		 * Update an existing feed.
+		 */
+		private function feedUpdate():void {
+			if (this.cFeedList.selectedIndex >= 0) {
+				if ((this.feedName.text != "") && (this.feedType.selectedIndex >= 0) && (this.feedReference.text != "")) {
+					LoadedData.community.feeds[this.cFeedList.selectedIndex].name = this.feedName.text;
+					LoadedData.community.feeds[this.cFeedList.selectedIndex].type = this.feedType.selectedItem;
+					LoadedData.community.feeds[this.cFeedList.selectedIndex].reference = this.feedReference.text;
+					this.loadFeedList();
+					this.feedName.text = "";
+					this.feedType.selectedIndex = -1;
+					this.feedReference.text = "";
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'CW_UPDATEFEEDERRORTITLE'), resourceManager.getString('language', 'CW_NEWFEEDERROR'));
+				}
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CW_UPDATEFEEDERRORTITLE'), resourceManager.getString('language', 'CW_UPDATEFEEDERROR'));
+			}
+		}
+		
+		
+		/**
+		 * Load the community graphics list.
+		 */
+		private function loadGraphicsList():void {
+			var param:String = "community=" + LoadedData.community.id;
+			param += "&type=picture";
+			param += "&cfiles=true";
+			WindowServerCheck.createServer("listfiles", param, graphicsReturn);
+		}
+		
+		/**
+		 * Graphics list information received.
+		 * @param	server	the server information object
+		 */
+		private function graphicsReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_PROPWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				this.cGraphicsList.removeAll();
+				for (var index:uint = 0; index < server.data.child("file").length(); index++) {
+					this.cGraphicsList.addItem({ file: String(server.data.file[index]), size: Math.round(Number(server.data.file[index].@size) / 1024), subtype: String(server.data.file[index].@subtype), date:new Date(uint(server.data.file[index].@date))});
+				}
+			}
+			server.kill();
+			// read community graphics information
+			if (LoadedData.community.icon == "") this.gIcon.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gIcon.text = LoadedData.community.icon;
+			if (LoadedData.community.target == "") this.gTarget.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gTarget.text = LoadedData.community.target;
+			if (LoadedData.community.vote0 == "") this.gVote0.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote0.text = LoadedData.community.vote0;
+			if (LoadedData.community.vote10 == "") this.gVote10.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote10.text = LoadedData.community.vote10;
+			if (LoadedData.community.vote20 == "") this.gVote20.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote20.text = LoadedData.community.vote20;
+			if (LoadedData.community.vote30 == "") this.gVote30.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote30.text = LoadedData.community.vote30;
+			if (LoadedData.community.vote40 == "") this.gVote40.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote40.text = LoadedData.community.vote40;
+			if (LoadedData.community.vote50 == "") this.gVote50.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote50.text = LoadedData.community.vote50;
+			if (LoadedData.community.vote60 == "") this.gVote60.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote60.text = LoadedData.community.vote60;
+			if (LoadedData.community.vote70 == "") this.gVote70.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote70.text = LoadedData.community.vote70;
+			if (LoadedData.community.vote80 == "") this.gVote80.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote80.text = LoadedData.community.vote80;
+			if (LoadedData.community.vote90 == "") this.gVote90.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote90.text = LoadedData.community.vote90;
+			if (LoadedData.community.vote100 == "") this.gVote100.text = resourceManager.getString('language', 'CW_DEFAULT');
+				else this.gVote100.text = LoadedData.community.vote100;
+		}
+		
+		
+		/**
+		 * Load the current meta data list.
+		 */
+		private function loadMetaList():void {
+			this.metaList.removeAll();
+			for (var index:uint = 0; index < LoadedData.community.meta.length; index++) {
+				this.metaList.addItem( { label:LoadedData.community.meta[index].name, data:LoadedData.community.meta[index].id } );
+			}
+		}
+		
+		/**
+		 * Add a new meta data field to the community.
+		 */
+		private function metaNew():void {
+			if (this.metaName.text != "") {
+				// create the meta data field on database
+				var parameters:String = "community=" + escape(LoadedData.community.id);
+				parameters += "&metaname=" + escape(this.metaName.text);
+				parameters += "&action=new";
+				WindowServerCheck.createServer("managemeta", parameters, this.metaReturn);
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CW_METAERRORTITLE'), resourceManager.getString('language', 'CW_NEWMETAERROR'));
+			}
+		}
+		
+		/**
+		 * Remove a meta data field from the community.
+		 */
+		private function metaDelete():void {
+			if (this.cMetaList.selectedIndex >= 0) {
+				// confirm meta data field removal
+				var confirm:WindowConfirm = new WindowConfirm();
+				confirm.setAction(WindowConfirm.ACTION_DELETEMETA, String(this.cMetaList.selectedItem.data), this.deleteMetaReturn);
+				PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+				PopUpManager.centerPopUp(confirm);
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CW_METAERRORTITLE'), resourceManager.getString('language', 'CW_DELETEMETAERROR'));
+			}
+		}
+		
+		/**
+		 * Confirmation return for delete meta data field actions.
+		 * @param	confirm	was the meta data field actually removed?
+		 */
+		private function deleteMetaReturn(confirm:Boolean):void {
+			if (confirm) {
+				// create the meta data field on database
+				var parameters:String = "community=" + escape(LoadedData.community.id);
+				parameters += "&action=list";
+				WindowServerCheck.createServer("managemeta", parameters, this.metaReturn);
+			}
+		}
+		
+		/**
+		 * Edit data about a meta data field.
+		 */
+		private function metaEdit():void {
+			if (this.cMetaList.selectedIndex >= 0) {
+				this.metaName.text = this.cMetaList.selectedItem.label;
+			}
+		}
+		
+		/**
+		 * Update an existing meta data field.
+		 */
+		private function metaUpdate():void {
+			if (this.cMetaList.selectedIndex >= 0) {
+				if (this.metaName.text != "") {
+					var parameters:String = "community=" + escape(LoadedData.community.id);
+					parameters += "&metaname=" + escape(this.metaName.text);
+					parameters += "&metaid=" + this.cMetaList.selectedItem.data;
+					parameters += "&action=update";
+					WindowServerCheck.createServer("managemeta", parameters, this.metaReturn);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'CW_METAERRORTITLE'), resourceManager.getString('language', 'CW_NEWMETAERROR'));
+				}
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CW_METAERRORTITLE'), resourceManager.getString('language', 'CW_UPDATEMETAERROR'));
+			}
+		}
+		
+		/**
+		 * Meta data field information received.
+		 * @param	server	the server information object
+		 */
+		private function metaReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_METAERRORTITLE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// release previous meta data information
+				LoadedData.community.clearMeta();
+				// get meta data fields
+				for (var index:uint = 0; index < server.data.child("meta").length(); index++) {
+					LoadedData.community.meta.push(new DISMetaED(String(server.data.meta[index]), int(server.data.meta[index].@id)));
+					// check loaded stream meta fields
+					if (LoadedData.stream.meta['meta' + int(server.data.meta[index].@id)] != null) {
+						LoadedData.stream.meta['meta' + int(server.data.meta[index].@id)].name = String(server.data.meta[index]);
+					}
+				}
+				this.loadMetaList();
+				this.metaName.text = "";
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Set a community graphic.
+		 */
+		private function setGraphic():void {
+			if (this.cGraphics.selectedIndex >= 0) {
+				switch(String(this.graphicsForList.selectedItem.data)) {
+					case 'icon':
+						this.gIcon.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'target':
+						this.gTarget.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote0':
+						this.gVote0.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote10':
+						this.gVote10.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote20':
+						this.gVote20.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote30':
+						this.gVote30.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote40':
+						this.gVote40.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote50':
+						this.gVote50.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote60':
+						this.gVote60.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote70':
+						this.gVote70.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote80':
+						this.gVote80.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote90':
+						this.gVote90.text = this.cGraphics.selectedItem.file;
+						break;
+					case 'vote100':
+						this.gVote100.text = this.cGraphics.selectedItem.file;
+						break;
+				}
+			}
+		}
+		
+		/**
+		 * Return a community graphic to its default.
+		 * @param	name	the graphic to set
+		 */
+		private function setDefaultGraphic(name:String):void {
+			switch(name) {
+				case 'icon':
+					this.gIcon.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'target':
+					this.gTarget.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote0':
+					this.gVote0.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote10':
+					this.gVote10.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote20':
+					this.gVote20.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote30':
+					this.gVote30.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote40':
+					this.gVote40.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote50':
+					this.gVote50.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote60':
+					this.gVote60.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote70':
+					this.gVote70.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote80':
+					this.gVote80.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote90':
+					this.gVote90.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+				case 'vote100':
+					this.gVote100.text = resourceManager.getString('language', 'CW_DEFAULT');
+					break;
+			}
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function closeWindow():void {
+			this._openAt = null;
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * A component became available.
+		 * @param	name	the component name
+		 */
+		private function onCInit(name:String):void {
+			var inav:uint;
+			switch (name) {
+				case "propTabs":
+					if (this._openAt != null) this.setTab(this._openAt);
+					break;
+				case "defaultVote":
+					this.defaultVote.selectedIndex = 0;
+					for (var icom:uint = 0; icom < this.voteProvider.length; icom++) {
+						if (this.voteProvider[icom].data == LoadedData.community.voteDefault) this.defaultVote.selectedIndex = icom;
+					}
+					break;
+				case "voterecord":
+					this.voterecord.selected = LoadedData.community.voteRecord;
+					break;
+				case "gIcon":
+					this.gIcon.text = LoadedData.community.icon;
+					break;
+				case "gTarget":
+					this.gTarget.text = LoadedData.community.target;
+					break;
+				case "gVote0":
+					this.gVote0.text = LoadedData.community.vote0;
+					break;
+				case "gVote10":
+					this.gVote10.text = LoadedData.community.vote10;
+					break;
+				case "gVote20":
+					this.gVote20.text = LoadedData.community.vote20;
+					break;
+				case "gVote30":
+					this.gVote30.text = LoadedData.community.vote30;
+					break;
+				case "gVote40":
+					this.gVote40.text = LoadedData.community.vote40;
+					break;
+				case "gVote50":
+					this.gVote50.text = LoadedData.community.vote50;
+					break;
+				case "gVote60":
+					this.gVote60.text = LoadedData.community.vote60;
+					break;
+				case "gVote70":
+					this.gVote70.text = LoadedData.community.vote70;
+					break;
+				case "gVote80":
+					this.gVote80.text = LoadedData.community.vote80;
+					break;
+				case "gVote90":
+					this.gVote90.text = LoadedData.community.vote90;
+					break;
+				case "gVote100":
+					this.gVote100.text = LoadedData.community.vote100;
+					break;
+				case "cssText":
+					this.cssText.text = LoadedData.community.css;
+					break;
+				case "navXnext":
+					for (inav = 0; inav < this.navxnextdata.length; inav++) {
+						if (LoadedData.community.navxnext == this.navxnextdata[inav].data) this.navXnext.selectedIndex = inav;
+					}
+					break;
+				case "navYnext":
+					for (inav = 0; inav < this.navynextdata.length; inav++) {
+						if (LoadedData.community.navynext == this.navynextdata[inav].data) this.navYnext.selectedIndex = inav;
+					}
+					break;
+				case "navZnext":
+					for (inav = 0; inav < this.navznextdata.length; inav++) {
+						if (LoadedData.community.navznext == this.navznextdata[inav].data) this.navZnext.selectedIndex = inav;
+					}
+					break;
+				case "navXprev":
+					for (inav = 0; inav < this.navxprevdata.length; inav++) {
+						if (LoadedData.community.navxprev == this.navxprevdata[inav].data) this.navXprev.selectedIndex = inav;
+					}
+					break;
+				case "navYprev":
+					for (inav = 0; inav < this.navyprevdata.length; inav++) {
+						if (LoadedData.community.navyprev == this.navyprevdata[inav].data) this.navYprev.selectedIndex = inav;
+					}
+					break;
+				case "navZprev":
+					for (inav = 0; inav < this.navzprevdata.length; inav++) {
+						if (LoadedData.community.navzprev == this.navzprevdata[inav].data) this.navZprev.selectedIndex = inav;
+					}
+					break;
+				case "navhome":
+					for (inav = 0; inav < this.navhomedata.length; inav++) {
+						if (LoadedData.community.navhome == this.navhomedata[inav].data) this.navhome.selectedIndex = inav;
+					}
+					break;
+				case "navlist":
+					for (inav = 0; inav < this.navlistdata.length; inav++) {
+						if (LoadedData.community.navlist == this.navlistdata[inav].data) this.navlist.selectedIndex = inav;
+					}
+					break;
+			}
+		}
+		
+		/**
+		 * Set the community default vote for group interaction.
+		 */
+		private function setDefaultVote():void {
+			LoadedData.community.voteDefault = this.defaultVote.selectedItem.data;
+		}
+		
+		/**
+		 * Set the transition for a navigation.
+		 * @param	nav	the navigation to change
+		 */
+		private function setNav(nav:String):void {
+			switch (nav) {
+				case "xnext": LoadedData.community.navxnext = String(this.navXnext.selectedItem.data); break;
+				case "xprev": LoadedData.community.navxprev = String(this.navXprev.selectedItem.data); break;
+				case "ynext": LoadedData.community.navynext = String(this.navYnext.selectedItem.data); break;
+				case "yprev": LoadedData.community.navyprev = String(this.navYprev.selectedItem.data); break;
+				case "znext": LoadedData.community.navxnext = String(this.navZnext.selectedItem.data); break;
+				case "zprev": LoadedData.community.navxprev = String(this.navZprev.selectedItem.data); break;
+				case "home": LoadedData.community.navhome = String(this.navhome.selectedItem.data); break;
+				case "list": LoadedData.community.navlist = String(this.navlist.selectedItem.data); break;
+			}
+		}
+		
+		/**
+		 * Set vote recording property.
+		 */
+		private function setVoteRecord():void {
+			LoadedData.community.voteRecord = this.voterecord.selected;
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" styleName="paddingGroup">
+		<mx:TabNavigator id="propTabs" width="100%" height="100%" creationComplete="onCInit('propTabs')">
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_PROPERTYTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_TITLE')}"/>
+							<s:TextInput id="cTitle" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_ID')}"/>
+							<s:TextInput id="cID" width="100%" enabled="false" />
+							<s:Label text=".dis"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_VIEWSIZE')}"/>
+							<s:TextInput id="cWidth" width="50" text="1280" restrict="0-9" />
+							<s:Label text="x"/>
+							<s:TextInput id="cHeight" width="50" text="720" restrict="0-9" />
+							<s:Label text="{resourceManager.getString('language', 'CW_PIXELS')}"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_PORTRAITSIZE')}"/>
+							<s:TextInput id="cPWidth" width="50" text="720" restrict="0-9" />
+							<s:Label text="x"/>
+							<s:TextInput id="cPHeight" width="50" text="1280" restrict="0-9" />
+							<s:Label text="{resourceManager.getString('language', 'CW_PIXELS')}"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_COPYLEFT')}"/>
+							<s:TextInput id="cCopyleft" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_COPYRIGHT')}"/>
+							<s:TextInput id="cCopyright" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_ABOUT')}"/>
+							<s:TextArea id="cAbout" width="100%" height="60"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_COLOR')}"/>
+							<s:VGroup width="100%">
+								<s:HGroup width="100%" verticalAlign="middle">
+									<mx:ColorPicker id="cBackground"/>
+									<s:Label text="{resourceManager.getString('language', 'CW_BACKGROUND')}"/>
+									<s:NumericStepper id="cAlpha" maximum="100" minimum="0" value="100" stepSize="1"/>
+									<s:Label text="{resourceManager.getString('language', 'CW_ALPHA')}"/>
+								</s:HGroup>
+								<s:HGroup width="100%" verticalAlign="middle">
+									<s:CheckBox id="cHighlight" label="{resourceManager.getString('language', 'CW_HIGHLIGHT')}"/>
+									<mx:ColorPicker id="cHighlightColor"/>
+								</s:HGroup>
+							</s:VGroup>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_LANGUAGE')}"/>
+							<s:TextInput id="cLanguage" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="90" text="{resourceManager.getString('language', 'CW_EDITION')}"/>
+							<mx:DateField id="cUpdate" enabled="false" />
+						</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_HOMETAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:Label text="{resourceManager.getString('language', 'CW_SELECTHOME')}"/>
+					<s:List id="homeStreamList" width="100%" height="100%" dataProvider="{homeStreams}" creationComplete="loadStreamList()"></s:List>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_FEEDTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:VGroup width="100%" height="60%">
+						<s:Label text="{resourceManager.getString('language', 'CW_EXTERNALFEEDS')}"/>
+						<s:List width="100%" height="100%" id="cFeedList" dataProvider="{feedList}" creationComplete="loadFeedList()"></s:List>
+						<s:HGroup width="100%" height="25" horizontalAlign="right">
+							<s:Button id="cFeedDelete" label="{resourceManager.getString('language', 'CW_FEEDDELETE')}" click="feedDelete()" />
+							<s:Button id="cFeedEdit" label="{resourceManager.getString('language', 'CW_FEEDEDIT')}" click="feedEdit()" />
+						</s:HGroup>
+					</s:VGroup>
+					<s:VGroup width="100%" height="40%">
+						<s:Label text="{resourceManager.getString('language', 'CW_FEEDINFORMATION')}"/>
+						<s:VGroup width="100%" height="100%">
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="90" text="{resourceManager.getString('language', 'CW_FEEDNAME')}"/>
+								<s:TextInput id="feedName" width="100%"/>
+							</s:HGroup>
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="90" text="{resourceManager.getString('language', 'CW_FEEDTYPE')}"/>
+								<s:DropDownList id="feedType" width="100%" dataProvider="{feedTypeList}"></s:DropDownList>
+							</s:HGroup>
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="90" text="{resourceManager.getString('language', 'CW_FEEDREFERENCE')}"/>
+								<s:TextInput id="feedReference" width="100%"/>
+							</s:HGroup>
+						</s:VGroup>
+						<s:HGroup width="100%" height="25" horizontalAlign="right">
+							<s:Button id="cFeedUpdate" label="{resourceManager.getString('language', 'CW_FEEDUPDATE')}" click="feedUpdate()" />
+							<s:Button id="cFeedNew" label="{resourceManager.getString('language', 'CW_FEEDNEW')}" click="feedNew()" />
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_METATAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:VGroup width="100%" height="70%">
+						<s:Label text="{resourceManager.getString('language', 'CW_METAFIELDS')}"/>
+						<s:List width="100%" height="100%" id="cMetaList" dataProvider="{metaList}" creationComplete="loadMetaList()"></s:List>
+						<s:HGroup width="100%" height="25" horizontalAlign="right">
+							<s:Button id="cMetaDelete" label="{resourceManager.getString('language', 'CW_METADELETE')}" click="metaDelete()" />
+							<s:Button id="cMetaEdit" label="{resourceManager.getString('language', 'CW_METAEDIT')}" click="metaEdit()" />
+						</s:HGroup>
+					</s:VGroup>
+					<s:VGroup width="100%" height="30%">
+						<s:Label text="{resourceManager.getString('language', 'CW_METAINFO')}"/>
+						<s:VGroup width="100%" height="100%">
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="90" text="{resourceManager.getString('language', 'CW_METANAME')}"/>
+								<s:TextInput id="metaName" width="100%"/>
+							</s:HGroup>
+						</s:VGroup>
+						<s:HGroup width="100%" height="25" horizontalAlign="right">
+							<s:Button id="cMetaUpdate" label="{resourceManager.getString('language', 'CW_METAUPDATE')}" click="metaUpdate()" />
+							<s:Button id="cMetaNew" label="{resourceManager.getString('language', 'CW_METANEW')}" click="metaNew()" />
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_GRAPHICSTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:VGroup width="100%" height="70%">
+						<s:DataGrid id="cGraphics" dataProvider="{cGraphicsList}" width="100%" height="180" requestedRowCount="4" creationComplete="loadGraphicsList()">
+							<s:columns>
+								<s:ArrayList>
+									<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+									<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+									<s:GridColumn dataField="date" headerText="{resourceManager.getString('language', 'FM_COLUMNDATE')}"></s:GridColumn>
+									<s:GridColumn dataField="subtype" headerText="{resourceManager.getString('language', 'FM_COLUMNSUB')}"></s:GridColumn>
+								</s:ArrayList>
+							</s:columns>
+						</s:DataGrid>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'CW_GRAPHICFOR')}"/>
+							<s:DropDownList id="graphicsForList" dataProvider="{graphicsFor}" selectedIndex="0" />
+							<s:Button label="{resourceManager.getString('language', 'CW_GRAPHICSET')}" click="setGraphic()" />
+						</s:HGroup>
+						<mx:HRule width="100%" />
+						<s:Label text="{resourceManager.getString('language', 'CW_GRAPHICSFOR')}"/>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_ICONGRAPHIC')}"/>
+							<s:TextInput width="17%" id="gIcon" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" creationComplete="onCInit('gIcon')" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('icon')" />
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_TARGETGRAPHIC')}"/>
+							<s:TextInput width="17%" id="gTarget" creationComplete="onCInit('gTarget')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('target')" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC0')}"/>
+							<s:TextInput width="17%" id="gVote0" creationComplete="onCInit('gVote0')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote0')" />
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC10')}"/>
+							<s:TextInput width="17%" id="gVote10" creationComplete="onCInit('gVote10')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote10')" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC20')}"/>
+							<s:TextInput width="17%" id="gVote20" creationComplete="onCInit('gVote20')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote20')" />
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC30')}"/>
+							<s:TextInput width="17%" id="gVote30" creationComplete="onCInit('gVote30')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote30')" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC40')}"/>
+							<s:TextInput width="17%" id="gVote40" creationComplete="onCInit('gVote40')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote40')" />
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC50')}"/>
+							<s:TextInput width="17%" id="gVote50" creationComplete="onCInit('gVote50')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote50')" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC60')}"/>
+							<s:TextInput width="17%" id="gVote60" creationComplete="onCInit('gVote60')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote60')" />
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC70')}"/>
+							<s:TextInput width="17%" id="gVote70" creationComplete="onCInit('gVote70')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote70')" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC80')}"/>
+							<s:TextInput width="17%" id="gVote80" creationComplete="onCInit('gVote80')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote80')" />
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC90')}"/>
+							<s:TextInput width="17%" id="gVote90" creationComplete="onCInit('gVote90')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote90')" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="17%" textAlign="right" text="{resourceManager.getString('language', 'CW_VOTEGRAPHIC100')}"/>
+							<s:TextInput width="17%" id="gVote100" creationComplete="onCInit('gVote100')" enabled="false" text="{resourceManager.getString('language', 'CW_DEFAULT')}" />
+							<s:Button width="16%" label="{resourceManager.getString('language', 'CW_USEDEFAULT')}" click="setDefaultGraphic('vote100')" />
+							<s:Label width="17%" text=""/>
+							<s:Label width="17%" text=""/>
+							<s:Label width="16%" text=""/>
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_INTERACTIONTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'CW_VOTEDEFAULT')}"/>
+						<s:DropDownList id="defaultVote" dataProvider="{voteProvider}" creationComplete="onCInit('defaultVote')" change="setDefaultVote()" width="30%" />
+					</s:HGroup>
+					<s:CheckBox id="voterecord" selected="true" label="{resourceManager.getString('language', 'CW_VOTERECORD')}" change="setVoteRecord()" creationComplete="onCInit('voterecord')" />
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:Label text="{resourceManager.getString('language', 'CW_NAVTRANSITION')}"/>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVXNEXT')}" />
+						<s:DropDownList width="35%" id="navXnext" dataProvider="{navxnextdata}" creationComplete="onCInit('navXnext')" change="setNav('xnext')" />
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVXPREV')}"/>
+						<s:DropDownList width="35%" id="navXprev" dataProvider="{navxprevdata}" creationComplete="onCInit('navXprev')" change="setNav('xprev')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVYNEXT')}"/>
+						<s:DropDownList width="35%" id="navYnext" dataProvider="{navynextdata}" creationComplete="onCInit('navYnext')" change="setNav('ynext')" />
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVYPREV')}"/>
+						<s:DropDownList width="35%" id="navYprev" dataProvider="{navyprevdata}" creationComplete="onCInit('navYprev')" change="setNav('yprev')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVZNEXT')}"/>
+						<s:DropDownList width="35%" id="navZnext" dataProvider="{navznextdata}" creationComplete="onCInit('navZnext')" change="setNav('znext')" />
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVZPREV')}"/>
+						<s:DropDownList width="35%" id="navZprev" dataProvider="{navzprevdata}" creationComplete="onCInit('navZprev')" change="setNav('zprev')" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVHOME')}"/>
+						<s:DropDownList width="35%" id="navhome" dataProvider="{navhomedata}" creationComplete="onCInit('navhome')" change="setNav('home')" />
+						<s:Label width="15%" textAlign="right" text="{resourceManager.getString('language', 'CW_NAVREMOTESELECT')}"/>
+						<s:DropDownList width="35%" id="navlist" dataProvider="{navlistdata}" creationComplete="onCInit('navlist')" change="setNav('list')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_CSSTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:Label text="{resourceManager.getString('language', 'CW_CSSABOUT')}" width="100%" />
+					<s:TextArea id="cssText" width="100%" height="100%" creationComplete="onCInit('cssText')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CW_CANCEL')}" click="closeWindow()" />
+			<s:Button label="{resourceManager.getString('language', 'CW_SAVE')}" click="saveCommunity()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

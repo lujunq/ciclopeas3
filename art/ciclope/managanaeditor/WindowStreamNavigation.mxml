@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamNavigation creates a window to edit navigation options for a stream.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   width="550" height="600" borderVisible="true" title="{resourceManager.getString('language', 'STW_NAVTITLE')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="xnextData" />
+		<mx:ArrayCollection id="xprevData" />
+		<mx:ArrayCollection id="ynextData" />
+		<mx:ArrayCollection id="yprevData" />
+		<mx:ArrayCollection id="znextData" />
+		<mx:ArrayCollection id="zprevData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get a list of published streams
+			WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+		}
+		
+		/**
+		 * Published streams list information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try again
+				WindowServerCheck.createServer("publishedstreams", ("community=" + escape(LoadedData.community.id)), this.listReturn);
+			} else {
+				// get stream data
+				this.xnextData.removeAll();
+				this.xprevData.removeAll();
+				this.ynextData.removeAll();
+				this.yprevData.removeAll();
+				this.znextData.removeAll();
+				this.zprevData.removeAll();
+				this.xnextData.addItem( { label: resourceManager.getString('language', 'STW_NAVNOSTREAM'), data: "" } );
+				this.xprevData.addItem( { label: resourceManager.getString('language', 'STW_NAVNOSTREAM'), data: "" } );
+				this.ynextData.addItem( { label: resourceManager.getString('language', 'STW_NAVNOSTREAM'), data: "" } );
+				this.yprevData.addItem( { label: resourceManager.getString('language', 'STW_NAVNOSTREAM'), data: "" } );
+				this.znextData.addItem( { label: resourceManager.getString('language', 'STW_NAVNOSTREAM'), data: "" } );
+				this.zprevData.addItem( { label: resourceManager.getString('language', 'STW_NAVNOSTREAM'), data: "" } );
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.xnextData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.xprevData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.ynextData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.yprevData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.znextData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+					this.zprevData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+				}
+				if (this.xnext != null) this.getData('xnext');
+				if (this.xprev != null) this.getData('xprev');
+				if (this.ynext != null) this.getData('ynext');
+				if (this.yprev != null) this.getData('yprev');
+				if (this.znext != null) this.getData('znext');
+				if (this.zprev != null) this.getData('zprev');
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Get data from loaded stream information.
+		 */
+		private function getData(name:String):void {
+			var listAr:Array;
+			var index:uint;
+			var index2:uint;
+			switch (name) {
+				case 'xnext':
+					listAr = LoadedData.stream.xnext.split("|");
+					if (listAr.length > 0) {
+						for (index = 0; index < listAr.length; index++) {
+							for (index2 = 0; index2 < this.xnextData.length; index2++) {
+								if (this.xnextData[index2].data == listAr[index]) {
+									this.xnext.selectedIndices.push(index2);
+								}
+							}
+						}
+					}
+					this.xnextData.refresh();
+					break;
+				case 'xprev':
+					listAr = LoadedData.stream.xprev.split("|");
+					if (listAr.length > 0) {
+						for (index = 0; index < listAr.length; index++) {
+							for (index2 = 0; index2 < this.xprevData.length; index2++) {
+								if (this.xprevData[index2].data == listAr[index]) {
+									this.xprev.selectedIndices.push(index2);
+								}
+							}
+						}
+					}
+					this.xprevData.refresh();
+					break;
+				case 'ynext':
+					listAr = LoadedData.stream.ynext.split("|");
+					if (listAr.length > 0) {
+						for (index = 0; index < listAr.length; index++) {
+							for (index2 = 0; index2 < this.ynextData.length; index2++) {
+								if (this.ynextData[index2].data == listAr[index]) {
+									this.ynext.selectedIndices.push(index2);
+								}
+							}
+						}
+					}
+					this.ynextData.refresh();
+					break;
+				case 'yprev':
+					listAr = LoadedData.stream.yprev.split("|");
+					if (listAr.length > 0) {
+						for (index = 0; index < listAr.length; index++) {
+							for (index2 = 0; index2 < this.yprevData.length; index2++) {
+								if (this.yprevData[index2].data == listAr[index]) {
+									this.yprev.selectedIndices.push(index2);
+								}
+							}
+						}
+					}
+					this.yprevData.refresh();
+					break;
+				case 'znext':
+					listAr = LoadedData.stream.znext.split("|");
+					if (listAr.length > 0) {
+						for (index = 0; index < listAr.length; index++) {
+							for (index2 = 0; index2 < this.znextData.length; index2++) {
+								if (this.znextData[index2].data == listAr[index]) {
+									this.znext.selectedIndices.push(index2);
+								}
+							}
+						}
+					}
+					this.znextData.refresh();
+					break;
+				case 'zprev':
+					listAr = LoadedData.stream.zprev.split("|");
+					if (listAr.length > 0) {
+						for (index = 0; index < listAr.length; index++) {
+							for (index2 = 0; index2 < this.zprevData.length; index2++) {
+								if (this.zprevData[index2].data == listAr[index]) {
+									this.zprev.selectedIndices.push(index2);
+								}
+							}
+						}
+					}
+					this.zprevData.refresh();
+					break;
+			}
+		}
+		
+		/**
+		 * Save stream properties changes.
+		 */
+		private function onOK():void {
+			var selected:Array;
+			var index:uint;
+			if (this.xnext != null) {
+				selected = new Array();
+				for (index = 0; index < this.xnext.selectedIndices.length; index++) {
+					selected.push(this.xnextData.getItemAt(this.xnext.selectedIndices[index]).data);
+				}
+				LoadedData.stream.xnext = selected.join("|");
+			}
+			if (this.xprev != null) {
+				selected = new Array();
+				for (index = 0; index < this.xprev.selectedIndices.length; index++) {
+					selected.push(this.xprevData.getItemAt(this.xprev.selectedIndices[index]).data);
+				}
+				LoadedData.stream.xprev = selected.join("|");
+			}
+			if (this.ynext != null) {
+				selected = new Array();
+				for (index = 0; index < this.ynext.selectedIndices.length; index++) {
+					selected.push(this.ynextData.getItemAt(this.ynext.selectedIndices[index]).data);
+				}
+				LoadedData.stream.ynext = selected.join("|");
+			}
+			if (this.yprev != null) {
+				selected = new Array();
+				for (index = 0; index < this.yprev.selectedIndices.length; index++) {
+					selected.push(this.yprevData.getItemAt(this.yprev.selectedIndices[index]).data);
+				}
+				LoadedData.stream.yprev = selected.join("|");
+			}
+			if (this.znext != null) {
+				selected = new Array();
+				for (index = 0; index < this.znext.selectedIndices.length; index++) {
+					selected.push(this.znextData.getItemAt(this.znext.selectedIndices[index]).data);
+				}
+				LoadedData.stream.znext = selected.join("|");
+			}
+			if (this.zprev != null) {
+				selected = new Array();
+				for (index = 0; index < this.zprev.selectedIndices.length; index++) {
+					selected.push(this.zprevData.getItemAt(this.zprev.selectedIndices[index]).data);
+				}
+				LoadedData.stream.zprev = selected.join("|");
+			}
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Avoid changes.
+		 */
+		private function onCANCEL():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_NAVXAXIS')}">
+				<s:HGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:VGroup width="50%" height="100%">
+						<s:Label text="{resourceManager.getString('language', 'STW_NAVPREVTIP')}" />
+						<s:List id="xprev" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{xprevData}" creationComplete="getData('xprev')" />
+					</s:VGroup>
+					<s:VGroup width="50%" height="100%">
+						<s:Label text="{resourceManager.getString('language', 'STW_NAVNEXTTIP')}" />
+						<s:List id="xnext" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{xnextData}" creationComplete="getData('xnext')" />
+					</s:VGroup>
+				</s:HGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_NAVYAXIS')}">
+				<s:HGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:VGroup width="50%" height="100%">
+						<s:Label text="{resourceManager.getString('language', 'STW_NAVPREVTIP')}" />
+						<s:List id="yprev" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{yprevData}" creationComplete="getData('yprev')" />
+					</s:VGroup>
+					<s:VGroup width="50%" height="100%">
+						<s:Label text="{resourceManager.getString('language', 'STW_NAVNEXTTIP')}" />
+						<s:List id="ynext" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{ynextData}" creationComplete="getData('ynext')" />
+					</s:VGroup>
+				</s:HGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_NAVZAXIS')}">
+				<s:HGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:VGroup width="50%" height="100%">
+						<s:Label text="{resourceManager.getString('language', 'STW_NAVPREVTIP')}" />
+						<s:List id="zprev" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{zprevData}" creationComplete="getData('zprev')" />
+					</s:VGroup>
+					<s:VGroup width="50%" height="100%">
+						<s:Label text="{resourceManager.getString('language', 'STW_NAVNEXTTIP')}" />
+						<s:List id="znext" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{znextData}" creationComplete="getData('znext')" />
+					</s:VGroup>
+				</s:HGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCANCEL()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_OK')}" click="onOK()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

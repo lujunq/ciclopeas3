@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Graphic version="2.0" viewHeight="30" viewWidth="30" ATE:version="1.0.0" flm:version="1.0.0" d:using="" pd:backgroundColor="6710886" xmlns="http://ns.adobe.com/fxg/2008" xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008" xmlns:pd="http://ns.adobe.com/xfl/2008/pd">
+  <Library/>
+  <Group visible="false" d:type="layer" d:userLabel="Layer 1">
+    <Path data="M0 30 0 0 30 0 30 30 0 30">
+      <fill>
+        <SolidColor color="#1A1A1A" alpha="0"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="flash0.ai">
+    <Path data="M23.8 23.85Q27.283398 20.413672 27.475 15.6 27.5 15.304297 27.5 15 27.5 9.85 23.8 6.2 20.185547 2.5359375 15.1 2.5 15.050195 2.5 15 2.5 9.8 2.5 6.15 6.2 2.5 9.85 2.5 15 2.5 15.304492 2.525 15.6 2.7136719 20.413672 6.15 23.85 9.8 27.5 15 27.5
+ 15.050195 27.5 15.1 27.5 20.185547 27.464453 23.8 23.85M30 15Q30 21.2 25.55 25.55 21.15 30 15 30 8.8 30 4.35 25.55 0 21.2 0 15 0 8.85 4.35 4.4 8.8 0 15 0 21.15 0 25.55 4.4 30 8.85 30 15">
+      <fill>
+        <SolidColor color="#1A1A1A" alpha="0.40000001"/>
+      </fill>
+    </Path>
+    <Group>
+      <Path x="-1.9" y="-37.85" data="M19.8 56.1Q18.65 57.25 17 57.25 15.4 57.25 14.2 56.1 13 54.9 13 53.25 13 51.65 14.2 50.45 15.4 49.25 17 49.25 18.65 49.25 19.8 50.45 21 51.65 21 53.25 21 54.9 19.8 56.1">
+        <fill>
+          <SolidColor color="#1A1A1A"/>
+        </fill>
+      </Path>
+      <Path x="-1.9" y="-37.85" data="M19.8 56.1Q18.65 57.25 17 57.25 15.4 57.25 14.2 56.1 13 54.9 13 53.25 13 51.65 14.2 50.45 15.4 49.25 17 49.25 18.65 49.25 19.8 50.45 21 51.65 21 53.25 21 54.9 19.8 56.1">
+        <stroke>
+          <SolidColorStroke color="#FFFFFF"/>
+        </stroke>
+      </Path>
+    </Group>
+    <Group>
+      <Path data="M23.8 23.85Q20.185547 27.464453 15.1 27.5 15.050195 27.5 15 27.5 9.8 27.5 6.15 23.85 2.7136719 20.413672 2.525 15.6 2.5 15.304492 2.5 15 2.5 9.85 6.15 6.2 9.8 2.5 15 2.5 15.050195 2.5 15.1 2.5 20.185547 2.5359375 23.8 6.2 27.5 9.85 27.5 15 27.5
+ 15.304297 27.475 15.6 27.283398 20.413672 23.8 23.85M15.1 2.5 15.1 15.6 27.475 15.6M2.525 15.6 15.1 15.6 15.1 27.5">
+        <stroke>
+          <SolidColorStroke color="#FFFFFF" alpha="0.74901962"/>
+        </stroke>
+      </Path>
+    </Group>
+  </Group>
+  <Group d:type="layer" d:userLabel="Layer 2"/>
+  <Private/>
+</Graphic>

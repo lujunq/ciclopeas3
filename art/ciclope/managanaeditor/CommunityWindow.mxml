@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+PlaylistWindow creates a window for playlist management.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:mana="art.ciclope.managanaeditor.*"
+			   close="onClose()" creationComplete="init()" width="500" height="400" title="{resourceManager.getString('language', 'COM_TITLE')}">
+	
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.collections.ArrayCollection;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _streamProvider:ArrayCollection;		// data provider for stream list
+		private var _playlistProvider:ArrayCollection;		// data provider for playlist list
+		
+		/**
+		 * Initialize window.
+		 */
+		public function init():void {
+			
+		}
+		
+		// PROPERTIES
+		
+		/**
+		 * The stream usage data provider.
+		 */
+		public function get streamProvider():ArrayCollection {
+			return (this._streamProvider);
+		}
+		public function set streamProvider(value:ArrayCollection):void {
+			this._streamProvider = value;
+			if (this.streamList != null) this.streamList.dataProvider = this._streamProvider;
+		}
+		
+		/**
+		 * The playlist usage data provider.
+		 */
+		public function get playlistProvider():ArrayCollection {
+			return (this._playlistProvider);
+		}
+		public function set playlistProvider(value:ArrayCollection):void {
+			this._playlistProvider = value;
+			if (this.playlistList != null) this.playlistList.dataProvider = this._playlistProvider;
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Component is ready to be initialized.
+		 * @param	name	the component name
+		 */
+		private function onComponent(name:String):void {
+			switch(name) {
+				case 'streamList':
+					this.streamList.dataProvider = this._streamProvider;
+					break;
+				case 'playlistList':
+					this.playlistList.dataProvider = this._playlistProvider;
+					break;
+			}
+		}
+		
+		/**
+		 * Close window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleCommunity");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'COM_STREAMTAB')}">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'COM_STREAMABOUT')}" />
+					<mx:DataGrid id="streamList" width="100%" height="100%" creationComplete="onComponent('streamList')">
+						<mx:columns>
+							<mx:DataGridColumn dataField="idname" headerText="{resourceManager.getString('language', 'COM_STREAMLISTNAME')}" />
+							<mx:DataGridColumn dataField="username" headerText="{resourceManager.getString('language', 'COM_STREAMLISTUSER')}" />
+						</mx:columns>
+					</mx:DataGrid>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'COM_PLAYLISTTAB')}">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'COM_PLAYLISTABOUT')}" />
+					<mx:DataGrid id="playlistList" width="100%" height="100%" creationComplete="onComponent('playlistList')">
+						<mx:columns>
+							<mx:DataGridColumn dataField="idname" headerText="{resourceManager.getString('language', 'COM_PLAYLISTLISTNAME')}" />
+							<mx:DataGridColumn dataField="username" headerText="{resourceManager.getString('language', 'COM_PLAYLISTLISTUSER')}" />
+						</mx:columns>
+					</mx:DataGrid>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+	</s:VGroup>
+	
+</s:TitleWindow>

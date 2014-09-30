@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityOpen creates a window for community opening.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="500" height="250" title="{resourceManager.getString('language', 'IMP_COMTITLE')}" creationComplete="init()">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="disFolders" />
+		<mx:ArrayCollection id="playList" />
+		<mx:ArrayCollection id="streamList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.Event;
+		import flash.events.IOErrorEvent;
+		import flash.events.SecurityErrorEvent;
+		import flash.net.URLLoader;
+		import flash.net.URLRequest;
+		import flash.net.URLVariables;
+		import mx.managers.PopUpManager;
+		import mx.collections.ArrayCollection;
+		import mx.core.FlexGlobals;
+		import flash.system.System;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _importError:Boolean;		// was there an error while importing?
+		private var _currPly:uint;				// current imported playlist
+		private var _currStr:uint;				// cuttent imported stream
+		private var _loaderPly:URLLoader;		// a loader for playlist files
+		private var _loaderStr:URLLoader;		// a loader for stream files
+		private var _loaderPro:URLLoader;		// a loader for community properties
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			this.removeAllElements();
+			this.addElement(this.step1);
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Start community import by showing the available folders.
+		 */
+		private function onStart():void {
+			this.removeAllElements();
+			this.addElement(this.step2);
+			// load dis folders list
+			WindowServerCheck.createServer("getdisavailable", null, onDIS);
+		}
+		
+		/**
+		 * Data about available communities is ready.
+		 */
+		private function onDIS(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'IMP_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				this.disFolders.removeAll();
+				if (server.data.child("dis").length() == 0) {
+					Warning.createWarning(resourceManager.getString('language', 'IMP_ERRORTITLE'), resourceManager.getString('error', 'ERIMPORT-0'));
+					PopUpManager.removePopUp(this);
+				} else {
+					for (var index:uint = 0; index < server.data.child("dis").length(); index++) {
+						var listName:String = String(server.data.dis[index]);
+						if (String(server.data.dis[index].@newcom) == "false") listName += "*";
+						this.disFolders.addItem({ label:listName, disname:String(server.data.dis[index]), data:String(server.data.dis[index].@id), newcom:String(server.data.dis[index].@newcom) });
+					}
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * A DIS folder was selected to import.
+		 */
+		private function onSelect():void {
+			if (this.availableDis.selectedIndex >= 0) {
+				if (this.availableDis.selectedItem.newcom == "false") {
+					// show update warning
+					this.removeAllElements();
+					this.addElement(this.step3);
+				} else {
+					// start importing
+					this.onImport();
+				}
+			}
+		}
+		
+		/**
+		 * Start community importing.
+		 */
+		private function onImport():void {
+			this.removeAllElements();
+			// check dis information
+			WindowServerCheck.createServer("importdis", ("ac=check&dis=" + escape(this.availableDis.selectedItem.disname)), onDISInfo);
+		}
+		
+		/**
+		 * Information about the selected dis was received.
+		 */
+		private function onDISInfo(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'IMP_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				this.streamList.removeAll();
+				this.playList.removeAll();
+				for (var index:uint = 0; index < server.data.child("playlist").length(); index++) {
+					this.playList.addItem({ name:String(server.data.playlist[index]), id:String(server.data.playlist[index].@id) });
+				}
+				for (index = 0; index < server.data.child("stream").length(); index++) {
+					this.streamList.addItem({ name:String(server.data.stream[index]), id:String(server.data.stream[index].@id) });
+				}
+				this.importingCom.text = resourceManager.getString('language', 'IMP_COMIMPORTING') + " " + this.availableDis.selectedItem.disname;
+				this.importingPly.visible = true;
+				this.importingPlyBar.visible = true;
+				this._importError = false;
+				this._currPly = 0;
+				this._loaderPly = new URLLoader();
+				this._loaderPly.addEventListener(Event.COMPLETE, onPlyComplete);
+				this._loaderPly.addEventListener(IOErrorEvent.IO_ERROR, onPlyError);
+				this._loaderPly.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onPlyError);
+				this.importPlaylists();
+				this.addElement(this.step4);
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Import a dis playlist.
+		 */
+		private function importPlaylists():void {
+			// check current playlist to import
+			if (this._currPly < this.playList.length) {
+				// set progress
+				this._currPly++;
+				this.importingPlyBar.width = 480 * this._currPly / this.playList.length;
+				// load the playlist xml
+				var request:URLRequest = new URLRequest(EditorOptions.path + "/community/" + this.availableDis.selectedItem.disname + ".dis/playlist/" + this.playList.getItemAt(this._currPly - 1).name);
+				request.method = "GET";
+				request.data = new URLVariables("nocache=" + new Date().getTime());
+				this._loaderPly.load(request);
+			} else {
+				// start importing streams
+				this._loaderPly.removeEventListener(Event.COMPLETE, onPlyComplete);
+				this._loaderPly.removeEventListener(IOErrorEvent.IO_ERROR, onPlyError);
+				this._loaderPly.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onPlyError);
+				this._currStr = 0;
+				this._loaderStr = new URLLoader();
+				this._loaderStr.addEventListener(Event.COMPLETE, onStrComplete);
+				this._loaderStr.addEventListener(IOErrorEvent.IO_ERROR, onStrError);
+				this._loaderStr.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onStrError);
+				this.importingStr.visible = true;
+				this.importingStrBar.visible = true;
+				this.importStreams();
+			}
+		}
+		
+		/**
+		 * A playlist data was received.
+		 */
+		private function onPlyComplete(evt:Event):void {
+			// load the playlist data
+			try {
+				var data:XML = new XML(this._loaderPly.data);
+				// ask server to save the new playlist
+				var params:String = "ac=playlist";
+				params += "&dis=" + escape(this.availableDis.selectedItem.disname);
+				params += "&playlist=" + escape('<?xml version="1.0" encoding="utf-8"?><data>' + String(data) + '</data>');
+				WindowServerCheck.createServer("importdis", params, onPlySaved);
+				System.disposeXML(data);
+			} catch (e:Error) {
+				// load next playlist
+				this._importError = true;
+				this.importPlaylists();
+			}
+		}
+		
+		/**
+		 * Error while receiving playlist data.
+		 */
+		private function onPlyError(evt:Event):void {
+			// load the next playlist
+			this._importError = true;
+			this.importPlaylists();
+		}
+		
+		/**
+		 * A playlist was imported into the database
+		 */
+		private function onPlySaved(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// just assign that there was an error and continue the import process
+				this._importError = true;
+				this.importPlaylists();
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// import next playlist
+				this.importPlaylists();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Import a dis stream.
+		 */
+		private function importStreams():void {
+			// check current playlist to import
+			if (this._currStr < this.streamList.length) {
+				// set progress
+				this._currStr++;
+				this.importingStrBar.width = 480 * this._currStr / this.streamList.length;
+				// load the stream xml
+				var request: URLRequest = new URLRequest(EditorOptions.path + "/community/" + this.availableDis.selectedItem.disname + ".dis/stream/" + this.streamList.getItemAt(this._currStr - 1).name);
+				request.method = "GET";
+				request.data = new URLVariables("nocache=" + new Date().getTime());
+				this._loaderStr.load(request);
+			} else {
+				// start importing properties
+				this._loaderStr = new URLLoader();
+				this._loaderStr.removeEventListener(Event.COMPLETE, onStrComplete);
+				this._loaderStr.removeEventListener(IOErrorEvent.IO_ERROR, onStrError);
+				this._loaderStr.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onStrError);
+				this.importProperties();
+			}
+		}
+		
+		/**
+		 * A stream data was received.
+		 */
+		private function onStrComplete(evt:Event):void {
+			// load the playlist data
+			try {
+				var data:XML = new XML(this._loaderStr.data);
+				// ask server to save the new stream
+				var param:String = "ac=stream";
+				param += "&dis=" + escape(this.availableDis.selectedItem.disname);
+				param += "&community=" + escape(this.availableDis.selectedItem.disname);
+				param += "&title=" + escape(data.meta.title);
+				param += "&id=" + data.id;
+				param += "&tags=" + escape(data.meta.tags);
+				param += "&about=" + escape(data.meta.about);
+				param += "&author=" + escape(data.meta.author);
+				param += "&authorid=" + escape(data.meta.author.@id);
+				param += "&update=" + escape(data.meta.update);
+				param += "&speed=" + data.animation.speed;
+				param += "&entropy=" + data.animation.entropy;
+				param += "&distortion=" + data.animation.distortion;
+				param += "&tweening=" + data.animation.tweening;
+				param += "&fade=" + data.animation.fade;
+				if (data.guides.child("stream").length() > 0) {
+					for (var iguide:uint = 0; iguide < data.guides.child("stream").length(); iguide++) {
+						if (String(data.guides.stream[iguide].@type) == "up") param += "&guideup=" + data.guides.stream[iguide].@id;
+						if (String(data.guides.stream[iguide].@type) == "down") param += "&guidedown=" + data.guides.stream[iguide].@id;
+					}
+				}
+				param += "&landscape=" + escape(data.aspect.landscape);
+				param += "&category=" + escape(data.meta.category);
+				if (data.child("navigation").length() > 0) {
+					param += "&xnext=" + escape(data.navigation.xnext);
+					param += "&xprev=" + escape(data.navigation.xprev);
+					param += "&ynext=" + escape(data.navigation.ynext);
+					param += "&yprev=" + escape(data.navigation.yprev);
+					param += "&znext=" + escape(data.navigation.znext);
+					param += "&zprev=" + escape(data.navigation.zprev);
+				}
+				// custom meta data
+				var totalmeta:uint = 0;
+				if (data.meta.child("custom").length() > 0) {
+					for (var imeta:uint = 0; imeta < data.meta.child("custom").length(); imeta++) {
+						param += "&metaname" + totalmeta + "=" + escape(data.meta.custom[imeta].metaname);
+						param += "&metaindex" + totalmeta + "=" + escape(String(data.meta.custom[imeta].@id));
+						param += "&metavalue" + totalmeta + "=" + escape(data.meta.custom[imeta].metavalue);
+						totalmeta++;
+					}
+				}
+				param += "&totalmeta=" + totalmeta;
+				// voting data
+				param += "&votetype=" + escape(data.voting.type);
+				param += "&votereference=" + escape(String(data.voting.reference));
+				for (var ivote:uint = 0; ivote < data.voting.child("option").length(); ivote++) {
+					param += "&votepx" + (data.voting.option[ivote].@id) + "=" + data.voting.option[ivote].@px;
+					param += "&votepy" + (data.voting.option[ivote].@id) + "=" + data.voting.option[ivote].@py;
+					param += "&voteshow" + (data.voting.option[ivote].@id) + "=" + data.voting.option[ivote].@show;
+					param += "&voteaction" + (data.voting.option[ivote].@id) + "=" + escape(data.voting.option[ivote]);
+				}
+				// version 1.3 new properties
+				if (data.child("code").length() > 0) {
+					param += "&pcode=" + escape(data.code);
+				}
+				if (data.child("functions").length() > 0) {	
+					param += "&fa=" + escape(data.functions.customa);
+					param += "&fb=" + escape(data.functions.customb);
+					param += "&fc=" + escape(data.functions.customc);
+					param += "&fd=" + escape(data.functions.customd);
+				}
+				if (data.child("geolocation").length() > 0) {
+					param += "&geouse=" + escape(String(data.geolocation.geouse));
+					param += "&geotarget=" + escape(String(data.geolocation.geotarget));
+					param += "&geomap=" + escape(String(data.geolocation.geomap));
+					param += "&geolattop=" + escape(String(data.geolocation.geolattop));
+					param += "&geolongtop=" + escape(String(data.geolocation.geolongtop));
+					param += "&geolatbottom=" + escape(String(data.geolocation.geolatbottom));
+					param += "&geolongbottom=" + escape(String(data.geolocation.geolongbottom));
+					param += "&totalgeopoints=" + escape(String(data.geolocation.child("geopoint").length()));
+					for (var igpoint:uint = 0; igpoint < data.geolocation.child("geopoint").length(); igpoint++) {
+						param += "&geopname" + igpoint + "=" + escape(String(data.geolocation.geopoint[igpoint].name))
+						param += "&geoplat" + igpoint + "=" + escape(String(data.geolocation.geopoint[igpoint].latitude))
+						param += "&geoplong" + igpoint + "=" + escape(String(data.geolocation.geopoint[igpoint].longitude))
+						param += "&geopcode" + igpoint + "=" + escape(String(data.geolocation.geopoint[igpoint].code))
+					}
+				}
+				if (data.voting.child("defaultvote").length() > 0) {
+					param += "&votedefault=" + escape(data.voting.defaultvote);
+				}
+				// version 1.4 new properties
+				if (data.child("wheel").length() > 0) {
+					param += "&mwup=" + escape(data.wheel.up);
+					param += "&mwdown=" + escape(data.wheel.down);
+				}
+				// keyframes
+				var keyframeDesc:String = '<?xml version="1.0" encoding="UTF-8"?><data>';
+				for (var ikeyf:uint = 0; ikeyf < data.keyframes.child("keyframe").length(); ikeyf++) {
+					var keyfXML:XML = new XML(String(data.keyframes.keyframe[ikeyf]));
+					keyfXML.prependChild(XML("<order>" + ikeyf + "</order>"));
+					keyframeDesc += keyfXML.toXMLString();
+					System.disposeXML(keyfXML);
+				}
+				keyframeDesc += '</data>';
+				param += "&keyframes=" + escape(keyframeDesc);
+				WindowServerCheck.createServer("importdis", param, onStrSaved);
+				System.disposeXML(data);
+			} catch (e:Error) {
+				// load next stream
+				this._importError = true;
+				this.importStreams();
+			}
+		}
+		
+		/**
+		 * Error while receiving stream data.
+		 */
+		private function onStrError(evt:Event):void {
+			// load the next stream
+			this._importError = true;
+			this.importStreams();
+		}
+		
+		/**
+		 * A stream was imported into the database
+		 */
+		private function onStrSaved(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// just assign that there was an error and continue the import process
+				this._importError = true;
+				this.importStreams();
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// import next stream
+				this.importStreams();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Import community properties.
+		 */
+		private function importProperties():void {
+			this._loaderPro = new URLLoader();
+			this._loaderPro.addEventListener(Event.COMPLETE, onProComplete);
+			this._loaderPro.addEventListener(IOErrorEvent.IO_ERROR, onProError);
+			this._loaderPro.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onProError);
+			var request:URLRequest = new URLRequest(EditorOptions.path + "/community/" + this.availableDis.selectedItem.disname + ".dis/dis.xml");
+			request.method = "GET";
+			request.data = new URLVariables("nocache=" + new Date().getTime());
+			this._loaderPro.load(request);
+			this.importingDis.visible = true;
+		}
+		
+		/**
+		 * The properties information was loaded from the DIS folder.
+		 */
+		private function onProComplete(evt:Event):void {
+			// clear listeners
+			this._loaderPro.removeEventListener(Event.COMPLETE, onProComplete);
+			this._loaderPro.removeEventListener(IOErrorEvent.IO_ERROR, onProError);
+			this._loaderPro.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onProError);
+			// load the playlist data
+			try {
+				var data:XML = new XML(this._loaderPro.data);
+				// ask server to save the new playlist
+				var parameters:String = "ac=community";
+				parameters += "&dis=" + escape(this.availableDis.selectedItem.disname);
+				parameters += "&title=" + escape(data.meta.title);
+				parameters += "&id=" + escape(data.meta.id);
+				parameters += "&width=" + escape(data.screen.width);
+				parameters += "&height=" + escape(data.screen.height);
+				parameters += "&pwidth=" + escape(data.screen.portrait.width);
+				parameters += "&pheight=" + escape(data.screen.portrait.height);
+				parameters += "&copyleft=" + escape(data.meta.copyleft);
+				parameters += "&copyright=" + escape(data.meta.copyright);
+				parameters += "&about=" + escape(data.meta.about);
+				parameters += "&background=" + escape(data.screen.background);
+				parameters += "&alpha=" + escape(data.screen.alpha);
+				parameters += "&highlight=" + escape(data.screen.highlight.@active);
+				parameters += "&highlightcolor=" + escape(data.screen.highlight);
+				parameters += "&language=" + escape(data.meta.lang);
+				parameters += "&edition=" + escape(data.meta.update);
+				parameters += "&home=" + escape(data.home);
+				if (data.child("categories").length() > 0) {
+					parameters += "&categories=" + data.categories.child("category").length();
+					for (var icat:uint = 0; icat < data.categories.child("category").length(); icat++) {
+						parameters += "&category_" + icat + "=" + escape(data.categories.category[icat]);
+					}
+				} else {
+					parameters += "&categories=0";
+				}
+				if (data.child("feeds").length() > 0) {
+					parameters += "&feedcount=" + data.feeds.child("feed").length();
+					for (var ifeed:uint = 0; ifeed < data.feeds.child("feed").length(); ifeed++) {
+						parameters += "&feedtype_" + ifeed + "=" + escape(data.feeds.feed[ifeed].@type);
+						parameters += "&feedref_" + ifeed + "=" + escape(data.feeds.feed[ifeed].@reference);
+						parameters += "&feedname_" + ifeed + "=" + escape(data.feeds.feed[ifeed]);
+					}
+				} else {
+					parameters += "&feedcount=0";
+				}
+				parameters += "&icon=" + escape(data.meta.icon);
+				if (data.child("graphics").length() > 0) {
+					if (data.graphics.child("target") > 0) parameters += "&target=" + escape(data.graphics.target);
+					if (data.graphics.child("vote0") > 0) {
+						parameters += "&vote0=" + escape(data.graphics.vote0);
+						parameters += "&vote10=" + escape(data.graphics.vote10);
+						parameters += "&vote20=" + escape(data.graphics.vote20);
+						parameters += "&vote30=" + escape(data.graphics.vote30);
+						parameters += "&vote40=" + escape(data.graphics.vote40);
+						parameters += "&vote50=" + escape(data.graphics.vote50);
+						parameters += "&vote60=" + escape(data.graphics.vote60);
+						parameters += "&vote70=" + escape(data.graphics.vote70);
+						parameters += "&vote80=" + escape(data.graphics.vote80);
+						parameters += "&vote90=" + escape(data.graphics.vote90);
+						parameters += "&vote100=" + escape(data.graphics.vote100);
+					}
+				}
+				// version 1.3 new properties
+				if (data.child("defaultvote").length() > 0) parameters += "&defaultvote=" + escape(data.defaultvote);
+				if (data.child("voterecord").length() > 0) parameters += "&voterecord=" + escape(data.voterecord);
+				// version 1.4 new properties
+				if (data.child("css").length() > 0) parameters += "&css=" + escape(data.css);
+					else parameters += "&css=" + escape("body {\n    color: #000000;\n    font-family: Arial, Helvetica, sans-serif;\n    font-size: 16px;\n}\n\na {\n    color: #0000FF;\n    text-decoration: underline;\n}");
+				// version 1.5 new properties
+				if (data.child("transition").length() > 0) {
+					parameters += "&navxnext=" + escape(data.transition.xnext);
+					parameters += "&navxprev=" + escape(data.transition.xprev);
+					parameters += "&navynext=" + escape(data.transition.ynext);
+					parameters += "&navyprev=" + escape(data.transition.yprev);
+					parameters += "&navznext=" + escape(data.transition.znext);
+					parameters += "&navzprev=" + escape(data.transition.zprev);
+					parameters += "&navhome=" + escape(data.transition.home);
+					parameters += "&navlist=" + escape(data.transition.list);
+				}
+				// send data
+				WindowServerCheck.createServer("importdis", parameters, onProSaved);
+				System.disposeXML(data);
+			} catch (e:Error) {
+				// import failure
+				Warning.createWarning(resourceManager.getString('language', 'IMP_ERRORTITLE'), resourceManager.getString('error', 'ERIMPORT-3'));
+				PopUpManager.removePopUp(this);
+			}
+		}
+		
+		/**
+		 * Error while receiving community data: import problem.
+		 */
+		private function onProError(evt:Event):void {
+			this._loaderPro.removeEventListener(Event.COMPLETE, onProComplete);
+			this._loaderPro.removeEventListener(IOErrorEvent.IO_ERROR, onProError);
+			this._loaderPro.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onProError);
+			Warning.createWarning(resourceManager.getString('language', 'IMP_ERRORTITLE'), resourceManager.getString('error', 'ERIMPORT-3'));
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * The community was imported.
+		 */
+		private function onProSaved(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// import failure
+				Warning.createWarning(resourceManager.getString('language', 'IMP_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// import ok, warn user
+				Warning.createWarning(resourceManager.getString('language', 'IMP_COMOKTITLE'), resourceManager.getString('language', 'IMP_COMOKABOUT'));
+				PopUpManager.removePopUp(this);
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup id="step1" x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+			<s:Label width="100%" text="{resourceManager.getString('language', 'IMP_COMABOUT')}"/>
+		</s:VGroup>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMCLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMSELECT')}" click="onStart()" />
+		</s:HGroup>
+	</s:VGroup>
+	<s:VGroup id="step2" x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+			<s:Label width="100%" text="{resourceManager.getString('language', 'IMP_COMSELECTABOUT')}"/>
+			<s:List id="availableDis" width="100%" height="100%" dataProvider="{disFolders}" />
+			<s:Label width="100%" text="{resourceManager.getString('language', 'IMP_COMABOUTUPDATE')}"/>
+		</s:VGroup>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMCLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMDOSELECT')}" click="onSelect()" />
+		</s:HGroup>
+	</s:VGroup>
+	<s:VGroup id="step3" x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+			<s:Label width="100%" text="{resourceManager.getString('language', 'IMP_COMCONFIRMUPDATE')}"/>
+		</s:VGroup>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMCLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMUPDATEOK')}" click="onImport()" />
+		</s:HGroup>
+	</s:VGroup>
+	<s:VGroup id="step4" x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+			<s:Label id="importingCom" width="100%" text=""/>
+			<s:Label width="100%" />
+			<s:Label id="importingPly" width="100%" text="{resourceManager.getString('language', 'IMP_COMPLAYLISTIMPORT')}" visible="false" />
+			<mx:HRule id="importingPlyBar" width="0%" visible="false" />
+			<s:Label width="100%" />
+			<s:Label id="importingStr" width="100%" text="{resourceManager.getString('language', 'IMP_COMSTREAMIMPORT')}" visible="false" />
+			<mx:HRule id="importingStrBar" width="0%" visible="false" />
+			<s:Label width="100%" />
+			<s:Label id="importingDis" width="100%" text="{resourceManager.getString('language', 'IMP_COMPROPIMPORT')}" visible="false" />
+		</s:VGroup>
+		<!--<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMCLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'IMP_COMUPDATEOK')}" click="onImport()" />
+		</s:HGroup>-->
+	</s:VGroup>
+</s:TitleWindow>

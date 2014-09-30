@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Graphic version="2.0" viewHeight="60" viewWidth="30" ATE:version="1.0.0" flm:version="1.0.0" d:using="" xmlns="http://ns.adobe.com/fxg/2008" xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008">
+  <Library/>
+  <Group d:locked="true" d:type="layer" d:userLabel="Layer 2">
+    <Path data="M30 0 30 60 0 60 0 0 30 0">
+      <fill>
+        <SolidColor color="#FFFFFF" alpha="0"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="Layer 1">
+    <Path data="M30 0 30 60 22.2 60Q17.7 60 13.55 58.25 9.55 56.55 6.5 53.45 3.45 50.35 1.7 46.3 0.15 42.45 0 38.25 0 33.35 0 27.75 0 24.9 0 22.1 0.05 17.75 1.7 13.75 3.45 9.7 6.5 6.6 9.55 3.45 13.55 1.75 17.7 0 22.2 0L30 0">
+      <fill>
+        <SolidColor color="#1A1A1A" alpha="0.40000001"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="Layer 3">
+    <Group>
+      <Group>
+        <Path data="M17.3 30.7Q17.9 29.75 17.9 28.55 17.9 27.3 17.3 26.3 16.7 25.35 15.7 24.75 14.75 24.2 13.55 24.2 12.3 24.2 11.3 24.75 10.35 25.35 9.75 26.3 9.2 27.3 9.15 28.55 9.2 29.75 9.75 30.7 10.35 31.7 11.3 32.3 12.3 32.9 13.55 32.9 14.75 32.9 15.7 32.3
+ 16.7 31.7 17.3 30.7M8.9 23.9Q9.8 23.05 11 22.5 12.15 22 13.55 22 14.9 22 16.1 22.5 17.3 23.05 18.15 23.9 19.1 24.8 19.55 26 20.1 27.2 20.1 28.55 20.1 29.6 19.8 30.5 19.5 31.45 18.9 32.25L23 36.3 21.3 38 17.25 33.9Q16.45 34.5 15.5 34.8 14.55
+ 35.1 13.55 35.1 12.15 35.1 11 34.55 9.8 34.1 8.9 33.15 8.05 32.3 7.5 31.1 7 29.9 7 28.55 7 27.2 7.5 26 8.05 24.8 8.9 23.9">
+          <fill>
+            <SolidColor color="#FFFFFF" alpha="0.49803922"/>
+          </fill>
+        </Path>
+      </Group>
+      <Group>
+        <Path data="M11.1 28.9 11.1 28.3 16 28.3 16 28.9 11.1 28.9">
+          <fill>
+            <SolidColor color="#FFFFFF" alpha="0.49803922"/>
+          </fill>
+        </Path>
+      </Group>
+    </Group>
+  </Group>
+  <Private/>
+</Graphic>

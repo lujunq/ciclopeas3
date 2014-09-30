@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+PlaylistElement creates a playlist element button for the playlist window.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/halo"
+			   width="100" height="45">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.MouseEvent;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.data.DISElementED;
+		import art.ciclope.managanaeditor.*;
+		
+		// GRAPHICS
+		
+		/**
+		 * An icon for audio display.
+		 */
+		[Embed(source="icon/tools-audio.png")]
+		private var AudioIcon:Class;
+		/**
+		 * An icon for audio display.
+		 */
+		[Embed(source="icon/tools-paragraph.png")]
+		private var ParagraphIcon:Class;
+		/**
+		 * An icon for audio display.
+		 */
+		[Embed(source="icon/tools-picture.png")]
+		private var PictureIcon:Class;
+		/**
+		 * An icon for audio display.
+		 */
+		[Embed(source="icon/tools-text.png")]
+		private var TextIcon:Class;
+		/**
+		 * An icon for audio display.
+		 */
+		[Embed(source="icon/tools-video.png")]
+		private var VideoIcon:Class;
+		
+		// VARIABLES
+		
+		/**
+		 * A function to call on element button click.
+		 */
+		public var elementClick:Function;
+		/**
+		 * A function to call on element delete button click.
+		 */
+		public var deleteClick:Function;
+		/**
+		 * A function to call on element edit button click.
+		 */
+		public var editClick:Function;
+		/**
+		 * The element reference.
+		 */
+		private var _element:DISElementED;
+		
+		// PROPERTIES
+		
+		/**
+		 * The element reference.
+		 */
+		public function get element():DISElementED {
+			return (this._element);
+		}
+		public function set element(to:DISElementED):void {
+			this._element = to;
+			switch (this._element.type) {
+				case "audio":
+					this.keyframeIcon.setStyle("icon", AudioIcon);
+					break;
+				case "paragraph":
+					this.keyframeIcon.setStyle("icon", ParagraphIcon);
+					break;
+				case "picture":
+					this.keyframeIcon.setStyle("icon", PictureIcon);
+					break;
+				case "text":
+					this.keyframeIcon.setStyle("icon", TextIcon);
+					break;
+				case "video":
+					this.keyframeIcon.setStyle("icon", VideoIcon);
+					break;
+			}
+			this.keyframeIcon.setStyle("iconPlacement", "top");
+			this.keyframeIcon.label = this._element.id;
+		}
+		
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Relase memory used by the object.
+		 */
+		public function kill():void {
+			this.elementClick = null;
+			this.deleteClick = null;
+			this.editClick = null;
+			this._element = null;
+		}
+		
+		// EVENTS
+		
+		/**
+		 * Open element.
+		 */
+		private function open(event:MouseEvent):void {
+			if (this.elementClick != null) this.elementClick(this._element);
+			event.stopPropagation();
+		}
+		
+		/**
+		 * Delete an element.
+		 */
+		private function remove(event:MouseEvent):void {
+			if (this.deleteClick != null) this.deleteClick(this._element);
+			event.stopPropagation();
+		}
+		
+		/**
+		 * Edit an element.
+		 */
+		private function edit(event:MouseEvent):void {
+			if (this.editClick != null) this.editClick(this._element);
+			event.stopPropagation();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:Button id="keyframeIcon" width="100" height="45" x="0" y="0" click="open(event);" />
+	<s:Button x="0" y="0" width="30" height="15" label="..." click="edit(event);" toolTip="{resourceManager.getString('language', 'PLAYLIST_EDITTIP')}" />
+	<s:Button x="70" y="0" width="30" height="15" label="-" click="remove(event);" toolTip="{resourceManager.getString('language', 'PLAYLIST_REMOVETIP')}" />
+</s:Group>

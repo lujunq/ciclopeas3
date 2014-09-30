@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				creationComplete="init()" width="400" title="{resourceManager.getString('language', 'CW_PROPERTIES')}">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get data
+			this.cID.text = LoadedData.community.id;
+			this.cTitle.text = LoadedData.community.title;
+			this.cWidth.text = String(LoadedData.community.width);
+			this.cHeight.text = String(LoadedData.community.height);
+			this.cCopyleft.text = LoadedData.community.copyleft;
+			this.cCopyright.text = LoadedData.community.copyright;
+			this.cAbout.text = LoadedData.community.about;
+			this.cBackground.selectedColor = uint(LoadedData.community.background);
+			this.cAlpha.value = uint(LoadedData.community.alpha * 100);
+			this.cHighlight.selected = LoadedData.community.highlight;
+			this.cHighlightColor.selectedColor = uint(LoadedData.community.highlightcolor);
+			this.cLanguage.text = LoadedData.community.language;
+			var update:Array = LoadedData.community.edition.split("-");
+			this.cUpdate.text = update[1] + "/" + update[2] + "/" + update[0];
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Check if a given DIS folder name is valid.
+		 * @param	id	the name to check
+		 * @return	true if the name is valid
+		 */
+		private function checkID(id:String):Boolean {
+			if (id == "") {
+				return (false);
+			} else {
+				return (id == escape(id));
+			}
+		}
+		
+		/**
+		 * Check if provided width and height are valid values.
+		 * @param	width	width to check
+		 * @param	height	height tp check
+		 * @return	true if the size is valid
+		 */
+		private function checkView(width:Number, height:Number):Boolean {
+			if ((width <= 0) || (height <= 0)) {
+				return (false);
+			} else {
+				return (true);
+			}
+		}
+		
+		/**
+		 * Save community data.
+		 */
+		private function saveCommunity():void {
+			// check for provided data
+			if (this.cTitle.text == "") {
+				Warning.createWarning(resourceManager.getString('language', 'CW_ERWINDOW'), resourceManager.getString('language', 'CW_ERNOTITLE'));
+			} else if (!checkID(this.cID.text)) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_ERWINDOW'), resourceManager.getString('language', 'CW_ERNOID'));
+			} else if (!checkView(Number(this.cWidth.text), Number(this.cHeight.text))) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_ERWINDOW'), resourceManager.getString('language', 'CW_ERNOSIZE'));
+			} else {
+				// ask server for community creation
+				var parameters:String = "title=" + escape(this.cTitle.text);
+				parameters += "&id=" + escape(this.cID.text);
+				parameters += "&width=" + escape(this.cWidth.text);
+				parameters += "&height=" + escape(this.cHeight.text);
+				parameters += "&copyleft=" + escape(this.cCopyleft.text);
+				parameters += "&copyright=" + escape(this.cCopyright.text);
+				parameters += "&about=" + escape(this.cAbout.text);
+				parameters += "&background=" + escape(String(this.cBackground.value));
+				parameters += "&alpha=" + escape(String(this.cAlpha.value));
+				parameters += "&highlight=" + escape(String(this.cHighlight.selected));
+				parameters += "&highlightcolor=" + escape(String(this.cHighlightColor.value));
+				parameters += "&language=" + escape(this.cLanguage.text);
+				parameters += "&edition=" + escape(this.cUpdate.text);
+				WindowServerCheck.createServer("savecommunity", parameters, this.serverReturn);
+			}
+		}
+		
+		/**
+		 * Server information return.
+		 * @param	server	the server information object
+		 */
+		private function serverReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_PROPWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				LoadedData.community.getData(server.data);
+				PopUpManager.removePopUp(this);
+				FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'CW_PROPOK') + " " + LoadedData.community.title));
+				FlexGlobals.topLevelApplication.showCommunity();
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function closeWindow():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" styleName="paddingGroup">
+		<mx:TabNavigator width="100%">
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_PROPERTYTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_TITLE')}"/>
+							<s:TextInput id="cTitle" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_ID')}"/>
+							<s:TextInput id="cID" width="100%" enabled="false" />
+							<s:Label text=".dis"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_VIEWSIZE')}"/>
+							<s:TextInput id="cWidth" width="50" text="1280" restrict="0-9" />
+							<s:Label text="x"/>
+							<s:TextInput id="cHeight" width="50" text="720" restrict="0-9" />
+							<s:Label text="{resourceManager.getString('language', 'CW_PIXELS')}"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_COPYLEFT')}"/>
+							<s:TextInput id="cCopyleft" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_COPYRIGHT')}"/>
+							<s:TextInput id="cCopyright" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_ABOUT')}"/>
+							<s:TextArea id="cAbout" width="100%" height="60"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_COLOR')}"/>
+							<s:VGroup width="100%">
+								<s:HGroup width="100%" verticalAlign="middle">
+									<mx:ColorPicker id="cBackground"/>
+									<s:Label text="{resourceManager.getString('language', 'CW_BACKGROUND')}"/>
+									<s:NumericStepper id="cAlpha" maximum="100" minimum="0" value="100" stepSize="1"/>
+									<s:Label text="{resourceManager.getString('language', 'CW_ALPHA')}"/>
+								</s:HGroup>
+								<s:HGroup width="100%" verticalAlign="middle">
+									<s:CheckBox id="cHighlight" label="{resourceManager.getString('language', 'CW_HIGHLIGHT')}"/>
+									<mx:ColorPicker id="cHighlightColor"/>
+								</s:HGroup>
+							</s:VGroup>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_LANGUAGE')}"/>
+							<s:TextInput id="cLanguage" width="100%"/>
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="80" text="{resourceManager.getString('language', 'CW_EDITION')}"/>
+							<mx:DateField id="cUpdate" />
+							</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_HOMETAB')}">
+				<s:VGroup styleName="paddingGroup">
+					
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_SOCIALTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CW_CANCEL')}" click="closeWindow()" />
+			<s:Button label="{resourceManager.getString('language', 'CW_SAVE')}" click="saveCommunity()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

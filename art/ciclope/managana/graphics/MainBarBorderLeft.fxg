@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Graphic version="2.0" viewHeight="60" viewWidth="25" ATE:version="1.0.0" flm:version="1.0.0" d:using="" xmlns="http://ns.adobe.com/fxg/2008" xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008">
+  <Library/>
+  <Group d:type="layer" d:userLabel="Layer 1">
+    <Path data="M25 0 25 60 22.2 60Q17.7 60 13.55 58.25 9.55 56.55 6.5 53.45 3.45 50.35 1.7 46.3 0.05 42.2 0 37.75 0 34.65 0 30 0 25.35 0 22.25 0.046679687 17.83457 1.7 13.75 3.45 9.7 6.5 6.6 9.55 3.45 13.55 1.75 17.7 0 22.2 0L25 0">
+      <fill>
+        <SolidColor color="#666666" alpha="0.40000001"/>
+      </fill>
+    </Path>
+  </Group>
+  <Private/>
+</Graphic>

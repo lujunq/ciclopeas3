@@ -1,0 +1,754 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+PlaylistWindow creates a window for playlist management.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:mana="art.ciclope.managanaeditor.*"
+			   close="onClose()" creationComplete="init()" width="600" height="640" title="{resourceManager.getString('language', 'PLAYLIST_TITLE')}">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="streamPlaylists" />
+		<mx:ArrayCollection id="forRevisionPlaylists" />
+		<mx:ArrayCollection id="forRestorePlaylists" />
+		<mx:ArrayCollection id="activePlaylists" />
+		<mx:ArrayCollection id="archivedPlaylists" />
+		<mx:ArrayCollection id="endList" />
+		<mx:ArrayCollection id="acTimes" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import art.ciclope.managana.data.DISPlaylist;
+		import flash.display.DisplayObject;
+		import flash.events.Event;
+		import mx.core.FlexGlobals;
+		import mx.managers.PopUpManager;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.data.DISElementED;
+		import art.ciclope.managanaeditor.data.DISPlaylistED;
+		import art.ciclope.managanaeditor.data.DISInstanceED;
+		import art.ciclope.managana.ManaganaFont;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _element:DISElementED;			// selected element reference
+		private var _playlist:DISPlaylistED;		// selected playlist reference
+		
+		/**
+		 * Initialize window.
+		 */
+		public function init():void {
+			this.itemScroller.setStyle("horizontalScrollPolicy", "on");
+			// end list
+			this.endList.addItem( { label:resourceManager.getString('language', 'PLAYLIST_ENDNEXT'), data:"next" } );
+			this.endList.addItem( { label:resourceManager.getString('language', 'PLAYLIST_ENDLOOP'), data:"loop" } );
+			this.endList.addItem( { label:resourceManager.getString('language', 'PLAYLIST_ENDSTOP'), data:"stop" } );
+			// code window
+			this.codeWindow.addEventListener(Event.CHANGE, onCodeChange);
+		}
+		
+		/**
+		 * Update the current stream playlists.
+		 */
+		public function updateStreamPlaylists(selected:String = ""):void {
+			this.title = resourceManager.getString('language', 'PLAYLIST_TITLE') + " " + LoadedData.community.title;
+			this.streamPlaylists.removeAll();
+			this.forRevisionPlaylists.removeAll();
+			var playlists:Array = LoadedData.stream.playlists;
+			var chosen:int = -1;
+			for (var index:String in playlists) {
+				var title:String = playlists[index].name;
+				if (playlists[index].locked != "") title += "*";
+				this.streamPlaylists.addItem( { label:title , data:playlists[index].id, locked: playlists[index].locked} );
+				this.forRevisionPlaylists.addItem( { label:title , data:playlists[index].id, locked: playlists[index].locked } );
+				if (playlists[index].id == selected) chosen = this.streamPlaylists.length - 1;
+			}
+			this.clearElements();
+			if (chosen < 0) {
+				this.playlistList.selectedIndex = -1;
+				this._playlist = null;
+				this._element = null;
+			} else {
+				this.playlistList.selectedIndex = chosen;
+				this.plName.text = this.playlistList.selectedItem.label;
+				this.updateElements(this.playlistList.selectedItem.data);
+				this._playlist = LoadedData.stream.playlists[this.playlistList.selectedItem.data];
+				this._element = null;
+			}
+		}
+		
+		/**
+		 * Select the requested playlist.
+		 * @param	id	the playlist ID to select
+		 */
+		public function selectPlaylist(id:String):void {
+			for (var index:uint = 0; index < this.streamPlaylists.length; index++) {
+				if (this.streamPlaylists.getItemAt(index).data == id) {
+					this.playlistList.selectedIndex = index;
+					this.listChange();
+				}
+			}
+		}
+		
+		/**
+		 * A playlist is selected on the list.
+		 */
+		private function listChange():void {
+			if (this.playlistList.selectedIndex >= 0) {
+				this.plName.text = this.playlistList.selectedItem.label;
+				this.updateElements(this.playlistList.selectedItem.data);
+				this._playlist = LoadedData.stream.playlists[this.playlistList.selectedItem.data];
+				this._element = null;
+			}
+		}
+		
+		/**
+		 * Checking elements on current playlist.
+		 * @param	playlist	the playlist id
+		 */
+		private function updateElements(playlist:String):void {
+			this.clearElements();
+			if (LoadedData.stream.playlists[playlist] != null) {
+				var elements:Array = LoadedData.stream.playlists[playlist].sortedElements;
+				for (var index:uint = 0; index < elements.length; index++) {
+					var button:PlaylistElement = new PlaylistElement();
+					button.element = elements[index];
+					button.elementClick = this.elementClick;
+					button.deleteClick = this.deleteClick;
+					button.editClick = this.editClick;
+					this.scrollGroup.addElement(button);
+				}
+			}
+		}
+		
+		/**
+		 * Clear the playlist elements.
+		 */
+		private function clearElements():void {
+			while (this.scrollGroup.numElements > 0) {
+				if (this.scrollGroup.getElementAt(0) is PlaylistElement) {
+					var bt:PlaylistElement = this.scrollGroup.getElementAt(0) as PlaylistElement;
+					bt.kill();
+					bt = null;
+				}
+				this.scrollGroup.removeElementAt(0);
+			}
+			this.elementEnd.enabled = false;
+			this.elementTime.enabled = false;
+			this.orderButtons.enabled = false;
+			this.codeWindow.enabled = false;
+			this.acTimeGroup.enabled = false;
+			this._element = null;
+		}
+		
+		/**
+		 * Update the current playlist name.
+		 */
+		private function updatePlaylistName():void {
+			if (this.playlistList.selectedIndex >= 0) {
+				if (this.plName.text != "") {
+					var plIndex:String = this.playlistList.selectedItem.data;
+					var playlists:Array = LoadedData.stream.playlists;
+					for (var index:String in playlists) {
+						if (playlists[index].id == this.playlistList.selectedItem.data) {
+							playlists[index].name = this.plName.text;
+						}
+					}
+					this.updateStreamPlaylists(plIndex);
+				}
+			}
+		}
+		
+		/**
+		 * Add an element to selected playlist.
+		 * @param	type	the element type
+		 */
+		private function addPlaylistElement(type:String):void {
+			if (this.playlistList.selectedIndex >= 0) switch (type) {
+				case "text":
+					FlexGlobals.topLevelApplication.processCommand("PlaylistAddTextElement", this.playlistList.selectedItem.data);
+					break;
+				case "paragraph":
+					FlexGlobals.topLevelApplication.processCommand("PlaylistAddParagraphElement", this.playlistList.selectedItem.data);
+					break;
+				case "picture":
+					FlexGlobals.topLevelApplication.processCommand("PlaylistAddPictureElement", this.playlistList.selectedItem.data);
+					break;
+				case "video":
+					FlexGlobals.topLevelApplication.processCommand("PlaylistAddVideoElement", this.playlistList.selectedItem.data);
+					break;
+				case "audio":
+					FlexGlobals.topLevelApplication.processCommand("PlaylistAddAudioElement", this.playlistList.selectedItem.data);
+					break;
+			}
+		}
+		
+		/**
+		 * Add a playlist to stage.
+		 */
+		private function addPlaylist():void {
+			if (this.playlistList.selectedIndex >= 0) {
+				if (LoadedData.stream.playlists[this.playlistList.selectedItem.data] != null) {
+					var instance:DISInstanceED = new DISInstanceED();
+					var elements:Array = LoadedData.stream.playlists[this.playlistList.selectedItem.data].sortedElements;
+					instance.id = elements[0].id;
+					while (FlexGlobals.topLevelApplication.processCommand("getInstance", instance.id) != null) {
+						instance.id = instance.id + "_2";
+					}
+					instance.playlist = this.playlistList.selectedItem.data;
+					instance.element = elements[0].id;
+					if (this._element != null) {
+						if ((this._element.id != null) && (this._element.id != "")) instance.element = this._element.id;
+					}
+					instance.fontface = ManaganaFont.fontList[0];
+					instance.order = uint(FlexGlobals.topLevelApplication.processCommand("getNextOrder"));
+					if (LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] != null) LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id].kill();
+					LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] = instance;
+					FlexGlobals.topLevelApplication.processCommand("redraw");
+				}
+			}
+		}
+		
+		/**
+		 * Duplicate a playlist.
+		 */
+		private function duplicatePlaylist():void {
+			if (this.playlistList.selectedIndex >= 0) {
+				if (LoadedData.stream.playlists[this.playlistList.selectedItem.data] != null) {
+					var newName:String = resourceManager.getString('language', 'PLAYLIST_DUPLICATEPREFIX') + " " + this.playlistList.selectedItem.label;
+					var newID:String = this.playlistList.selectedItem.data + "_" + (new Date().time);
+					LoadedData.stream.playlists[newID] = LoadedData.stream.playlists[this.playlistList.selectedItem.data].clone;
+					LoadedData.stream.playlists[newID].name = newName;
+					LoadedData.stream.playlists[newID].id = newID;
+					this.updateStreamPlaylists(newID);
+				}
+			}
+		}
+		
+		/**
+		 * An element button was clicked.
+		 * @param	element	the element reference
+		 */
+		private function elementClick(element:DISElementED):void {
+			this._element = element;
+			this.elementTime.value = this._element.time;
+			this.elementTime.enabled = true;
+			for (var index:uint = 0; index < this.endList.length; index++) {
+				if (this.endList.getItemAt(index).data == this._element.end) this.elementEnd.selectedIndex = index;
+			}
+			this.refreshActions();
+			this.codeTimes.selectedIndex = 0;
+			this.loadCode();
+			this.elementEnd.enabled = true;
+			this.orderButtons.enabled = true;
+			this.codeWindow.enabled = true;
+			this.acTimeGroup.enabled = true;
+			this.showSelected();
+		}
+		
+		/**
+		 * Refresh the progress code time list.
+		 * @param	select	the action time to select after refresh
+		 */
+		private function refreshActions(select:uint = 0):void {
+			this.acTimes.removeAll();
+			var startObj:Object = { label: (resourceManager.getString('language', 'PLAYLIST_ACSTART') + " (" + resourceManager.getString('language', 'PLAYLIST_ACBUTTON') + ")"), type: "button", time: 0 };
+			var endObj:Object = { label: (resourceManager.getString('language', 'PLAYLIST_ACEND') + " (" + resourceManager.getString('language', 'PLAYLIST_ACRUN') + ")"), type: "end", time: 0 };
+			var timed:Array = new Array();
+			for (var itime:String in this._element.action) {
+				if (this._element.action[itime].type == "end") {
+					// do nothing
+				} else if (this._element.action[itime].time == 0) {
+					// do nothing
+				} else {
+					var label:String = String(this._element.action[itime].time) + " (";
+					if (this._element.action[itime].type == "button") label += resourceManager.getString('language', 'PLAYLIST_ACBUTTON') + ")";
+						else label += resourceManager.getString('language', 'PLAYLIST_ACRUN') + ")";
+						timed.push({ label: label, type: this._element.action[itime].type, time: this._element.action[itime].time });
+				}
+			}
+			// add items to list
+			var index:uint;
+			this.acTimes.addItem(startObj);
+			this.acTimes.addItem(endObj);
+			if (timed.length > 0) {
+				timed.sortOn("time", Array.NUMERIC);
+				for (index = 0; index < timed.length; index++) {
+					this.acTimes.addItem(timed[index]);
+				}
+			}
+			// select requested
+			this.codeTimes.selectedIndex = 0;
+			for (index = 0; index < this.acTimes.length; index++) {
+				if (this.acTimes.getItemAt(index).time == select) this.codeTimes.selectedIndex = index;
+			}
+			this.loadCode();
+		
+		}
+		
+		/**
+		 * A delete element button was clicked.
+		 * @param	element	the element reference
+		 */
+		private function deleteClick(element:DISElementED):void {
+			if (this._playlist.numElements > 1) {
+				var order:uint = element.order;
+				delete(this._playlist.elements[element.id]);
+				for (var index:String in this._playlist.elements) {
+					if (this._playlist.elements[index].order > order) this._playlist.elements[index].order--;
+				}
+				element.kill();
+				this.updateElements(this._playlist.id);
+			}
+		}
+		
+		/**
+		 * An edit element button was clicked.
+		 * @param	element	the element reference
+		 */
+		private function editClick(element:DISElementED):void {
+			FlexGlobals.topLevelApplication.processCommand("PlaylistEdit", { element:element, playlist:this.playlistList.selectedItem.data});
+		}
+		
+		/**
+		 * Apply color to selected element button.
+		 */
+		private function showSelected():void {
+			for (var index:uint = 0; index < this.scrollGroup.numElements; index++) {
+				var button:PlaylistElement = this.scrollGroup.getElementAt(index) as PlaylistElement;
+				if (button.element == this._element) {
+					button.setStyle("chromeColor", 0xA8C6EE);
+				} else {
+					button.clearStyle("chromeColor");
+				}
+			}
+		}
+		
+		/**
+		 * Change element order at playlist.
+		 * @param	to	new order: + or -
+		 */
+		private function elementOrder(to:String):void {
+			var index:String;
+			var neworder:uint;
+			if (this._element != null) {
+				if (this._playlist.elements[this._element.id] != null) {
+					if (to == "+") {
+						if (this._element.order < (this._playlist.numElements - 1)) {
+							neworder = this._element.order + 1;
+							for (index in this._playlist.elements) {
+								if (this._playlist.elements[index].order == neworder) this._playlist.elements[index].order--;
+							}
+							this._element.order = neworder;
+						}
+					} else if (to == "-") {
+						if (this._element.order > 0) {
+							neworder = this._element.order - 1;
+							for (index in this._playlist.elements) {
+								if (this._playlist.elements[index].order == neworder) this._playlist.elements[index].order++;
+							}
+							this._element.order = neworder;
+						}
+					}
+					var hold:DISElementED = this._element;
+					this.updateElements(this._playlist.id);
+					this.elementClick(hold);
+				}
+			}
+		}
+		
+		/**
+		 * Change on selected element time.
+		 */
+		private function elTimeChange():void {
+			if (this._element != null) {
+				this._element.time = uint(this.elementTime.value);
+			}
+		}
+		
+		/**
+		 * Change on selected element end action.
+		 */
+		private function elEndChange():void {
+			if (this._element != null) {
+				this._element.end = this.elementEnd.selectedItem.data;
+			}
+		}
+		
+		/**
+		 * Change at progress code.
+		 */
+		private function onCodeChange(evt:Event):void {
+			if (this._element != null) {
+				if (this.codeTimes.selectedIndex >= 0) {
+					this._element.setAction(this.codeTimes.selectedItem.time, this.codeWindow.code, this.codeTimes.selectedItem.type);
+				}
+			}
+		}
+		
+		/**
+		 * Load progress code for selected time.
+		 */
+		private function loadCode():void {
+			if (this._element != null) {
+				if (this.codeTimes.selectedIndex >= 0) {
+					this.codeWindow.code = "";
+					if (this.codeTimes.selectedItem.type == "end") {
+						this.codeWindow.code = this._element.endAction;
+					} else {
+						for (var iac:String in this._element.action) {
+							if (this.codeTimes.selectedItem.time == this._element.action[iac].time) this.codeWindow.code = this._element.action[iac].action;
+						}
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Add a new progress code time.
+		 */
+		private function addCodeTime():void {
+			if (this._element != null) {
+				if ((this.newCodeTime.value >= 1) && (this.newCodeType.selectedIndex >= 0)) {
+					if (this._element.action["t" + this.newCodeTime.value] == null) {
+						this._element.setAction(this.newCodeTime.value, "", this.newCodeType.selectedItem.data);
+						this.refreshActions(this.newCodeTime.value);
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Remove a progress code time.
+		 */
+		private function removeCodeTime():void {
+			if (this._element != null) {
+				if (this.codeTimes.selectedIndex > 1) {
+					if (this._element.action["t" + this.codeTimes.selectedItem.time] != null) {
+						delete(this._element.action["t" + this.codeTimes.selectedItem.time]);
+						this.refreshActions();
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Add a playlist to the stage.
+		 * @param	from	the list to choose from: active or archived
+		 */
+		private function addNewPlaylist(from:String):void {
+			if (from == "active") {
+				if (this.activeList.selectedIndex >= 0) {
+					WindowServerCheck.createServer("getplaylist", ("community=" + LoadedData.community.id + "&id=" + this.activeList.selectedItem.data), onPlaylistInfo);
+				}
+			} else {
+				if (this.archivedList.selectedIndex >= 0) {
+					WindowServerCheck.createServer("getplaylist", ("community=" + LoadedData.community.id + "&id=" + this.archivedList.selectedItem.data), onPlaylistInfo);
+				}
+			}
+		}
+		
+		/**
+		 * Look for revisions of a playlist.
+		 */
+		private function checkRevisions():void {
+			if (this.revisionList.selectedIndex >= 0) {
+				WindowServerCheck.createServer("playlistrevisions", ("community=" + LoadedData.community.id + "&id=" + this.revisionList.selectedItem.data), onRevisionList);
+			}
+		}
+		
+		/**
+		 * List of revisions of selected playlists.
+		 * @param	server	server information
+		 */
+		private function onRevisionList(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'PLAYLIST_REVISIONS'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				this.forRestorePlaylists.removeAll();
+				for (var index:uint = 0; index < server.data.child("playlist").length(); index++) {
+					forRestorePlaylists.addItem({label:(String(server.data.playlist[index].@date + " / " + String(server.data.playlist[index].@name) + " / " + String(server.data.playlist[index].@elements) + " " + resourceManager.getString('language', 'PLAYLIST_REVELEMENTS'))), data:String(server.data.playlist[index].@index)});
+				}
+				this.restoreList.selectedIndex = -1;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Restore a selected revision to a playlist.
+		 */
+		private function restoreRevision():void {
+			if ((this.revisionList.selectedIndex >= 0) && (this.restoreList.selectedIndex >= 0)) {
+				WindowServerCheck.createServer("playlistrevisiondata", ("community=" + LoadedData.community.id + "&index=" + this.restoreList.selectedItem.data + "&id=" + this.revisionList.selectedItem.data), onRestoreData);
+			}
+		}
+		
+		/**
+		 * Information about playlist to be restored.
+		 * @param	server	server information
+		 */
+		private function onRestoreData(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'PLAYLIST_REVISIONS'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				if (LoadedData.stream.playlists[this.revisionList.selectedItem.data] != null) {
+					LoadedData.stream.playlists[this.revisionList.selectedItem.data].kill();
+					delete(LoadedData.stream.playlists[this.revisionList.selectedItem.data]);
+					var newplaylist:DISPlaylistED = new DISPlaylistED();
+					newplaylist.processs(server.data);
+					LoadedData.stream.playlists[this.revisionList.selectedItem.data] = newplaylist;
+					FlexGlobals.topLevelApplication.processCommand("redraw");
+					this.updateStreamPlaylists();
+					this.forRestorePlaylists.removeAll();
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * List of active playlists received.
+		 * @param	server	server information
+		 */
+		private function onPlaylistInfo(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'PLAYLIST_ACTIVE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				var newPlaylist:DISPlaylistED = new DISPlaylistED();
+				newPlaylist.processs(server.data);
+				LoadedData.stream.playlists[newPlaylist.id] = newPlaylist;
+				var instance:DISInstanceED = new DISInstanceED();
+				var elements:Array = LoadedData.stream.playlists[newPlaylist.id].sortedElements;
+				instance.id = elements[0].id;
+				while (FlexGlobals.topLevelApplication.processCommand("getInstance", instance.id) != null) {
+					instance.id = instance.id + "_2";
+				}
+				instance.playlist = newPlaylist.id;
+				instance.element = elements[0].id;
+				instance.fontface = ManaganaFont.fontList[0];
+				instance.order = uint(FlexGlobals.topLevelApplication.processCommand("getNextOrder"));
+				if (LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] != null) LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id].kill();
+				LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance[instance.id] = instance;
+				FlexGlobals.topLevelApplication.processCommand("redraw");
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Refresh the active playlists.
+		 * @param	from	the list to choose from: active or archived
+		 */
+		private function refreshPlaylist(from:String):void {
+			WindowServerCheck.createServer("listplaylists", ("community=" + LoadedData.community.id + "&from=" + from), onPlaylistList);
+		}
+		
+		/**
+		 * List of active playlists received.
+		 * @param	server	server information
+		 */
+		private function onPlaylistList(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'PLAYLIST_ACTIVE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				var index:uint;
+				var title:String;
+				if (String(server.data.from) == "active") {
+					this.activePlaylists.removeAll();
+					for (index = 0; index < server.data.child("playlist").length(); index++) {
+						title = String(server.data.playlist[index].title);
+						if (String(server.data.playlist[index].@locked) != "") title += "*";
+						this.activePlaylists.addItem({label:title, date:String(server.data.playlist[index].date), data:String(server.data.playlist[index].@id), locked:String(server.data.playlist[index].@locked)});
+					}
+					this.activeList.selectedIndex = -1;
+				} else {
+					this.archivedPlaylists.removeAll();
+					for (index = 0; index < server.data.child("playlist").length(); index++) {
+						title = String(server.data.playlist[index].title);
+						if (String(server.data.playlist[index].@locked) != "") title += "*";
+						this.archivedPlaylists.addItem({label:title, date:String(server.data.playlist[index].date), data:String(server.data.playlist[index].@id), locked:String(server.data.playlist[index].@locked)});
+					}
+					this.archivedList.selectedIndex = -1;
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Move playlists from and to active and archived lists.
+		 * @param	from	the list to choose from: active or archived
+		 */
+		private function archivePlaylist(from:String):void {
+			if (from == "active") {
+				if (this.activeList.selectedIndex >= 0) {
+					WindowServerCheck.createServer("archiveplaylists", ("community=" + LoadedData.community.id + "&from=" + from + "&id=" + this.activeList.selectedItem.data), onArchiveReturn);
+				}
+			} else {
+				if (this.archivedList.selectedIndex >= 0) {
+					WindowServerCheck.createServer("archiveplaylists", ("community=" + LoadedData.community.id + "&from=" + from + "&id=" + this.archivedList.selectedItem.data), onArchiveReturn);
+				}
+			}
+		}
+		
+		/**
+		 * Archive playlist return.
+		 * @param	server	server information
+		 */
+		private function onArchiveReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'PLAYLIST_ARCHIVED'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				this.refreshPlaylist(String(server.data.from));
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Delete selected playlist.
+		 */
+		private function deletePlaylist():void {
+			if (this.activeList.selectedIndex >= 0) {
+				var confirm:WindowConfirm = new WindowConfirm();
+				confirm.setAction(WindowConfirm.ACTION_DELETEPLAYLIST, String(this.activeList.selectedItem.data), this.confirmReturn);
+				PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+				PopUpManager.centerPopUp(confirm);
+			}
+		}
+		
+		/**
+		 * A function to call after the delete playlist confirmation is called.
+		 * @param	response	true if the user confirmed deletion, false otherwise
+		 */
+		private function confirmReturn(response:Boolean):void {
+			if (response) this.refreshPlaylist('active');
+		}
+		
+		/**
+		 * Close window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("togglePlaylist");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator id="playlistTab" width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PLAYLIST_CURRENT')}">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:List id="playlistList" width="100%" height="120" dataProvider="{streamPlaylists}" change="listChange()"></s:List>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'PLAYLIST_LOCKEDABOUT')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="20%" text="{resourceManager.getString('language', 'PLAYLIST_NAME')}" />
+						<s:TextInput id="plName" width="60%"/>
+						<s:Button width="20%" label="{resourceManager.getString('language', 'PLAYLIST_UPDATE')}" click="updatePlaylistName()" />
+					</s:HGroup>
+					<s:HGroup width="100%">
+						<s:Button width="50%" label="{resourceManager.getString('language', 'PLAYLIST_ADDTOKEYFRAME')}" click="addPlaylist()" />
+						<s:Button width="50%" label="{resourceManager.getString('language', 'PLAYLIST_DUPLICATE')}" click="duplicatePlaylist()" />
+					</s:HGroup>
+					<mx:HRule width="100%" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup width="150">
+							<s:Label width="100%" text="{resourceManager.getString('language', 'PLAYLIST_ELEMENTS')}"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+							<s:Label width="100%" text="{resourceManager.getString('language', 'PLAYLIST_ADD')}" textAlign="right" />
+							<s:Button width="25" height="25" icon="@Embed('icon/tools-text.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPTEXT')}" click="addPlaylistElement('text')" />
+							<s:Button width="25" height="25" icon="@Embed('icon/tools-paragraph.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPARAGRAPH')}" click="addPlaylistElement('paragraph')" />
+							<s:Button width="25" height="25" icon="@Embed('icon/tools-picture.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPPICTURE')}" click="addPlaylistElement('picture')" />
+							<s:Button width="25" height="25" icon="@Embed('icon/tools-video.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPVIDEO')}" click="addPlaylistElement('video')" />
+							<s:Button width="25" height="25" icon="@Embed('icon/tools-audio.png')" toolTip="{resourceManager.getString('language', 'TOOLS_TIPAUDIO')}" click="addPlaylistElement('audio')" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:Scroller id="itemScroller" width="100%" height="70" measuredSizeIncludesScrollBars="false">
+						<s:Group>
+							<s:HGroup styleName="paddingGroup" id="scrollGroup" />
+						</s:Group>
+					</s:Scroller>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label width="17%" text="{resourceManager.getString('language', 'PLAYLIST_ORDER')}" textAlign="right"/>
+						<s:HGroup width="17%" verticalAlign="middle" id="orderButtons" enabled="false">
+							<s:Button width="50%" label="&lt;" click="elementOrder('-')" />
+							<s:Button width="50%" label="&gt;" click="elementOrder('+')" />
+						</s:HGroup>
+						<s:Label width="17%" text="{resourceManager.getString('language', 'PLAYLIST_TIME')}" textAlign="right"/>
+						<s:NumericStepper minimum="1" maximum="10000" width="16%" id="elementTime" enabled="false" change="elTimeChange()" />
+						<s:Label width="17%" text="{resourceManager.getString('language', 'PLAYLIST_END')}" textAlign="right"/>
+						<s:DropDownList width="16%" id="elementEnd" enabled="false" dataProvider="{endList}" change="elEndChange()"></s:DropDownList>
+					</s:HGroup>
+					<mx:HRule width="100%" />
+					<s:HGroup width="100%" height="100%">
+						<s:VGroup width="140" height="100%" id="acTimeGroup" enabled="false">
+							<s:Label text="{resourceManager.getString('language', 'PLAYLIST_ACTIME')}" />
+							<mx:HBox>
+								<s:NumericStepper id="newCodeTime" minimum="1" maximum="10000" value="1" width="51" />
+								<s:DropDownList id="newCodeType" width="81" selectedIndex="0">
+										<mx:ArrayCollection>
+											<fx:Object label="{resourceManager.getString('language', 'PLAYLIST_ACBUTTON')}" data="button" />
+											<fx:Object label="{resourceManager.getString('language', 'PLAYLIST_ACRUN')}" data="do" />
+										</mx:ArrayCollection>
+								</s:DropDownList>
+							</mx:HBox>
+							<s:Button width="140" label="{resourceManager.getString('language', 'PLAYLIST_ACADD')}" click="addCodeTime()" />
+							<s:List id="codeTimes" height="100%" width="140" dataProvider="{acTimes}" change="loadCode()" />
+							<s:Button width="140" label="{resourceManager.getString('language', 'PLAYLIST_ACREMOVE')}" click="removeCodeTime()" />
+						</s:VGroup>
+						<mana:ProgressCode id="codeWindow" width="100%" height="100%" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PLAYLIST_REVISIONS')}">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+					<s:List id="revisionList" width="100%" height="45%" dataProvider="{forRevisionPlaylists}" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'PLAYLIST_LOCKEDABOUT')}" />
+					<s:Button width="100%" click="checkRevisions()" label="{resourceManager.getString('language', 'PLAYLIST_CHECKREV')}" />
+					<s:List id="restoreList" width="100%" height="45%" dataProvider="{forRestorePlaylists}" />
+					<s:Button width="100%" click="restoreRevision()" label="{resourceManager.getString('language', 'PLAYLIST_RESTOREREV')}" />
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PLAYLIST_ACTIVE')}">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+					<mx:DataGrid id="activeList" width="100%" height="100%" dataProvider="{activePlaylists}">
+						<mx:columns>
+							<mx:DataGridColumn dataField="label" headerText="{resourceManager.getString('language', 'PLAYLIST_NAMECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn dataField="date" headerText="{resourceManager.getString('language', 'PLAYLIST_DATECOLUMN')}"></mx:DataGridColumn>
+						</mx:columns>
+					</mx:DataGrid>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'PLAYLIST_LOCKEDABOUT')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Button width="25%" click="addNewPlaylist('active')" label="{resourceManager.getString('language', 'PLAYLIST_ADDTOKEYFRAME')}" />
+						<s:Button width="25%" click="refreshPlaylist('active')" label="{resourceManager.getString('language', 'PLAYLIST_REFRESHLIST')}" />
+						<s:Button width="25%" click="deletePlaylist()" label="{resourceManager.getString('language', 'PLAYLIST_DELETE')}" />
+						<s:Button width="25%" click="archivePlaylist('active')" label="{resourceManager.getString('language', 'PLAYLIST_ARCHIVELIST')}" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'PLAYLIST_ARCHIVED')}">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+					<mx:DataGrid id="archivedList" width="100%" height="100%" dataProvider="{archivedPlaylists}">
+						<mx:columns>
+							<mx:DataGridColumn dataField="label" headerText="{resourceManager.getString('language', 'PLAYLIST_NAMECOLUMN')}"></mx:DataGridColumn>
+							<mx:DataGridColumn dataField="date" headerText="{resourceManager.getString('language', 'PLAYLIST_DATECOLUMN')}"></mx:DataGridColumn>
+						</mx:columns>
+					</mx:DataGrid>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'PLAYLIST_LOCKEDABOUT')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Button width="33%" click="addNewPlaylist('archived')" label="{resourceManager.getString('language', 'PLAYLIST_ADDTOKEYFRAME')}" />
+						<s:Button width="34%" click="refreshPlaylist('archived')" label="{resourceManager.getString('language', 'PLAYLIST_REFRESHLIST')}" />
+						<s:Button width="33%" click="archivePlaylist('archived')" label="{resourceManager.getString('language', 'PLAYLIST_UNARCHIVELIST')}" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+	</s:VGroup>
+	
+</s:TitleWindow>

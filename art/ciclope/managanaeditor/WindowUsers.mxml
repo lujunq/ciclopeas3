@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowUsers creates a window for user creation and administration.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="550" height="425" title="{resourceManager.getString('language', 'USR_TITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="newUserLevels" />
+		<mx:ArrayCollection id="changeUserLevels" />
+		<mx:ArrayCollection id="userResult" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// populate user level data
+			this.newUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELSUBSCRIBER') , data:"subscriber" } );
+			this.newUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELUSER') , data:"user" } );
+			this.newUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELADMIN') , data:"admin" } );
+			this.newUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELSUPER') , data:"super" } );
+			if (this.newLevel != null) this.onReady('newLevel');
+			this.changeUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELSUBSCRIBER') , data:"subscriber" } );
+			this.changeUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELUSER') , data:"user" } );
+			this.changeUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELADMIN') , data:"admin" } );
+			this.changeUserLevels.addItem( { label:resourceManager.getString('language', 'USR_LEVELSUPER') , data:"super" } );
+			if (this.searchLevel != null) this.onReady('searchLevel');
+		}
+		
+		// PRIVATE METHODS
+		
+		private function onReady(name:String):void {
+			switch(name) {
+				case "newLevel":
+					this.newLevel.selectedIndex = 0;
+					break;
+				case "searchLevel":
+					this.searchLevel.selectedIndex = 0;
+					break;
+				case "newPass":
+					var key:String = "";
+					for (var index:uint = 0; index < 8; index++) key += String(uint(Math.round(Math.random() * 10)));
+					this.newPass.text = key;
+					break;
+			}
+		}
+		
+		/**
+		 * Add an user.
+		 */
+		private function onNew():void {
+			if ((this.newName.text != "") && (this.newMail.text != "") && (this.newMail2.text != "") && (this.newPass.text != "")) {
+				if (this.newMail.text == this.newMail2.text) {
+					var params:String = "newname=" + escape(this.newName.text);
+					params += "&newmail=" + escape(this.newMail.text);
+					params += "&newpass=" + escape(this.newPass.text);
+					params += "&newlevel=" + escape(this.newLevel.selectedItem.data);
+					WindowServerCheck.createServer("createuser", params, newReturn);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'USR_NEWERRORTITLE'), resourceManager.getString('error', 'ERUSER-3'));
+				}
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'USR_NEWERRORTITLE'), resourceManager.getString('error', 'ERUSER-0'));
+			}
+		}
+		
+		/**
+		 * Add an user.
+		 */
+		private function onUpdate():void {
+			if (this.userList.selectedIndex >= 0) {
+				var params:String = "newname=" + escape(this.searchName.text);
+				params += "&newmail=" + escape(this.searchMail.text);
+				params += "&newindex=" + escape(this.userList.selectedItem.index);
+				params += "&newlevel=" + escape(this.searchLevel.selectedItem.data);
+				params += "&action=update";
+				WindowServerCheck.createServer("updateuser", params, updateReturn);
+			}
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Server response from update user attempt.
+		 */
+		private function updateReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'USR_UPDATEERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					Warning.createWarning(resourceManager.getString('language', 'USR_TITLE'), resourceManager.getString('language', 'USR_UPDATEOK'));
+					this.userResult.removeAll();
+					this.userData.enabled = false;
+					this.searchName.text = "";
+					this.searchMail.text = "";
+					this.searchLevel.selectedIndex = 0;
+					this.updateBtn.enabled = false;
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Server response from creatw new user attempt.
+		 */
+		private function newReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'USR_NEWERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					Warning.createWarning(resourceManager.getString('language', 'USR_TITLE'), resourceManager.getString('language', 'USR_NEWOK'));
+					this.newName.text = "";
+					this.newMail.text = "";
+					this.newMail2.text = "";
+					var key:String = "";
+					for (var index:uint = 0; index < 8; index++) key += String(uint(Math.round(Math.random() * 10)));
+					this.newPass.text = key;
+					this.newLevel.selectedIndex = 0;
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Search for users.
+		 */
+		private function searchForUsers():void {
+			var params:String = "terms=" + escape(this.searchTerms.text);
+			WindowServerCheck.createServer("usersupersearch", params, searchReturn);
+		}
+		
+		/**
+		 * Server response from user search.
+		 */
+		private function searchReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'USR_SERACHERRORTITLE'), resourceManager.getString('error', server.errorID));
+					this.userResult.removeAll();
+					this.userData.enabled = false;
+					this.searchName.text = "";
+					this.searchMail .text = "";
+					this.searchLevel.selectedIndex = 0;
+					this.updateBtn.enabled = false;
+					break;
+				case ServerEvent.SERVER_OK:
+					this.userResult.removeAll();
+					this.userData.enabled = false;
+					this.searchName.text = "";
+					this.searchMail.text = "";
+					this.searchLevel.selectedIndex = 0;
+					this.updateBtn.enabled = false;
+					for (var index:uint = 0; index < server.data.child("result").length(); index++) {
+						var user:Object = new Object();
+						user.label = String(server.data.result[index].label);
+						user.index = String(server.data.result[index].index);
+						user.id = String(server.data.result[index].id);
+						user.name = String(server.data.result[index].name);
+						user.email = String(server.data.result[index].email);
+						user.level = String(server.data.result[index].level);
+						this.userResult.addItem(user);
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * An user was selected on the list.
+		 */
+		private function userSelected():void {
+			this.searchName.text = this.userList.selectedItem.name;
+			this.searchMail.text = this.userList.selectedItem.email;
+			for (var index:uint = 0; index < changeUserLevels.length; index++) {
+				if (changeUserLevels[index].data == this.userList.selectedItem.level) this.searchLevel.selectedIndex = index;
+			}
+			this.userData.enabled = true;
+			this.updateBtn.enabled = true;
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'USR_NEWTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label width="100%" text="{resourceManager.getString('language', 'USR_NEWNAME')}" />
+					<s:TextInput id="newName" width="100%" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'USR_NEWMAIL')}" />
+					<s:TextInput id="newMail" width="100%" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'USR_NEWMAIL2')}" />
+					<s:TextInput id="newMail2" width="100%" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'USR_NEWPASS')}" />
+					<s:TextInput id="newPass" width="100%" creationComplete="onReady('newPass')" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'USR_NEWLEVEL')}" />
+					<s:DropDownList id="newLevel" width="100%" selectedIndex="0" dataProvider="{newUserLevels}" creationComplete="onReady('newLevel')" />
+					<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+						<s:Button label="{resourceManager.getString('language', 'USR_CLOSE')}" click="onClose()" />
+						<s:Button label="{resourceManager.getString('language', 'USR_NEWADD')}" click="onNew()" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'USR_PERMTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label text="{resourceManager.getString('language', 'USR_SEARCHABOUT')}" width="100%" />
+					<s:HGroup width="100%">
+						<s:TextInput id="searchTerms" width="70%" />
+						<s:Button width="30%" label="{resourceManager.getString('language', 'USR_SEARCHBTN')}" click="searchForUsers()" />
+					</s:HGroup>
+					<s:Label text="{resourceManager.getString('language', 'USR_SEARCHFOUND')}" width="100%" />
+					<s:List width="100%" id="userList" height="120" dataProvider="{userResult}" change="userSelected()" />
+					<s:BorderContainer width="100%" height="120" enabled="false" id="userData">
+						<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+							<s:Label text="{resourceManager.getString('language', 'USR_SEARCHSELECTED')}" width="100%" />
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label text="{resourceManager.getString('language', 'USR_SEARCHNAME')}" width="80" />
+								<s:TextInput id="searchName" width="100%" />
+							</s:HGroup>
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label text="{resourceManager.getString('language', 'USR_SEARCHMAIL')}" width="80" />
+								<s:TextInput id="searchMail" width="100%" />
+							</s:HGroup>
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label text="{resourceManager.getString('language', 'USR_SEARCHPERM')}" width="80" />
+								<s:DropDownList id="searchLevel" width="100%" selectedIndex="0" dataProvider="{changeUserLevels}" creationComplete="onReady('searchLevel')" />
+							</s:HGroup>
+						</s:VGroup>
+					</s:BorderContainer>
+					<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+						<s:Button label="{resourceManager.getString('language', 'USR_CLOSE')}" click="onClose()" />
+						<s:Button label="{resourceManager.getString('language', 'USR_UPDATE')}" click="onUpdate()" enabled="false" id="updateBtn" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+	</s:VGroup>
+</s:TitleWindow>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="600" height="300" title="{resourceManager.getString('language', 'STW_OPENTITLE')}" creationComplete="init()">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="dataList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.collections.ArrayCollection;
+		import mx.collections.ArrayList;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// check for available streams
+			WindowServerCheck.createServer("streamlist", null, onStreamList);
+		}
+		
+		/**
+		 * Stream list data received from server.
+		 */
+		private function onStreamList(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_OPENSTREAMERROR'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				this.dataList = new ArrayCollection();
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.dataList.addItem({ dataTitle: String(server.data.stream[index]), dataFile: String(server.data.stream[index].@file), dataAuthor: String(server.data.stream[index].@author), dataUpdate: String(server.data.stream[index].@update)});
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Stream data received from server.
+		 */
+		private function onStreamData(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_OPENSTREAMERROR'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				LoadedData.stream.getData(server.data);
+				FlexGlobals.topLevelApplication.processCommand("redraw");
+				FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_OPENOK') + " " + LoadedData.stream.title));
+				PopUpManager.removePopUp(this);
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function onCancel():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Open stream
+		 */
+		private function onOpen():void {
+			if (this.sList.selectedIndex >= 0) {
+				var param:String = "community=" + LoadedData.community.id;
+				param += "&id=" + String(this.sList.selectedItem.dataFile);
+				WindowServerCheck.createServer("openstream", param, onStreamData);
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:DataGrid id="sList" width="100%" height="100%" requestedRowCount="4" dataProvider="{dataList}">
+			<s:columns>
+				<s:ArrayList>
+					<s:GridColumn dataField="dataTitle" headerText="{resourceManager.getString('language', 'STW_DATATITLE')}"></s:GridColumn>
+					<s:GridColumn dataField="dataFile" headerText="{resourceManager.getString('language', 'STW_DATAFILE')}"></s:GridColumn>
+					<s:GridColumn dataField="dataAuthor" headerText="{resourceManager.getString('language', 'STW_DATAAUTHOR')}"></s:GridColumn>
+					<s:GridColumn dataField="dataUpdate" headerText="{resourceManager.getString('language', 'STW_DATAUPDATE')}"></s:GridColumn>
+				</s:ArrayList>
+			</s:columns>
+		</s:DataGrid>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_OPEN')}" click="onOpen()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

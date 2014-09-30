@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityComments creates a window for community comment management.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="600" title="{resourceManager.getString('language', 'COMM_TITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="allComments" />
+		<mx:ArrayCollection id="waitingComments" />
+		<mx:ArrayCollection id="streamAllComments" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.net.URLRequest;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.FileReference;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _status:Array;				// comment status names
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get configuration values
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=fullList";
+			WindowServerCheck.createServer("getcomments", params, onData);
+			// status
+			this._status = new Array();
+			this._status.push(resourceManager.getString('language', 'COMM_STATUSAPPROVED'));
+			this._status.push(resourceManager.getString('language', 'COMM_STATUSWAITING'));
+			this._status.push(resourceManager.getString('language', 'COMM_STATUSREJECTED'));
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Refresh stream and comments list.
+		 */
+		private function onRefresh():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=fullList";
+			WindowServerCheck.createServer("getcomments", params, onData);
+			// stream comments
+			this.streamAllComments.removeAll();
+			if (this.streamSelection != null) this.streamSelection.enabled = false;
+			if (this.streamDataDate!= null) this.streamDataDate.text = "";
+			if (this.streamDataState != null) this.streamDataState.text = "";
+			if (this.streamDataText != null) this.streamDataText.text = "";
+			if (this.streamDataUser != null) this.streamDataUser.text = "";
+			// comments waiting
+			if (this.waitSelection != null) this.waitSelection.enabled = false;
+			if (this.waitDataDate!= null) this.waitDataDate.text = "";
+			if (this.waitDataStream != null) this.waitDataStream.text = "";
+			if (this.waitDataText != null) this.waitDataText.text = "";
+			if (this.waitDataUser != null) this.waitDataUser.text = "";
+		}
+		
+		/**
+		 * Check comments for a stream.
+		 */
+		private function checkStream():void {
+			if (this.streamList.selectedIndex >= 0) {
+				if (this.streamList.selectedItem.streamComments > 0) {
+					var params:String = "community=" + escape(LoadedData.community.id);
+					params += "&action=streamList";
+					params += "&stream=" + escape(this.streamList.selectedItem.streamID);
+					WindowServerCheck.createServer("getcomments", params, onStreamData);
+				}
+				if (this.streamSelection != null) this.streamSelection.enabled = false;
+				if (this.streamDataDate!= null) this.streamDataDate.text = "";
+				if (this.streamDataState != null) this.streamDataState.text = "";
+				if (this.streamDataText != null) this.streamDataText.text = "";
+				if (this.streamDataUser != null) this.streamDataUser.text = "";
+				this.streamAllComments.removeAll();
+			}
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Initial data received.
+		 */
+		private function onData(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'COMM_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// stream list
+					var index:uint;
+					this.allComments.removeAll();
+					for (index = 0; index < server.data.child("stream").length(); index++) {
+						this.allComments.addItem({streamName:String(server.data.stream[index].name), streamComments:uint(server.data.stream[index].comments), streamID:String(server.data.stream[index].id)});
+					}
+					// waiting for approval
+					this.waitingComments.removeAll();
+					for (index = 0; index < server.data.child("wait").length(); index++) {
+						this.waitingComments.addItem({streamName:String(server.data.wait[index].stream), userName:String(server.data.wait[index].name), comDate:String(server.data.wait[index].date), comIndex:uint(server.data.wait[index].index), comText:String(server.data.wait[index].text)});
+					}
+					break;
+			}
+			server.kill();
+			if (this.waitSelection != null) this.waitSelection.enabled = false;
+			if (this.waitDataDate!= null) this.waitDataDate.text = "";
+			if (this.waitDataStream != null) this.waitDataStream.text = "";
+			if (this.waitDataText != null) this.waitDataText.text = "";
+			if (this.waitDataUser != null) this.waitDataUser.text = "";
+		}
+		
+		/**
+		 * Stream comment data received.
+		 */
+		private function onStreamData(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'COMM_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// comment list
+					var index:uint;
+					this.streamAllComments.removeAll();
+					for (index = 0; index < server.data.child("comment").length(); index++) {
+						this.streamAllComments.addItem({comStatus:this._status[uint(server.data.comment[index].status)], userName:String(server.data.comment[index].name), comDate:String(server.data.comment[index].date), comIndex:uint(server.data.comment[index].index), comText:String(server.data.comment[index].text)});
+					}
+					break;
+			}
+			server.kill();
+			if (this.streamSelection != null) this.streamSelection.enabled = false;
+			if (this.streamDataDate!= null) this.streamDataDate.text = "";
+			if (this.streamDataState != null) this.streamDataState.text = "";
+			if (this.streamDataText != null) this.streamDataText.text = "";
+			if (this.streamDataUser != null) this.streamDataUser.text = "";
+		}
+		
+		/**
+		 * An item was selected on wait list.
+		 */
+		private function selectWait():void {
+			if (this.waitList.selectedIndex >= 0) {
+				this.waitDataDate.text = this.waitList.selectedItem.comDate;
+				this.waitDataStream.text = this.waitList.selectedItem.streamName;
+				this.waitDataText.text = this.waitList.selectedItem.comText;
+				this.waitDataUser.text = this.waitList.selectedItem.userName;
+				this.waitSelection.enabled = true;
+			}
+		}
+		
+		/**
+		 * An item was selected on stream comment list.
+		 */
+		private function selectStream():void {
+			if (this.streamComList.selectedIndex >= 0) {
+				this.streamDataDate.text = this.streamComList.selectedItem.comDate;
+				this.streamDataState.text = this.streamComList.selectedItem.comStatus;
+				this.streamDataText.text = this.streamComList.selectedItem.comText;
+				this.streamDataUser.text = this.streamComList.selectedItem.userName;
+				this.streamSelection.enabled = true;
+			}
+		}
+		
+		/**
+		 * Choice on waiting comments.
+		 * @param	action	the choice: approve or reject
+		 */
+		private function onChoice(action:String):void {
+			if (this.waitList.selectedIndex >= 0) {
+				var params:String = "community=" + escape(LoadedData.community.id);
+				params += "&index=" + this.waitList.selectedItem.comIndex;
+				params += "&action=" + action;
+				WindowServerCheck.createServer("processcomment", params, onProcess);
+			}
+		}
+		
+		/**
+		 * Choice on stream comments.
+		 * @param	action	the choice: approve or reject
+		 */
+		private function onStreamChoice(action:String):void {
+			if (this.streamComList.selectedIndex >= 0) {
+				var params:String = "community=" + escape(LoadedData.community.id);
+				params += "&index=" + this.streamComList.selectedItem.comIndex;
+				params += "&action=" + action;
+				
+				trace ("params", params);
+				
+				WindowServerCheck.createServer("processcomment", params, onStreamProcess);
+			}
+		}
+		
+		/**
+		 * Process comment return
+		 */
+		private function onProcess(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'COMM_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// remove item from list
+					this.waitingComments.removeItemAt(this.waitList.selectedIndex);
+					this.waitList.selectedIndex = -1;
+					break;
+			}
+			server.kill();
+			if (this.waitSelection != null) this.waitSelection.enabled = false;
+			if (this.waitDataDate!= null) this.waitDataDate.text = "";
+			if (this.waitDataStream != null) this.waitDataStream.text = "";
+			if (this.waitDataText != null) this.waitDataText.text = "";
+			if (this.waitDataUser != null) this.waitDataUser.text = "";
+		}
+		
+		/**
+		 * Process stream comment return
+		 */
+		private function onStreamProcess(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'COMM_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// remove item from list
+					var status:int = int(server.data.status);
+					if (status == -1) {
+						this.streamAllComments.removeItemAt(this.streamComList.selectedIndex);
+						//this.allComments.getItemAt(this.streamList.selectedIndex).streamComments -= 1;
+						this.streamList.dataProvider = null;
+						this.streamList.dataProvider = this.allComments;
+					} else {
+						this.streamAllComments.getItemAt(this.streamComList.selectedIndex).comStatus = this._status[status];
+						this.streamComList.dataProvider = null;
+						this.streamComList.dataProvider = this.streamAllComments;
+					}
+					this.streamComList.selectedIndex = -1;
+					break;
+			}
+			server.kill();
+			if (this.streamSelection != null) this.streamSelection.enabled = false;
+			if (this.streamDataDate!= null) this.streamDataDate.text = "";
+			if (this.streamDataState != null) this.streamDataState.text = "";
+			if (this.streamDataText != null) this.streamDataText.text = "";
+			if (this.streamDataUser != null) this.streamDataUser.text = "";
+		}
+		
+		/**
+		 * Download comment data.
+		 */
+		private function onDownload():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=download";
+			WindowServerCheck.createServer("getcomments", params, onDownloadReady);
+		}
+		
+		/**
+		 * A data download link is available.
+		 */
+		private function onDownloadReady(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'COMM_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					var file:FileReference = new FileReference();
+					file.download(new URLRequest(String(server.data.link)));
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Reset community comments.
+		 */
+		private function onReset():void {
+			var confirm:WindowConfirm = new WindowConfirm();
+			confirm.setAction(WindowConfirm.ACTION_RESETCOMMENTS, LoadedData.community.id, this.confirmReturn);
+			PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+			PopUpManager.centerPopUp(confirm);
+		}
+		
+		/**
+		 * A function to call after the reset stats confirmation is called.
+		 * @param	response	true if the user confirmed reset, false otherwise
+		 */
+		private function confirmReturn(response:Boolean):void {
+			// reload data
+			if (response) this.init();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent label="{resourceManager.getString('language', 'COMM_ALLTAB')}">
+				<s:VGroup styleName="paddingGroup" width="100%">
+					<s:Label text="{resourceManager.getString('language', 'COMM_SELECTSTREAM')}" width="100%" />
+					<s:DataGrid id="streamList" dataProvider="{allComments}" requestedRowCount="2" width="100%" height="150" selectionChange="checkStream()">
+						<s:columns>
+							<s:ArrayList>
+								<s:GridColumn dataField="streamName" headerText="{resourceManager.getString('language', 'COMM_STREAMLISTNAME')}"></s:GridColumn>
+								<s:GridColumn dataField="streamComments" headerText="{resourceManager.getString('language', 'COMM_STREAMLISTNUMBER')}"></s:GridColumn>
+							</s:ArrayList>
+						</s:columns>
+					</s:DataGrid>
+					<s:Label text="{resourceManager.getString('language', 'COMM_STREAMCOMMENTS')}" width="100%" />
+					<s:DataGrid id="streamComList" dataProvider="{streamAllComments}" requestedRowCount="4" width="100%" height="150" selectionChange="selectStream()">
+						<s:columns>
+							<s:ArrayList>
+								<s:GridColumn dataField="comStatus" headerText="{resourceManager.getString('language', 'COMM_WAITSTATUS')}"></s:GridColumn>
+								<s:GridColumn dataField="userName" headerText="{resourceManager.getString('language', 'COMM_WAITUSER')}"></s:GridColumn>
+								<s:GridColumn dataField="comDate" headerText="{resourceManager.getString('language', 'COMM_WAITDATE')}"></s:GridColumn>
+								<s:GridColumn dataField="comText" headerText="{resourceManager.getString('language', 'COMM_WAITTEXT')}"></s:GridColumn>
+							</s:ArrayList>
+						</s:columns>
+					</s:DataGrid>
+					<s:VGroup id="streamSelection" width="100%" enabled="false">
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'COMM_WAITSTREAMLABEL')}" width="50%" />
+							<s:TextInput id="streamDataState" width="50%" editable="false" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'COMM_WAITDATELABEL')}" width="50%" />
+							<s:TextInput id="streamDataDate" width="50%" editable="false" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'COMM_WAITUSERLABEL')}" width="50%" />
+							<s:TextInput id="streamDataUser" width="50%" editable="false" />
+						</s:HGroup>
+						<s:Label text="{resourceManager.getString('language', 'COMM_WAITCOMMENTLABEL')}" width="100%" />
+						<s:TextArea id="streamDataText" width="100%" editable="false" height="40" />
+						<s:HGroup width="100%" horizontalAlign="right">
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITHOLD')}" click="onStreamChoice('wait')" />
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITAPPROVE')}" click="onStreamChoice('approve')" />
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITREJECT')}" click="onStreamChoice('reject')" />
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITDELETE')}" click="onStreamChoice('delete')" />
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'COMM_WAITTAB')}">
+				<s:VGroup styleName="paddingGroup" width="100%">
+					<s:Label text="{resourceManager.getString('language', 'COMM_STREAMWAITINGABOUT')}" width="100%" />
+					<s:DataGrid id="waitList" dataProvider="{waitingComments}" requestedRowCount="4" width="100%" height="150" selectionChange="selectWait()">
+						<s:columns>
+							<s:ArrayList>
+								<s:GridColumn dataField="streamName" headerText="{resourceManager.getString('language', 'COMM_WAITSTREAM')}"></s:GridColumn>
+								<s:GridColumn dataField="userName" headerText="{resourceManager.getString('language', 'COMM_WAITUSER')}"></s:GridColumn>
+								<s:GridColumn dataField="comDate" headerText="{resourceManager.getString('language', 'COMM_WAITDATE')}"></s:GridColumn>
+								<s:GridColumn dataField="comText" headerText="{resourceManager.getString('language', 'COMM_WAITTEXT')}"></s:GridColumn>
+							</s:ArrayList>
+						</s:columns>
+					</s:DataGrid>
+					<s:VGroup id="waitSelection" width="100%" enabled="false">
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'COMM_WAITSTREAMLABEL')}" width="50%" />
+							<s:TextInput id="waitDataStream" width="50%" editable="false" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'COMM_WAITDATELABEL')}" width="50%" />
+							<s:TextInput id="waitDataDate" width="50%" editable="false" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label text="{resourceManager.getString('language', 'COMM_WAITUSERLABEL')}" width="50%" />
+							<s:TextInput id="waitDataUser" width="50%" editable="false" />
+						</s:HGroup>
+						<s:Label text="{resourceManager.getString('language', 'COMM_WAITCOMMENTLABEL')}" width="100%" />
+						<s:TextArea id="waitDataText" width="100%" editable="false" height="40" />
+						<s:HGroup width="100%" horizontalAlign="right">
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITAPPROVE')}" click="onChoice('approve')" />
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITREJECT')}" click="onChoice('reject')" />
+							<s:Button label="{resourceManager.getString('language', 'COMM_WAITDELETE')}" click="onChoice('delete')" />
+						</s:HGroup>
+					</s:VGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'COMM_RESET')}" click="onReset()" />
+			<s:Button label="{resourceManager.getString('language', 'COMM_DOWNLOAD')}" click="onDownload()" />
+			<s:Button label="{resourceManager.getString('language', 'COMM_REFRESH')}" click="onRefresh()" />
+			<s:Button label="{resourceManager.getString('language', 'COMM_CLOSE')}" click="onClose()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

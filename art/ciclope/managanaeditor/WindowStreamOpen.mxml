@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamOpen creates a window to open or delete community streams.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns="*"
+			   width="700" height="500" title="{resourceManager.getString('language', 'STW_OPENTITLE')}" creationComplete="init()">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="dataList" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.collections.ArrayCollection;
+		import mx.collections.ArrayList;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// check for available streams
+			WindowServerCheck.createServer("streamlist", ("community=" + LoadedData.community.id), onStreamList);
+		}
+		
+		/**
+		 * Stream list data received from server.
+		 */
+		private function onStreamList(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_OPENSTREAMERROR'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				this.dataList.removeAll();
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					var title:String = String(server.data.stream[index]);
+					if (String(server.data.stream[index].@locked) != "") title += "*";
+					this.dataList.addItem( { dataTitle: title, dataFile: String(server.data.stream[index].@file), dataAuthor: String(server.data.stream[index].@author), dataUpdate: String(server.data.stream[index].@update), dataLocked: String(server.data.stream[index].@locked) } );
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Stream data received from server.
+		 */
+		private function onStreamData(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_OPENSTREAMERROR'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				LoadedData.stream.getData(server.data);
+				FlexGlobals.topLevelApplication.processCommand('selectNone');
+				FlexGlobals.topLevelApplication.processCommand("redraw");
+				FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_OPENOK') + " " + LoadedData.stream.title));
+				PopUpManager.removePopUp(this);
+				FlexGlobals.topLevelApplication.processCommand("StreamRefresh");
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function onCancel():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Open stream
+		 */
+		private function onOpen():void {
+			if (this.sList.selectedIndex >= 0) {
+				/*if (this.dataList.getItemAt(this.sList.selectedIndex).dataLocked != "") {
+					Warning.createWarning(resourceManager.getString('language', 'STW_LOCKEDERRORTITLE'), resourceManager.getString('error', 'ERSTREAM-6'));
+				} else {*/
+					var param:String = "community=" + LoadedData.community.id;
+					param += "&id=" + String(this.sList.selectedItem.dataFile);
+					WindowServerCheck.createServer("openstream", param, onStreamData);
+				//}
+			}
+		}
+		
+		/**
+		 * Delete selected stream.
+		 */
+		private function onDelete():void {
+			if (this.sList.selectedIndex >= 0) {
+				if (this.dataList.getItemAt(this.sList.selectedIndex).dataLocked != "") {
+					Warning.createWarning(resourceManager.getString('language', 'STW_LOCKEDERRORTITLE'), resourceManager.getString('error', 'ERSTREAM-6'));
+				} else {
+					var confirm:WindowConfirm = new WindowConfirm();
+					confirm.setAction(WindowConfirm.ACTION_DELETESTREAM, String(this.sList.selectedItem.dataFile), this.confirmReturn);
+					PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+					PopUpManager.centerPopUp(confirm);
+				}
+			}
+		}
+		
+		/**
+		 * A function to call after the delete stream confirmation is called.
+		 * @param	response	true if the user confirmed deletion, false otherwise
+		 */
+		private function confirmReturn(response:Boolean):void {
+			// refresh stream list
+			if (response) WindowServerCheck.createServer("streamlist", ("community=" + LoadedData.community.id), onStreamList);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:DataGrid id="sList" width="100%" height="100%" requestedRowCount="4" dataProvider="{dataList}">
+			<s:columns>
+				<s:ArrayList>
+					<s:GridColumn dataField="dataTitle" headerText="{resourceManager.getString('language', 'STW_DATATITLE')}"></s:GridColumn>
+					<s:GridColumn dataField="dataFile" headerText="{resourceManager.getString('language', 'STW_DATAFILE')}"></s:GridColumn>
+					<s:GridColumn dataField="dataAuthor" headerText="{resourceManager.getString('language', 'STW_DATAAUTHOR')}"></s:GridColumn>
+					<s:GridColumn dataField="dataUpdate" headerText="{resourceManager.getString('language', 'STW_DATAUPDATE')}"></s:GridColumn>
+				</s:ArrayList>
+			</s:columns>
+		</s:DataGrid>
+		<s:Label width="100%" text="{resourceManager.getString('language', 'STW_LOCKEDABOUT')}" />
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_DELETE')}" click="onDelete()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_OPEN')}" click="onOpen()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

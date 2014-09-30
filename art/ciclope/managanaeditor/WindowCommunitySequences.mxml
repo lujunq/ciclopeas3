@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamGuides creates a window to edit gudes for several streams at once.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   width="600" height="600" borderVisible="true" title="{resourceManager.getString('language', 'CNW_TITLE')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="streamListData" />
+		<mx:ArrayCollection id="sequenceListData" />
+		<s:RadioButtonGroup id="axis" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get a list of published streams
+			WindowServerCheck.createServer("publishedstreams", ("ac=all&community=" + escape(LoadedData.community.id)), this.listReturn);
+		}
+		
+		/**
+		 * Streams list information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try again
+				WindowServerCheck.createServer("publishedstreams", ("ac=all&community=" + escape(LoadedData.community.id)), this.listReturn);
+			} else {
+				// get stream data
+				this.streamListData.removeAll();
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.streamListData.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Save stream properties changes.
+		 */
+		private function onOK():void {
+			if (this.sequenceListData.length >= 2) {
+				var sequence:Array = new Array();
+				for (var index:uint = 0; index < this.sequenceListData.length; index++) {
+					sequence.push(String(this.sequenceListData.getItemAt(index).data));
+				}
+				var useaxis:String = "x";
+				if (this.yAxis.selected) useaxis = "y";
+				if (this.zAxis.selected) useaxis = "z";
+				WindowServerCheck.createServer("bulkactions", ("ac=navsequence&community=" + escape(LoadedData.community.id) + "&sequence=" + escape(sequence.join("|")) + "&axis=" + useaxis + "&loop=" + String(this.loop.selected)), this.serverReturn);
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CNW_WARNTITLE'), resourceManager.getString('language', 'CNW_ERRORNOSEQUENCE'));
+			}
+		}
+		
+		/**
+		 * Add the selected stream to the list.
+		 */
+		private function addStream():void {
+			if (this.streamList.selectedIndices.length > 0) {
+				for (var index:int = (this.streamList.selectedIndices.length - 1); index >= 0; index--) {
+					if (this.canAdd(String(this.streamList.selectedItems[index].data))) this.sequenceListData.addItem( { label: String(this.streamList.selectedItems[index].label), data: String(this.streamList.selectedItems[index].data) } );
+				}
+				this.sequenceListData.refresh();
+			}
+		}
+		
+		/**
+		 * Can a stream be add to the sequence list (not already present)?
+		 * @param	stream	the stream id
+		 * @return	tru if the stream can be add, false otherwise
+		 */
+		private function canAdd(stream:String):Boolean {
+			var can:Boolean = true;
+			for (var index:uint = 0; index < this.sequenceListData.length; index++) {
+				if (String(this.sequenceListData.getItemAt(index).data) == stream) can = false;
+			}
+			return (can);
+		}
+		
+		/**
+		 * Remove a stream from the sequence list.
+		 */
+		private function removeStream():void {
+			if (this.sequenceList.selectedIndex >= 0) {
+				this.sequenceListData.removeItemAt(this.sequenceList.selectedIndex);
+				this.sequenceListData.refresh();
+			}
+		}
+		
+		/**
+		 * Move a stream on sequence list.
+		 * @param	dir	the direction: up or down
+		 */
+		private function moveStream(dir:String):void {
+			if (this.sequenceList.selectedIndex >= 0) {
+				var list1:Object = new Object();
+				var list2:Object = new Object();
+				if (dir == "up") {
+					if (this.sequenceList.selectedIndex > 0) {
+						list1.label = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex - 1).label);
+						list1.data = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex - 1).data);
+						list2.label = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).label);
+						list2.data = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).data);
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex - 1).label = list2.label;
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex - 1).data = list2.data;
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).label = list1.label;
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).data = list1.data;
+						this.sequenceList.selectedIndex = this.sequenceList.selectedIndex - 1;
+						this.sequenceListData.refresh();
+					}
+				} else if (dir == "down") {
+					if (this.sequenceList.selectedIndex < (this.sequenceListData.length - 1)) {
+						list1.label = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex + 1).label);
+						list1.data = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex + 1).data);
+						list2.label = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).label);
+						list2.data = String(this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).data);
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex + 1).label = list2.label;
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex + 1).data = list2.data;
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).label = list1.label;
+						this.sequenceListData.getItemAt(this.sequenceList.selectedIndex).data = list1.data;
+						this.sequenceList.selectedIndex = this.sequenceList.selectedIndex + 1;
+						this.sequenceListData.refresh();
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Guide apply return.
+		 * @param	server	the server information object
+		 */
+		private function serverReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CNW_WARNTITLE'), resourceManager.getString('error', server.errorID));
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'CNW_WARNTITLE'), resourceManager.getString('language', 'CNW_SEQUENCEOK'));
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Avoid changes.
+		 */
+		private function onCANCEL():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'CNW_ABOUT')}" />
+		<s:Label width="100%" text="" />
+		<s:HGroup width="100%" height="100%" styleName="paddingGroup">
+			<s:VGroup width="50%" height="100%">
+				<s:Label text="{resourceManager.getString('language', 'CNW_STREAM')}" />
+				<s:List id="streamList" allowMultipleSelection="true" width="100%" height="100%" dataProvider="{streamListData}" />
+				<s:Button width="100%" label="{resourceManager.getString('language', 'CNW_ADDSTREAM')}" click="addStream()" />
+			</s:VGroup>
+			<s:VGroup width="50%" height="100%">
+				<s:Label text="{resourceManager.getString('language', 'CNW_SEQUENCE')}" />
+				<mx:List id="sequenceList" allowMultipleSelection="false" width="100%" height="100%" dataProvider="{sequenceListData}" />
+				<s:HGroup width="100%">
+					<s:Button width="50%" label="{resourceManager.getString('language', 'CNW_MOVEUP')}" click="moveStream('up')" />
+					<s:Button width="50%" label="{resourceManager.getString('language', 'CNW_MOVEDOWN')}" click="moveStream('down')" />
+				</s:HGroup>
+				<s:Button width="100%" label="{resourceManager.getString('language', 'CNW_REMOVESTREAM')}" click="removeStream()" />
+			</s:VGroup>
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:RadioButton id="xAxis" group="{axis}" label="{resourceManager.getString('language', 'CNW_XAXIS')}" selected="true" />
+			<s:RadioButton id="yAxis" group="{axis}" label="{resourceManager.getString('language', 'CNW_YAXIS')}" selected="false" />
+			<s:RadioButton id="zAxis" group="{axis}" label="{resourceManager.getString('language', 'CNW_ZAXIS')}" selected="false" />
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:CheckBox id="loop" width="60%" label="{resourceManager.getString('language', 'CNW_LOOP')}" selected="true" />
+			<s:HGroup width="40%" horizontalAlign="right" verticalAlign="middle">
+				<s:Button label="{resourceManager.getString('language', 'CNW_SAVE')}" click="onOK()" />
+				<s:Button label="{resourceManager.getString('language', 'CNW_CLOSE')}" click="onCANCEL()" />
+			</s:HGroup>
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

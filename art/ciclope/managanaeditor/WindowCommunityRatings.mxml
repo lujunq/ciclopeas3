@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowCommunityRatings creates a window to check community stream ratings.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="600" title="{resourceManager.getString('language', 'RAT_TITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="allStreams" />
+		<mx:ArrayCollection id="allRates" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.net.URLRequest;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.FileReference;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// get configuration values
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=fullList";
+			WindowServerCheck.createServer("getratings", params, onData);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Refresh stream and comments list.
+		 */
+		private function onRefresh():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=fullList";
+			WindowServerCheck.createServer("getratings", params, onData);
+		}
+		
+		/**
+		 * Check ratings for a stream.
+		 */
+		private function checkStream():void {
+			if (this.streamList.selectedIndex >= 0) {
+				if (this.streamList.selectedItem.streamTotal > 0) {
+					var params:String = "community=" + escape(LoadedData.community.id);
+					params += "&action=streamList";
+					params += "&stream=" + escape(this.streamList.selectedItem.streamID);
+					WindowServerCheck.createServer("getratings", params, onStreamData);
+				}
+				this.allRates.removeAll();
+			}
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Initial data received.
+		 */
+		private function onData(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'RAT_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// stream list
+					var index:uint;
+					this.allStreams.removeAll();
+					for (index = 0; index < server.data.child("stream").length(); index++) {
+						this.allStreams.addItem({streamName:String(server.data.stream[index].name), streamTotal:uint(server.data.stream[index].total), streamAverage:uint(server.data.stream[index].average), streamID:String(server.data.stream[index].id)});
+					}
+					break;
+			}
+			server.kill();
+			this.allRates.removeAll();
+		}
+		
+		/**
+		 * Stream rate data received.
+		 */
+		private function onStreamData(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'RAT_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// comment list
+					var index:uint;
+					this.allRates.removeAll();
+					for (index = 0; index < server.data.child("rate").length(); index++) {
+						this.allRates.addItem({userName:String(server.data.rate[index].name), rateDate:String(server.data.rate[index].date), userRate:uint(server.data.rate[index].value)});
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Download comment data.
+		 */
+		private function onDownload():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			params += "&action=download";
+			WindowServerCheck.createServer("getratings", params, onDownloadReady);
+		}
+		
+		/**
+		 * A data download link is available.
+		 */
+		private function onDownloadReady(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'RAT_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					var file:FileReference = new FileReference();
+					file.download(new URLRequest(String(server.data.link)));
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Reset community ratings.
+		 */
+		private function onReset():void {
+			var confirm:WindowConfirm = new WindowConfirm();
+			confirm.setAction(WindowConfirm.ACTION_RESETRATE, LoadedData.community.id, this.confirmReturn);
+			PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+			PopUpManager.centerPopUp(confirm);
+		}
+		
+		/**
+		 * A function to call after the reset ratings confirmation is called.
+		 * @param	response	true if the user confirmed reset, false otherwise
+		 */
+		private function confirmReturn(response:Boolean):void {
+			// reload data
+			if (response) this.init();
+		}
+		
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label text="{resourceManager.getString('language', 'RAT_SELECTSTREAM')}" width="100%" />
+		<s:DataGrid id="streamList" dataProvider="{allStreams}" requestedRowCount="3" width="100%" height="150" selectionChange="checkStream()">
+			<s:columns>
+				<s:ArrayList>
+					<s:GridColumn dataField="streamName" headerText="{resourceManager.getString('language', 'RAT_STREAMNAME')}"></s:GridColumn>
+					<s:GridColumn dataField="streamTotal" headerText="{resourceManager.getString('language', 'RAT_STREAMNUMRATE')}"></s:GridColumn>
+					<s:GridColumn dataField="streamAverage" headerText="{resourceManager.getString('language', 'RAT_STREAMAVERAGE')}"></s:GridColumn>
+				</s:ArrayList>
+			</s:columns>
+		</s:DataGrid>
+		<s:Label text="{resourceManager.getString('language', 'RAT_SECLECTEDSTREAM')}" width="100%" />
+		<s:DataGrid id="streamRateList" dataProvider="{allRates}" requestedRowCount="3" width="100%" height="150">
+			<s:columns>
+				<s:ArrayList>
+					<s:GridColumn dataField="userName" headerText="{resourceManager.getString('language', 'RAT_USERNAME')}"></s:GridColumn>
+					<s:GridColumn dataField="userRate" headerText="{resourceManager.getString('language', 'RAT_USERRATE')}"></s:GridColumn>
+					<s:GridColumn dataField="rateDate" headerText="{resourceManager.getString('language', 'RAT_RATEDATE')}"></s:GridColumn>
+				</s:ArrayList>
+			</s:columns>
+		</s:DataGrid>
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'RAT_RESET')}" click="onReset()" />
+			<s:Button label="{resourceManager.getString('language', 'RAT_DOWNLOAD')}" click="onDownload()" />
+			<s:Button label="{resourceManager.getString('language', 'RAT_REFRESH')}" click="onRefresh()" />
+			<s:Button label="{resourceManager.getString('language', 'RAT_CLOSE')}" click="onClose()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

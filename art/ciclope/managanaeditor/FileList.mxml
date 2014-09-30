@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+FileList provides a file selector for Managana editor. It also provides interface to enter text or select external feeds.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:mana="art.ciclope.managanaeditor.*"
+		  creationComplete="init()">
+		  
+	<fx:Declarations>
+		<mx:ArrayCollection id="personalFiles" />
+		<mx:ArrayCollection id="communityFiles" />
+		<mx:ArrayCollection id="communityFeeds" />
+		<mx:ArrayCollection id="pictureFields" />
+		<mx:ArrayCollection id="videoFields" />
+		<mx:ArrayCollection id="audioFields" />
+		<mx:ArrayCollection id="textFields" />
+		<mx:ArrayCollection id="postNumbers">
+			<fx:String>0</fx:String>
+			<fx:String>1</fx:String>
+			<fx:String>2</fx:String>
+			<fx:String>3</fx:String>
+			<fx:String>4</fx:String>
+			<fx:String>5</fx:String>
+			<fx:String>6</fx:String>
+			<fx:String>7</fx:String>
+			<fx:String>8</fx:String>
+			<fx:String>9</fx:String>
+			<fx:String>10</fx:String>
+			<fx:String>11</fx:String>
+			<fx:String>12</fx:String>
+			<fx:String>13</fx:String>
+			<fx:String>14</fx:String>
+			<fx:String>15</fx:String>
+			<fx:String>16</fx:String>
+			<fx:String>17</fx:String>
+			<fx:String>18</fx:String>
+			<fx:String>19</fx:String>
+		</mx:ArrayCollection>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.net.FileReference;
+		import flash.net.FileFilter;
+		import flash.events.*;
+		import flash.net.URLRequest;
+		import flash.net.URLRequestHeader;
+		import flash.net.URLVariables;
+		import mx.collections.ArrayCollection;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.data.DISElementED;
+		import art.ciclope.util.LoadedFile;
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.data.SelectedFile;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _file:FileReference;		// a file uploader
+		private var _tofolder:String;			// last upload folder
+		private var _feedSubtypes:Array;		// simulated file sub-types for feeds
+		private var _fileType:String;			// the file type to show
+		private var _element:DISElementED;		// element to edit?
+
+		// PUBLIC VARIABLES
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.removeElement(this.uploadFeedback);
+			this._file = new FileReference();
+			this._file.addEventListener(Event.CANCEL, onUploadCancel);
+            this._file.addEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.addEventListener(Event.OPEN, onUploadOpen);
+            this._file.addEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.addEventListener(Event.SELECT, onUploadSelect);
+            this._file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+			// load external feeds
+			this.communityFeeds.removeAll();
+			for (var index:uint = 0; index < LoadedData.community.feeds.length; index++) {
+				this.communityFeeds.addItem( { label: (LoadedData.community.feeds[index].name + " (" + LoadedData.community.feeds[index].type + ")"), name: LoadedData.community.feeds[index].name, type: LoadedData.community.feeds[index].type, reference: LoadedData.community.feeds[index].reference } );
+			}
+			// feed subtypes
+			this._feedSubtypes = new Array();
+			this._feedSubtypes['picture'] = "jpeg";
+			this._feedSubtypes['video'] = "onvp";
+			this._feedSubtypes['audio'] = "mp3";
+			this._feedSubtypes['text'] = "txt";
+			this._feedSubtypes['paragraph'] = "html";
+			// piture feed fields
+			this.pictureFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDPICTUREFIELD'), data:"picture" } );
+			this.pictureFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA1'), data:"extra1" } );
+			this.pictureFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA2'), data:"extra2" } );
+			this.pictureFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA3'), data:"extra3" } );
+			this.pictureFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA4'), data:"extra4" } );
+			this.pictureFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA5'), data:"extra5" } );
+			// video feed fields
+			this.videoFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDVIDEOFIELD'), data:"video" } );
+			this.videoFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA1'), data:"extra1" } );
+			this.videoFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA2'), data:"extra2" } );
+			this.videoFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA3'), data:"extra3" } );
+			this.videoFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA4'), data:"extra4" } );
+			this.videoFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA5'), data:"extra5" } );
+			// audio feed fields
+			this.audioFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDAUDIOFIELD'), data:"audio" } );
+			this.audioFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA1'), data:"extra1" } );
+			this.audioFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA2'), data:"extra2" } );
+			this.audioFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA3'), data:"extra3" } );
+			this.audioFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA4'), data:"extra4" } );
+			this.audioFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA5'), data:"extra5" } );
+			// text feed fields
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDTITLEFIELD'), data:"title" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDTEXTFIELD'), data:"text" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDLINKFIELD'), data:"link" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDAUTHORFIELD'), data:"author" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDRAWDATEFIELD'), data:"dateRAW" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATEYYYY'), data:"dateYYYY" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATEMM'), data:"dateMM" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATEDD'), data:"dateDD" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATETIMEYYYY'), data:"timeYYYY" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATETIMEMM'), data:"timeMM" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDATETIMEDD'), data:"timeDD" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDTIME'), data:"time" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDDAY'), data:"DAY" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDMONTH'), data:"MONTH" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDYEAR'), data:"YEAR" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDHOUR'), data:"HOUR" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDMINUTE'), data:"MINUTE" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA1'), data:"extra1" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA2'), data:"extra2" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA3'), data:"extra3" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA4'), data:"extra4" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDEXTRA5'), data:"extra5" } );
+			this.textFields.addItem( { label:resourceManager.getString('language', 'FM_FEEDFULLTEXT'), data:"fulltext" } );
+		}
+		
+		/**
+		 * The file type to show.
+		 */
+		public function get fileType():String {
+			return (this._fileType);
+		}
+		public function set fileType(to:String):void {
+			this._fileType = to;
+			switch (to) {
+				case LoadedFile.TYPE_PICTURE:
+				case LoadedFile.TYPE_AUDIO:
+				case LoadedFile.TYPE_VIDEO:
+					this.tabList.removeElement(this.tabText);
+					break;
+				case LoadedFile.TYPE_TEXT:
+				case LoadedFile.TYPE_PARAGRAPH:
+					this.tabList.removeElement(this.tabPersonal);
+					this.tabList.removeElement(this.tabCommunity);
+					break;
+			}
+			if (this.fListPersonal != null) this.refresh('personal');
+			if (this.fListCommunity != null) this.refresh('community');
+			if (this.fType != null) this.initComponent('fType');
+			if (this.fTypeCommunity != null) this.initComponent('fTypeCommunity');
+		}
+		
+		/**
+		 * An element to edit.
+		 */
+		public function get element():DISElementED {
+			return (this._element);
+		}
+		public function set element(to:DISElementED):void {
+			this._element = to;
+		}
+		
+		/**
+		 * Selected file information.
+		 */
+		public function get selected():SelectedFile {
+			var file:SelectedFile;
+			var type:String = "picture";
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE: type = 'picture'; break;
+				case LoadedFile.TYPE_TEXT: type = 'text'; break;
+				case LoadedFile.TYPE_PARAGRAPH: type = 'paragraph'; break;
+				case LoadedFile.TYPE_AUDIO: type = 'audio'; break;
+				case LoadedFile.TYPE_VIDEO: type = 'video'; break;
+			}
+			if (this.tabList.selectedChild == this.tabFeed) { // external feed
+				file = new SelectedFile(LoadedData.community.id, this.feedNames.selectedItem.name, "community", type, this._feedSubtypes[type], true, "", this.feedNames.selectedItem.type, this.feedNames.selectedItem.reference, this.feedFields.selectedItem.data, this.feedPost.selectedItem);
+			} else if (this.tabList.selectedChild == this.tabCommunity) { // community file
+				if (this.fListCommunity.selectedIndex >= 0) {
+					if (this.fListCommunity.selectedItem.subtype != "srt") { // no subtitle files on elements
+						file = new SelectedFile(LoadedData.community.id, this.fListCommunity.selectedItem.file, "community", type, this.fListCommunity.selectedItem.subtype, true);
+					}
+				}
+			} else if (this.tabList.selectedChild == this.tabPersonal) { // personal file
+				if (this.fListPersonal.selectedIndex >= 0) {
+					if (this.fListPersonal.selectedItem.subtype != "srt") { // no subtitle files on elements
+						file = new SelectedFile(LoadedData.community.id, this.fListPersonal.selectedItem.file, UserInfo.id, type, this.fListPersonal.selectedItem.subtype, false);
+					}
+				}
+			} else if (this.tabList.selectedChild == this.tabText) { // input text
+				if (this.textEditor.text != "") {
+					file = new SelectedFile(LoadedData.community.id, this.textEditor.guessName, UserInfo.id, type, this.textEditor.textFormat, false, this.textEditor.text);
+				}
+			}
+			return (file);
+		}
+		
+		/**
+		 * Release memory used by the object.
+		 */
+		public function kill():void {
+			this._tofolder = null;
+			this._fileType = null;
+			this._file.removeEventListener(Event.CANCEL, onUploadCancel);
+            this._file.removeEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.removeEventListener(Event.OPEN, onUploadOpen);
+            this._file.removeEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.removeEventListener(Event.SELECT, onUploadSelect);
+            this._file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+			this._file = null;
+			for (var index:String in this._feedSubtypes) delete (this._feedSubtypes[index]);
+			this._feedSubtypes = null;
+			this._element = null;
+		}
+		
+		/**
+		 * Upload finished.
+		 */
+		private function onUploadComplete(evt:DataEvent):void {
+			try {
+				var data:XML = new XML(evt.data);
+				if (data.error.@id != "0") {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', data.error.@id));
+				}
+			} catch (e:Error) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-0'));
+			}
+			this.addElement(this.tabList);
+			this.removeElement(this.uploadFeedback);
+			if (this.fListPersonal) this.refresh('personal');
+			if (this.fListCommunity) {
+				this.refresh('community');
+				
+			}
+			if (this.feedFields) this.initComponent('feedFields');
+		}
+		
+		/**
+		 * Upload progress.
+		 */
+		private function onUploadProgress(evt:ProgressEvent):void {
+			this.progressLine.width = this.uploadFeedback.width * evt.bytesLoaded / evt.bytesTotal;
+			progressText.text = resourceManager.getString('language', 'FM_UPLOADING') + ": " + uint(Math.round(100 * evt.bytesLoaded / evt.bytesTotal)) + "%";
+		}
+		
+		/**
+		 * A file was selected for upload.
+		 */
+		private function onUploadSelect(evt:Event):void {
+			try {
+				if (this._file.size <= (EditorOptions.uploadMax * 1024 * 1024)) {
+					var param:String = "community=" + LoadedData.community.id;
+					switch (this.fileType) {
+						case LoadedFile.TYPE_PICTURE: param += "&type=picture"; break;
+						case LoadedFile.TYPE_VIDEO: param += "&type=video"; break;
+						case LoadedFile.TYPE_AUDIO: param += "&type=audio"; break;
+					}
+					param += "&name=" + StringFunctions.noSpecial(this._file.name);
+					param += "&userid=" + UserInfo.id;
+					param += "&userindex=" + UserInfo.index;
+					param += "&cfiles=" + (this._tofolder == "community");
+					var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("uploadfile"));
+					uploadRequest.data = new URLVariables(param);
+					uploadRequest.method = EditorOptions.method;
+					this._file.upload(uploadRequest);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-3'));
+				}
+			} catch (e:Error) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-4'));
+			}
+		}
+		
+		/**
+		 * Upload started.
+		 */
+		private function onUploadOpen(evt:Event):void {
+			this.removeElement(this.tabList);
+			this.addElement(this.uploadFeedback);
+			this.progressLine.width = 0;
+			progressText.text = resourceManager.getString('language', 'FM_UPLOADING') + ": 0%";
+		}
+		
+		/**
+		 * File upload error.
+		 */
+		private function onUploadError(evt:Event):void {
+			Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-0'));
+		}
+		
+		/**
+		 * File upload cancel.
+		 */
+		private function onUploadCancel(evt:Event):void {
+
+		}
+		
+		/**
+		 * Upload a file to server.
+		 * @param	to	folder to send file: personal or community
+		 */
+		private function uploadFile(to:String):void {
+			// select file type
+			var allTypes:FileFilter;
+			switch (this.fileType) {
+				case LoadedFile.TYPE_PICTURE:
+					allTypes = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTPICTURE'), "*.jpg; *.png; *.gif; *.jpeg; *.swf; *.svg; *.JPG; *.PNG; *.GIF; *.JPEG; *.SWF; *.SVG");
+					break;
+				case LoadedFile.TYPE_AUDIO:
+					allTypes = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTAUDIO'), "*.mp3; *.ogg; *.wav; *.webm; *.MP3; *.OGG; *.WAV; *.WEBM");
+					break;
+				case LoadedFile.TYPE_VIDEO:
+					allTypes = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTVIDEO'), "*.flv; *.f4v; *.mp4; *.srt; *.webm; *.ogv; *.png; *.FLV; *.F4V; *.MP4; *.SRT; *.WEBM; *.OGV; *.PNG");
+					break;
+			}
+			// browse for file
+			this._tofolder = to;
+			this._file.browse(new Array(allTypes));
+		}
+		
+		/**
+		 * Delete a file on server.
+		 * @param	to folder to delete from: personal or community
+		 */
+		private function deleteFile(to:String):void {
+			var chosen:String = "";
+			if (to == "personal") {
+				if (this.fListPersonal.selectedIndex >= 0) {
+					var confirm:WindowConfirm = new WindowConfirm();
+					confirm.setAction(WindowConfirm.ACTION_DELETEPERSONALFILE, (this.fileType + "|" + this.fListPersonal.selectedItem.file), this.confirmDeletePersonal);
+					PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+					PopUpManager.centerPopUp(confirm);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('language', 'FM_DELETEERROR'));
+				}
+			} else if (to == "community") {
+				if (this.fListCommunity.selectedIndex >= 0) {
+					var confirm2:WindowConfirm = new WindowConfirm();
+					confirm2.setAction(WindowConfirm.ACTION_DELETECOMMUNITYFILE, (this.fileType + "|" + this.fListCommunity.selectedItem.file), this.confirmDeleteCommunity);
+					PopUpManager.addPopUp(confirm2, (FlexGlobals.topLevelApplication as DisplayObject), true);
+					PopUpManager.centerPopUp(confirm2);
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('language', 'FM_DELETEERROR'));
+				}
+			}
+		}
+		
+		/**
+		 * A function to call after the delete personal file confirmation is called.
+		 * @param	response	true if the user confirmed deletion, false otherwise
+		 */
+		private function confirmDeletePersonal(response:Boolean):void {
+			// refresh list
+			if (response) this.refresh('personal');
+		}
+		
+		/**
+		 * A function to call after the delete community file confirmation is called.
+		 * @param	response	true if the user confirmed deletion, false otherwise
+		 */
+		private function confirmDeleteCommunity(response:Boolean):void {
+			// refresh list
+			if (response) this.refresh('community');
+		}
+		
+		/**
+		 * Refresh the file list.
+		 * @param	list	list to refresh: personal or community.
+		 */
+		private function refresh(list:String):void {
+			if (this._fileType != null) {
+				if ((this._fileType != LoadedFile.TYPE_TEXT) && (this._fileType != LoadedFile.TYPE_PARAGRAPH)) {
+					if (list == "community") {
+						this.communityFiles = new ArrayCollection();
+					} else {
+						this.personalFiles = new ArrayCollection();
+					}
+					var param:String = "community=" + LoadedData.community.id;
+					switch (this.fileType) {
+						case LoadedFile.TYPE_PICTURE: param += "&type=picture"; break;
+						case LoadedFile.TYPE_VIDEO: param += "&type=video"; break;
+						case LoadedFile.TYPE_AUDIO: param += "&type=audio"; break;
+					}
+					param += "&cfiles=" + (list == "community");
+					WindowServerCheck.createServer("listfiles", param, onListAvailable);
+				}
+			}
+		}
+		
+		/**
+		 * File list available.
+		 */
+		private function onListAvailable(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_ERRORWINDOWTITLE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				var listAR:ArrayCollection;
+				var chosenCom:Boolean;
+				if (Boolean(uint(server.data.cfiles))) {
+					listAR = this.communityFiles;
+					chosenCom = true;
+				} else {
+					listAR = this.personalFiles;
+					chosenCom = false;
+				}
+				for (var index:uint = 0; index < server.data.child("file").length(); index++) {
+					listAR.addItem({ file: String(server.data.file[index]), size: Math.round(Number(server.data.file[index].@size) / 1024), subtype: String(server.data.file[index].@subtype), date:new Date(uint(server.data.file[index].@date))});
+				}
+				try {
+					var chosenIndex:int = listAR.length - 1;
+					for (index = 0; index < listAR.length; index++) {
+						if (listAR.getItemAt(index).file == this._file.name) chosenIndex = index;
+					}
+					if (chosenCom) fListCommunity.setSelectedIndex(chosenIndex);
+						else fListPersonal.setSelectedIndex(chosenIndex);
+				} catch (e:Error) { }
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Add a new external feed (community admin only).
+		 */
+		private function onNewFeed():void {
+			if ((LoadedData.community.level == "super") || (LoadedData.community.level == "admin")) {
+				FlexGlobals.topLevelApplication.processCommand("CommunityProperties", "feeds");
+				this.dispatchEvent(new Event(Event.CLOSE));
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'PERM_TITLE'), resourceManager.getString('language', 'PERM_NOPROPCOMMUNITY'));
+			}
+		}
+		
+		/**
+		 * Component initialize.
+		 */
+		private function initComponent(name:String):void {
+			switch (name) {
+				case "fType":
+					switch (this.fileType) {
+						case LoadedFile.TYPE_PICTURE:
+							this.fType.text = resourceManager.getString('language', 'FM_TYPEPICTURE');
+							break;
+						case LoadedFile.TYPE_AUDIO:
+							this.fType.text = resourceManager.getString('language', 'FM_TYPEAUDIO');
+							break;
+						case LoadedFile.TYPE_VIDEO:
+							this.fType.text = resourceManager.getString('language', 'FM_TYPEVIDEO');
+							break;
+					}
+					break;
+				case "fTypeCommunity":
+					switch (this.fileType) {
+						case LoadedFile.TYPE_PICTURE:
+							this.fTypeCommunity.text = resourceManager.getString('language', 'FM_TYPEPICTURE');
+							break;
+						case LoadedFile.TYPE_VIDEO:
+							this.fTypeCommunity.text = resourceManager.getString('language', 'FM_TYPEVIDEO');
+							break;
+						case LoadedFile.TYPE_AUDIO:
+							this.fTypeCommunity.text = resourceManager.getString('language', 'FM_TYPEAUDIO');
+							break;
+					}
+					break;
+				case "communityButtons":
+					if (LoadedData.community.level == "author") {
+						this.communityForm.removeElement(this.communityButtons);
+					}
+					break;
+				case "feedNames":
+					this.feedNames.selectedIndex = 0;
+					break;
+				case "feedFields":
+					if (this._fileType != null) {
+						if (this.fileType == LoadedFile.TYPE_PICTURE) this.feedFields.dataProvider = this.pictureFields;
+						if (this.fileType == LoadedFile.TYPE_TEXT) this.feedFields.dataProvider = this.textFields;
+						if (this.fileType == LoadedFile.TYPE_PARAGRAPH) this.feedFields.dataProvider = this.textFields;
+						if (this.fileType == LoadedFile.TYPE_AUDIO) this.feedFields.dataProvider = this.audioFields;
+						if (this.fileType == LoadedFile.TYPE_VIDEO) this.feedFields.dataProvider = this.videoFields;
+					}
+					this.feedFields.selectedIndex = 0;
+					break;
+				case "feedPost":
+					this.feedPost.selectedIndex = 0;
+					break;
+				case "textEditor":
+					this.textEditor.elementType = this._fileType;
+					if (this._element != null) {
+						if (this._element.file[0].format == "html") {
+							this.textEditor.setInitial("", this._element.file[0].path);
+						} else {
+							this.textEditor.setInitial(this._element.file[0].path, "");
+						}
+					}
+					break;
+				case "fUploadPersonal":
+					this.fUploadPersonal.label = resourceManager.getString('language', 'FM_UPLOAD') + " (" + resourceManager.getString('language', 'FM_UPLOADMAX') + " " + EditorOptions.uploadMax + "MB)";
+					break;
+				case "fUploadCommunity":
+					this.fUploadCommunity.label = resourceManager.getString('language', 'FM_UPLOAD') + " (" + resourceManager.getString('language', 'FM_UPLOADMAX') + " " + EditorOptions.uploadMax + "MB)";
+					break;
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%" id="uploadFeedback" styleName="paddingGroup" horizontalAlign="left" verticalAlign="middle">
+		<mx:HRule width="0%" id="progressLine" />
+		<s:Label id="progressText" text="{resourceManager.getString('language', 'FM_UPLOADING')}" />
+	</s:VGroup>
+	<mx:TabNavigator width="100%" height="100%" id="tabList">
+		<s:NavigatorContent id="tabCommunity" width="100%" height="100%" label="{resourceManager.getString('language', 'FM_COMMUNITYTAB')}">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup" id="communityForm">
+				<s:Label id="fTypeCommunity" text="" creationComplete="initComponent('fTypeCommunity')"/>
+				<s:DataGrid id="fListCommunity" dataProvider="{communityFiles}" width="100%" height="100%" requestedRowCount="4" creationComplete="refresh('community')">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+							<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+							<s:GridColumn dataField="date" headerText="{resourceManager.getString('language', 'FM_COLUMNDATE')}"></s:GridColumn>
+							<s:GridColumn dataField="subtype" headerText="{resourceManager.getString('language', 'FM_COLUMNSUB')}"></s:GridColumn>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				<s:HGroup id="communityButtons" creationComplete="initComponent('communityButtons')">
+					<s:Button id="fUploadCommunity" label="{resourceManager.getString('language', 'FM_UPLOAD')}" click="uploadFile('community')" creationComplete="initComponent('fUploadCommunity')" />
+					<s:Button id="fDeleteCommunity" label="{resourceManager.getString('language', 'FM_DELETE')}" click="deleteFile('community')" />
+				</s:HGroup>
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="tabPersonal" width="100%" height="100%" label="{resourceManager.getString('language', 'FM_PERSONALTAB')}">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+				<s:Label id="fType" text="" creationComplete="initComponent('fType')"/>
+				<s:DataGrid id="fListPersonal" dataProvider="{personalFiles}" width="100%" height="100%" requestedRowCount="4" creationComplete="refresh('personal')">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+							<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+							<s:GridColumn dataField="date" headerText="{resourceManager.getString('language', 'FM_COLUMNDATE')}"></s:GridColumn>
+							<s:GridColumn dataField="subtype" headerText="{resourceManager.getString('language', 'FM_COLUMNSUB')}"></s:GridColumn>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				<s:HGroup>
+					<s:Button id="fUploadPersonal" label="{resourceManager.getString('language', 'FM_UPLOAD')}" click="uploadFile('personal')" creationComplete="initComponent('fUploadPersonal')" />
+					<s:Button id="fDeletePersonal" label="{resourceManager.getString('language', 'FM_DELETE')}" click="deleteFile('personal')" />
+				</s:HGroup>
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="tabText" width="100%" height="100%" label="{resourceManager.getString('language', 'FM_TEXTTAB')}">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup" id="textForm">
+				<mana:TextEditor id="textEditor" width="100%" height="100%" creationComplete="initComponent('textEditor')" />
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="tabFeed" width="100%" height="100%" label="{resourceManager.getString('language', 'FM_FEEDTAB')}">
+			<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup" id="feedForm">
+				<s:Label text="{resourceManager.getString('language', 'FM_FEEDTOUSE')}"/>
+				<s:DropDownList id="feedNames" width="100%" dataProvider="{communityFeeds}" creationComplete="initComponent('feedNames')"></s:DropDownList>
+				<s:Label text="{resourceManager.getString('language', 'FM_FEEDFIELD')}"/>
+				<s:DropDownList id="feedFields" width="100%" creationComplete="initComponent('feedFields')"></s:DropDownList>
+				<s:Label text="{resourceManager.getString('language', 'FM_FEEDPOST')}"/>
+				<s:DropDownList id="feedPost" width="100%" dataProvider="{postNumbers}" creationComplete="initComponent('feedPost')"></s:DropDownList>
+				<s:Label text=""/>
+				<mx:HRule width="100%" />
+				<s:Label text=""/>
+				<s:Label text="{resourceManager.getString('language', 'FM_FEEDNEWABOUT')}"/>
+				<s:Button label="{resourceManager.getString('language', 'FM_FEEDNEW')}" click="onNewFeed()" width="100%" />
+			</s:VGroup>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+</s:VGroup>

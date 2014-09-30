@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowFileManager creates a file manager for increased file handling possibilities.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns="*"
+			   width="750" height="500" title="{resourceManager.getString('language', 'FW_TITLE')}" creationComplete="init()">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="targetData" />
+		<mx:ArrayCollection id="typeData" />
+		<mx:ArrayCollection id="fileListData" />
+		<mx:ArrayCollection id="uploadListData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.*;
+		import flash.net.FileReference;
+		import flash.net.FileReferenceList;
+		import mx.collections.ArrayCollection;
+		import mx.collections.ArrayList;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.URLRequest;
+		import flash.net.URLVariables;
+		import spark.components.gridClasses.GridSelectionMode;
+		import flash.net.FileFilter;
+		import flash.display.DisplayObject;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		import art.ciclope.staticfunctions.StringFunctions;
+		
+		// VARIABLES
+		
+		private var _target:String = "personal";		// personal or community files?
+		private var _type:String = "picture";			// file type chosen: picture, audio, video or html
+		private var _fileRef:FileReferenceList;			// file upload reference list
+		private var _totalUploaded:uint = 0;			// total number of files uploaded
+		private var _currentUpload:int = -1;			// current uploading file
+		private var _selectedFiles:Array;				// currenlty selected files
+		private var _htmlfolder:Array = new Array();	// current sub folder for html
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// target
+			this.targetData.removeAll();
+			this.targetData.addItem( { label: resourceManager.getString('language', 'FW_PERSONAL'), data:"personal" } );
+			this.targetData.addItem( { label: resourceManager.getString('language', 'FW_COMMUNITY'), data:"community" } );
+			// file type
+			this.typeData.removeAll();
+			this.typeData.addItem( { label: resourceManager.getString('language', 'FW_PICTUREFILES'), data:"picture" } );
+			this.typeData.addItem( { label: resourceManager.getString('language', 'FW_AUDIOFILES'), data:"audio" } );
+			this.typeData.addItem( { label: resourceManager.getString('language', 'FW_VIDEOFILES'), data:"video" } );
+			this.typeData.addItem( { label: resourceManager.getString('language', 'FW_HTMLFILES'), data:"html" } );
+			// check for community access
+			this.checkLevel();
+			// get initial file list
+			this.getFiles();
+		}
+		
+		/**
+		 * Check user access level for community files.
+		 */
+		private function checkLevel():void {
+			if ((UserInfo.level == "admin") || (UserInfo.level == "editor") || (UserInfo.level == "super")) {
+				if (this.targetSelect != null) targetSelect.enabled = true;
+			}
+		}
+		
+		/**
+		 * Show the maximum file upload size.
+		 */
+		private function getMaxSize():void {
+			if (this.maxSize != null) this.maxSize.text = resourceManager.getString('language', 'FW_MAXSIZE') + " " + String(EditorOptions.uploadMax) + "MB";
+			if (this.maxSize2 != null) this.maxSize2.text = resourceManager.getString('language', 'FW_MAXSIZE') + " " + String(EditorOptions.uploadMax) + "MB";
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Cancel upload.
+		 */
+		private function onCancel():void {
+			for (var ifile:uint = 0; ifile < this.uploadListData.length; ifile++) {
+				var file:FileReference = this.uploadListData.getItemAt(ifile).reference as FileReference;
+				if (file.hasEventListener(DataEvent.UPLOAD_COMPLETE_DATA)) {
+					file.removeEventListener(Event.CANCEL, onUploadCancel);
+					file.removeEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+					file.removeEventListener(Event.OPEN, onUploadOpen);
+					file.removeEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+					file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+					file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+				}
+				file = null;
+			}
+			this.uploadListData.removeAll();
+			this.uploadListData.refresh();
+			this.displayGroup.removeAllElements();
+			this.displayGroup.addElement(this.listGroup);
+			this.getFiles();
+		}
+		
+		/**
+		 * Prepare initial display.
+		 */
+		private function displayReady():void {
+			this.displayGroup.removeAllElements();
+			this.displayGroup.addElement(this.listGroup);
+		}
+		
+		/**
+		 * Change on file target selection.
+		 */
+		private function changeTarget():void {
+			this._target = this.targetSelect.selectedItem.data;
+			this.getFiles();
+		}
+		
+		/**
+		 * Change on file type selection.
+		 */
+		private function changeType():void {
+			this._type = this.typeSelect.selectedItem.data;
+			if (this._type == "html") {
+				this.createBT.enabled = true;
+			} else {
+				this.createBT.enabled = false;
+				while (this._htmlfolder.length > 0) this._htmlfolder.shift();
+			}
+			this.getFiles();
+		}
+		
+		/**
+		 * File manager actions.
+		 * @param	ac	the action to take
+		 */
+		private function onAction(ac:String):void {
+			switch (ac) {
+				case 'create':
+					if (this._type == "html") {
+						var getName:WindowRequestText = new WindowRequestText();
+						getName.setContent(resourceManager.getString('language', 'FW_NEWFOLDERTITLE'), resourceManager.getString('language', 'FW_NEWFOLDERTEXT'), this.createFolderAction);
+						PopUpManager.addPopUp(getName, (FlexGlobals.topLevelApplication as DisplayObject), true);
+						PopUpManager.centerPopUp(getName);
+					}
+					break;
+				case 'delete':
+					var selected:Vector.<int> = this.fileList.selectedIndices;
+					if (selected.length > 0) {
+						this._selectedFiles = new Array();
+						for (var index:uint = 0; index < selected.length; index++) {
+							this._selectedFiles.push(this.fileListData.getItemAt(selected[index]).file);
+						}
+						this.checkDelete();
+					}
+					break;
+				case 'send':
+					this._currentUpload = -1;
+					this._totalUploaded = 0;
+					var types:FileFilter;
+					switch (this._type) {
+						case "picture":
+							types = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTPICTURE'), "*.jpg; *.png; *.gif; *.jpeg; *.swf; *.svg; *.JPG; *.PNG; *.GIF; *.JPEG; *.SWF; *.SVG");
+							break;
+						case "audio":
+							types = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTAUDIO'), "*.mp3; *.ogg; *.wav; *.webm; *.MP3; *.OGG; *.WAV; *.WEBM");
+							break;
+						case "video":
+							types = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTVIDEO'), "*.flv; *.f4v; *.mp4; *.srt; *.webm; *.ogv; *.png; *.FLV; *.F4V; *.MP4; *.SRT; *.WEBM; *.OGV; *.PNG");
+							break;
+						case "html":
+							types = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTHTML'), "*.*");
+							break;
+					}
+					this._fileRef = new FileReferenceList();
+					this._fileRef.browse(new Array(types));
+					this._fileRef.addEventListener(Event.SELECT, fileSelectHandler);
+					break;
+			}
+		}
+		
+		/**
+		 * The new folder name was received.
+		 * @param	accepted	user confirmed folder creation?
+		 * @param	name	the new folder name
+		 */
+		private function createFolderAction(accepted:Boolean, name:String):void {
+			if (accepted) {
+				if (name != StringFunctions.noSpecial(name)) {
+					Warning.createWarning(resourceManager.getString('language', 'FW_NEWFOLDERTITLE'), resourceManager.getString('language', 'FW_NEWFOLDERSPECIALCHAR'));
+				} else if ((name == "") || (name == ".") || (name == "..")) {
+					Warning.createWarning(resourceManager.getString('language', 'FW_NEWFOLDERTITLE'), resourceManager.getString('language', 'FW_NEWFOLDERNONAME'));
+				} else {
+					WindowServerCheck.createServer("filemanager", ("ac=createfolder&community=" + LoadedData.community.id + "&type=" + this._type + "&target=" + this._target + "&name=" + escape(StringFunctions.noSpecial(name)) + "&htmlpath=" + escape(this._htmlfolder.join("/"))), onActionReturn);
+				}
+			}
+		}
+		
+		/**
+		 * Double click on file list: check for folder actions.
+		 */
+		private function listDblClick():void {
+			if (this._type == "html") {
+				if (this.fileList.selectedItem.subtype == "dir") {
+					if (this.fileList.selectedItem.file == "..") {
+						// return one path
+						this._htmlfolder.splice((this._htmlfolder.length - 1));
+					} else {
+						// enter path
+						this._htmlfolder.push(String(this.fileList.selectedItem.file));
+					}
+					this.getFiles();
+				}
+			}
+		}
+		
+		/**
+		 * Check if there are files to delete.
+		 */
+		private function checkDelete():void {
+			if (this._selectedFiles.length > 0) {
+				WindowServerCheck.createServer("filemanager", ("ac=delete&community=" + LoadedData.community.id + "&type=" + this._type + "&target=" + this._target + "&file=" + escape(this._selectedFiles[0]) + "&htmlpath=" + escape(this._htmlfolder.join("/"))), onActionReturn);
+			} else {
+				this._selectedFiles = null;
+				this.getFiles();
+			}
+		}
+		
+		/**
+		 * Upload selected files.
+		 */
+		private function fileSelectHandler(evt:Event):void {
+			this.uploadListData.removeAll();
+			var filesToUpload:uint = 0;
+			this._selectedFiles = new Array();
+			for each(var fileToUpload:FileReference in this._fileRef.fileList) {
+				if (fileToUpload.size < (EditorOptions.uploadMax * 1024 * 1024)) {
+					this.uploadListData.addItem( { file: String(fileToUpload.name), size: Number(fileToUpload.size), status: resourceManager.getString('language', 'FW_STATUSWAITING'), reference: fileToUpload, done: 0 } );
+					filesToUpload++;
+				} else {
+					this.uploadListData.addItem( { file: String(fileToUpload.name), size: Number(fileToUpload.size), status: resourceManager.getString('language', 'FW_STATUSSIZE'), reference: fileToUpload, done: -1 } );
+				}
+			}
+			if (filesToUpload > 0) {
+				this.displayGroup.removeAllElements();
+				this.displayGroup.addElement(this.uploadGroup);
+				this.checkUpload();
+			} else {
+				Warning.createWarning(resourceManager.getString('language', 'FW_ERRORWINDOWTITLE'), resourceManager.getString('language', 'FW_NOFILE'));
+			}
+		}
+		
+		/**
+		 * Check if there is a file to upload.
+		 */
+		private function checkUpload():void {
+			// is there a file waiting for upload?
+			this._currentUpload = -1;
+			this._totalUploaded = 0;
+			for (var index:uint = 0; index < this.uploadListData.length; index++) {
+				if (this.uploadListData[index].done == 0) this._currentUpload = index;
+					else if (this.uploadListData[index].done == 1) this._totalUploaded++;
+			}
+			var file:FileReference;
+			if (this._currentUpload < 0) { // all files uploaded?
+				for (var ifile:uint = 0; ifile < this.uploadListData.length; ifile++) {
+					file = this.uploadListData.getItemAt(ifile).reference as FileReference;
+					if (file.hasEventListener(DataEvent.UPLOAD_COMPLETE_DATA)) {
+						file.removeEventListener(Event.CANCEL, onUploadCancel);
+						file.removeEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+						file.removeEventListener(Event.OPEN, onUploadOpen);
+						file.removeEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+						file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+						file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+					}
+					file = null;
+					if (this.uploadListData.getItemAt(ifile).done == 1) this._selectedFiles.push(this.uploadListData.getItemAt(ifile).file);
+				}
+				this.uploadListData.removeAll();
+				this.uploadListData.refresh();
+				this.displayGroup.removeAllElements();
+				this.displayGroup.addElement(this.listGroup);
+				// create playlist?
+				if ((this.createPlaylist.selected) && (this._type != "html")) {
+					var params:String = "ac=playlist&community=" + LoadedData.community.id + "&type=" + this._type + "&target=" + this._target;
+					params += "&plname=" + escape(this.playlistName.text);
+					params += "&total=" + this._selectedFiles.length;
+					for (var itotal:uint = 0; itotal < this._selectedFiles.length; itotal++) {
+						params += "&file" + itotal + "=" + escape(StringFunctions.noSpecial(String(this._selectedFiles[itotal])));
+					}
+					WindowServerCheck.createServer("filemanager", params, onActionReturn);
+				} else {
+					// refresh files list
+					this.getFiles();
+				}
+				while (this._selectedFiles.length > 0) this._selectedFiles.shift();
+				this._selectedFiles = null;
+			} else { // starting new file upload
+				file = this.uploadListData.getItemAt(this._currentUpload).reference as FileReference;
+				file.addEventListener(Event.CANCEL, onUploadCancel);
+				file.addEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+				file.addEventListener(Event.OPEN, onUploadOpen);
+				file.addEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+				file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+				file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
+				var param:String = "community=" + LoadedData.community.id;
+				param += "&type=" + this._type;
+				if (this._type == "html") param += "&htmlpath=" + escape(this._htmlfolder.join("/"));
+				param += "&name=" + StringFunctions.noSpecial(file.name);
+				param += "&userid=" + UserInfo.id;
+				param += "&userindex=" + UserInfo.index;
+				param += "&cfiles=" + (this._target == "community");
+				var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("uploadfile"));
+				uploadRequest.data = new URLVariables(param);
+				uploadRequest.method = EditorOptions.method;
+				file.upload(uploadRequest);
+			}
+		}
+		
+		/**
+		 * Upload finished.
+		 */
+		private function onUploadComplete(evt:DataEvent):void {
+			// update display
+			if (this.uploadListData.getItemAt(this._currentUpload) != null) {
+				this.uploadListData.getItemAt(this._currentUpload).done = 1;
+				this.uploadListData.getItemAt(this._currentUpload).status = resourceManager.getString('language', 'FW_STATUSDONE');
+				this.uploadListData.refresh();
+			}
+			this.checkUpload();
+		}
+		
+		/**
+		 * Upload progress.
+		 */
+		private function onUploadProgress(evt:ProgressEvent):void {
+			// update display
+			if (this.uploadListData.getItemAt(this._currentUpload) != null) {
+				this.uploadListData.getItemAt(this._currentUpload).status = resourceManager.getString('language', 'FW_STATUSUPLOADING') + ": " + uint(Math.round(100 * evt.bytesLoaded / evt.bytesTotal)) + "%";
+				this.uploadListData.refresh();
+			}
+		}
+		
+		/**
+		 * Upload started.
+		 */
+		private function onUploadOpen(evt:Event):void {
+			// update display
+			if (this.uploadListData.getItemAt(this._currentUpload) != null) {
+				this.uploadListData.getItemAt(this._currentUpload).status = resourceManager.getString('language', 'FW_STATUSUPLOADING') + ": 0%";
+				this.uploadListData.refresh();
+			}
+		}
+		
+		/**
+		 * File upload error.
+		 */
+		private function onUploadError(evt:Event):void {
+			// move to next file
+			if (this.uploadListData.getItemAt(this._currentUpload) != null) {
+				this.uploadListData.getItemAt(this._currentUpload).done = -1;
+				this.uploadListData.getItemAt(this._currentUpload).status = resourceManager.getString('language', 'FW_STATUSERROR');
+				this.uploadListData.refresh();
+			}
+			this.checkUpload();
+		}
+		
+		/**
+		 * File upload cancel.
+		 */
+		private function onUploadCancel(evt:Event):void {
+			// move to next file
+			if (this.uploadListData.getItemAt(this._currentUpload) != null) {
+				this.uploadListData.getItemAt(this._currentUpload).done = -1;
+				this.uploadListData.getItemAt(this._currentUpload).status = resourceManager.getString('language', 'FW_STATUSERROR');
+				this.uploadListData.refresh();
+			}
+			this.checkUpload();
+		}
+		
+		/**
+		 * Stream list data received from server.
+		 */
+		private function onActionReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'FW_ERRORWINDOWTITLE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// check action
+				var ac:String = String(server.data.ac);
+				if (ac == 'delete') { // delete: list files
+					this._selectedFiles.shift();
+					this.checkDelete();
+				} else if (ac == 'playlist') { // create playlist
+					// refresh files list
+					this.getFiles();
+					// warn user
+					var plabout:String = resourceManager.getString('language', 'FW_PLAYLISTABOUT');
+					plabout = plabout.replace("$name", String(server.data.plname));
+					plabout = plabout.replace("$total", String(server.data.plsize));
+					Warning.createWarning(resourceManager.getString('language', 'FW_PLAYLISTTITLE'), plabout);
+					// clear playlist information
+					this.createPlaylist.selected = false;
+					this.playlistName.text = "";
+				} else if (ac == "createfolder") { // create folder
+					// refresh file list
+					this.getFiles();
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Read the current file list according to target and type.
+		 */
+		private function getFiles():void {
+			WindowServerCheck.createServer("filemanager", ("ac=list&community=" + LoadedData.community.id + "&type=" + this._type + "&target=" + this._target + "&htmlpath=" + escape(this._htmlfolder.join("/"))), onFileList);
+		}
+		
+		/**
+		 * Stream list data received from server.
+		 */
+		private function onFileList(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'FW_ERRORWINDOWTITLE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				this.fileListData.removeAll();
+				// html?
+				if (this._type == "html") {
+					if (this._htmlfolder.length > 0) fileListData.addItem({ file: "..", size: 0, subtype: "dir", date:"" });
+				}
+				// get data
+				for (var index:uint = 0; index < server.data.child("file").length(); index++) {
+					fileListData.addItem({ file: String(server.data.file[index]), size: Math.round(Number(server.data.file[index].@size) / 1024), subtype: String(server.data.file[index].@subtype), date:String(server.data.file[index].@date)});
+				}
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup" id="displayGroup" creationComplete="displayReady()">
+		<s:VGroup width="100%" height="100%" id="uploadGroup">
+			<s:DataGrid id="uploadList" dataProvider="{uploadListData}" width="100%" height="100%" sortableColumns="false" >
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+						<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+						<s:GridColumn dataField="status" headerText="{resourceManager.getString('language', 'FW_UPLOADSTATUS')}"></s:GridColumn>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+			<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+				<s:Label id="maxSize2" width="100%" textAlign="left" creationComplete="getMaxSize()" />
+				<s:Button label="{resourceManager.getString('language', 'FW_CANCEL')}" click="onCancel()" />
+			</s:HGroup>
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%" id="listGroup">
+			<s:HGroup verticalAlign="middle" width="100%">
+				<s:ButtonBar id="targetSelect" requireSelection="true" change="changeTarget()" dataProvider="{targetData}" enabled="false" creationComplete="checkLevel()" />
+				<s:ButtonBar id="typeSelect" width="100%" requireSelection="true" change="changeType()" dataProvider="{typeData}" />
+			</s:HGroup>
+			<s:DataGrid id="fileList" dataProvider="{fileListData}" width="100%" height="100%" selectionMode="{GridSelectionMode.MULTIPLE_ROWS}" doubleClick="listDblClick()" doubleClickEnabled="true">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+						<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+						<s:GridColumn dataField="date" headerText="{resourceManager.getString('language', 'FM_COLUMNDATE')}"></s:GridColumn>
+						<s:GridColumn dataField="subtype" headerText="{resourceManager.getString('language', 'FM_COLUMNSUB')}"></s:GridColumn>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+			<s:HGroup verticalAlign="middle" horizontalAlign="center" width="100%">
+				<s:Button width="33%" label="{resourceManager.getString('language', 'FW_SEND')}" click="onAction('send')" />
+				<s:Button width="34%" label="{resourceManager.getString('language', 'FW_DELETE')}" click="onAction('delete')" />
+				<s:Button id="createBT" width="33%" label="{resourceManager.getString('language', 'FW_CREATEFOLDER')}" click="onAction('create')" enabled="false" />
+			</s:HGroup>
+			<s:HGroup verticalAlign="middle" width="100%">
+				<s:CheckBox selected="false" id="createPlaylist" />
+				<s:Label text="{resourceManager.getString('language', 'FW_CREATEPLAYLIST')}" />
+				<s:TextInput width="100%" id="playlistName" text="" />
+			</s:HGroup>
+			<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+				<s:Label id="maxSize" width="100%" textAlign="left" creationComplete="getMaxSize()" />
+				<s:Button label="{resourceManager.getString('language', 'FW_REFRESH')}" click="getFiles()" />
+				<s:Button label="{resourceManager.getString('language', 'FW_CLOSE')}" click="onClose()" />
+			</s:HGroup>
+		</s:VGroup>
+	</s:VGroup>
+</s:TitleWindow>

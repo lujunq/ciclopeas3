@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowPreview creates a window to show community playback for previewing content.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()" close="onClose()"
+			   width="400" height="400" borderVisible="true" title="{resourceManager.getString('language', 'PREV_TITLECOMMUNITY')}">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="communityStreams" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKGES
+		import mx.managers.PopUpManager;
+		import flash.system.System;
+		import flash.utils.Timer;
+		import flash.events.TimerEvent;
+		import flash.net.SharedObject;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managana.ManaganaPlayer;
+		import art.ciclope.managana.system.LinkManagerFlashPlayer;
+		import art.ciclope.event.Message;
+		import art.ciclope.event.DISLoad;
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _player:ManaganaPlayer;						// the managana display to show streams
+		private var _folder:String;								// community folder
+		private var _linkmanager:LinkManagerFlashPlayer;		// a manager to open external urls
+		private var _timer:Timer;								// timer update
+		
+		// PUBLIC VARIABLES
+		
+		/**
+		 * Show current stream?
+		 */
+		public var previewStream:Boolean = false;
+		
+		/**
+		 * Initialize component.
+		 */
+		private function init():void {
+			// prepare player
+			this._player = new ManaganaPlayer();
+			this._player.shareurl = EditorOptions.shareurl;
+			this._player.feedurl = EditorOptions.feedurl;
+			this._player.addEventListener(DISLoad.COMMUNITY_OK, onCommunityOK);
+			this._player.addEventListener(DISLoad.COMMUNITY_ERROR, onCommunityERROR);
+			this._player.addEventListener(DISLoad.STREAM_OK, onStreamOK);
+			this._player.addEventListener(DISLoad.STREAM_ERROR, onStreamERROR);
+			this._player.visible = false;
+			this._player.addEventListener(Message.OPENURL, onOpenURL);
+			this._player.addEventListener(Message.SHARE_FACEBOOK, onOpenURL);
+			this._player.addEventListener(Message.SHARE_TWITTER, onOpenURL);
+			this._player.addEventListener(Message.SHARE_GPLUS, onOpenURL);
+			this._player.addEventListener(Message.SAVEDATA, saveData);
+			this._player.addEventListener(Message.LOADDATA, loadData);
+			this.displayArea.addChild(this._player);
+			this._linkmanager = new LinkManagerFlashPlayer();
+			this._timer = new Timer(1000);
+			this._timer.addEventListener(TimerEvent.TIMER, onTimer);
+		}
+		
+		/**
+		 * Load the current community / stream.
+		 */
+		public function loadCommunity(preview:Boolean = false):void {
+			this.previewStream = preview;
+			this._folder = EditorOptions.path + EditorOptions.cfolder + "/";
+			WindowServerCheck.createServer("communitypreview", ("community=" + escape(LoadedData.community.id)), this.previewReturn);
+			this.visible = true;
+			this.width = this.stage.stageWidth - 20;
+			this.height = this.stage.stageHeight - 20;
+			this._player.visible = true;
+			PopUpManager.centerPopUp(this);
+			this.streamTime.text = "0:00 / 0:00";
+		}
+		
+		/**
+		 * Preview information received.
+		 * @param	server	the server information object
+		 */
+		private function previewReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'PREV_ERRORTITLE'), resourceManager.getString('error', server.errorID), Warning.TYPE_OK, onClose);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// prepare stream list
+				this.communityStreams.removeAll();
+				if (String(server.data.home) != "") this.communityStreams.addItem( { label:resourceManager.getString('language', 'PREV_HOME'), data:String(server.data.home) } );
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					this.communityStreams.addItem( { label:String(server.data.stream[index]), data:String(server.data.stream[index].@id) } );
+				}
+				this.streamList.selectedIndex = 0;
+				// open community
+				this._player.loadCommunity(this._folder + LoadedData.community.id + ".dis");
+				this.loadStatus.text = resourceManager.getString('language', 'PREV_LOADING');
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Adjust display size.
+		 * @param	to	new size parameter: +, -, 100% or adjust
+		 */
+		private function zoomPlayer(to:String):void {
+			switch (to) {
+				case "100%":
+					this._player.scaleX = this._player.scaleY = 1;
+					this._player.width = this._player.screenwidth;
+					this._player.height = this._player.screenheight;
+					break;
+				case "+":
+					this._player.scaleX = this._player.scaleY = this._player.scaleX + 0.1;
+					break;
+				case "-":
+					this._player.scaleX = this._player.scaleY = this._player.scaleX - 0.1;
+					break;
+				case "adjust":
+					this._player.scaleX = this._player.scaleY = 1;
+					this._player.height = this.displayAreaContainer.height;
+					this._player.width = this._player.screenwidth * this._player.height / this._player.screenheight;
+					if (this._player.width > this.displayAreaContainer.width) {
+						this._player.width = this.displayAreaContainer.width;
+						this._player.height = this._player.screenheight * this._player.width / this._player.screenwidth;
+					}
+					break;
+			}
+			this.displayArea.width = this._player.width * this._player.scaleX;
+			this.displayArea.height = this._player.height * this._player.scaleY;
+			this.displayArea.x = (this.displayAreaContainer.width - this.displayArea.width) / 2;
+			this.displayArea.y = (this.displayAreaContainer.height - this.displayArea.height) / 2;
+			this._player.x = this.displayArea.width / 2;
+			this._player.y = this.displayArea.height / 2;
+		}
+		
+		/**
+		 * Change the view aspect.
+		 * @param	to	news aspect: landscape or portrait
+		 */
+		private function changeAspect(to:String):void {
+			if (to == "portrait") this._player.aspect = to;
+				else this._player.aspect = "landscape";
+			this.zoomPlayer('adjust');
+		}
+		
+		/**
+		 * Open a stream.
+		 */
+		private function openStream():void {
+			if (this.streamList.selectedIndex >= 0) {
+				this.loadStatus.text = resourceManager.getString('language', 'PREV_LOADING');
+				this._player.loadStream(this.streamList.selectedItem.data);
+			}
+		}
+		
+		/**
+		 * Navigate among streams.
+		 * @param	to	the position to navigate
+		 */
+		private function navigate(to:String):void {
+			this._player.navigateTo(to);
+		}
+		
+		/**
+		 * A community was just loaded.
+		 */
+		private function onCommunityOK(evt:DISLoad):void {
+			// add current stream to preview window options
+			var xmlData:XML = new XML(LoadedData.stream.streamxml);
+			// another community was loaded?
+			if (this._player.currentCommunity == LoadedData.community.id) {
+				// get playlists
+				for (var index:uint = 0; index < xmlData.playlists.child("playlist").length(); index++) {
+					this._player.playlistCache(String(xmlData.playlists.playlist[index].@id), false, LoadedData.stream.singlePlaylist(String(xmlData.playlists.playlist[index].@id)));
+				}
+				// load stream data
+				this._player.streamCache("|preview|current|stream|", false, LoadedData.stream.streamxml);
+				// add preview to open list
+				this.communityStreams.addItemAt( { label:resourceManager.getString('language', 'PREV_CURRENT'), data:"|preview|current|stream|" }, 0);
+				// loading current stream?
+				if (this.previewStream) {
+					// landscape or portrait?
+					if (String(xmlData.id) == String(xmlData.aspect.landscape)) this._player.aspect = "landscape";
+						else if (String(xmlData.id) == String(xmlData.aspect.portrait)) this._player.aspect = "portrait";
+					this._player.loadStream("|preview|current|stream|");
+					this.streamList.selectedIndex = 0;
+					this._player.play();
+				}
+			}
+			// adjust size
+			this.zoomPlayer('adjust');
+			System.disposeXML(xmlData);
+		}
+		
+		/**
+		 * A community failed to load.
+		 */
+		private function onCommunityERROR(evt:DISLoad):void {
+			Warning.createWarning(resourceManager.getString('language', 'PREV_ERRORTITLE'), resourceManager.getString('error', 'ERPREVIEW-0'), Warning.TYPE_OK, onClose);
+			this.loadStatus.text = resourceManager.getString('language', 'PREV_LOADERROR');
+		}
+		
+		/**
+		 * A stream was just loaded.
+		 */
+		private function onStreamOK(evt:DISLoad):void {
+			this.loadStatus.text = resourceManager.getString('language', 'PREV_LOADINGOK');
+			this._timer.start();
+		}
+		
+		/**
+		 * A stream failed to load.
+		 */
+		private function onStreamERROR(evt:DISLoad):void {
+			this.loadStatus.text = resourceManager.getString('language', 'PREV_LOADERROR');
+		}
+		
+		/**
+		 * Open an URL sent from managana player.
+		 */
+		private function onOpenURL(evt:Message):void {
+			this._linkmanager.openURL(String(evt.param.value));
+		}
+		
+		/**
+		 * Save variables for current community (on editor, only on local storage for debug purposes).
+		 */
+		private function saveData(evt:Message):void {
+			// save on local storage
+			var sharedData:SharedObject = SharedObject.getLocal("managana-" + this._player.currentCommunity);
+			sharedData.data.strValues = this._player.strValues;
+			sharedData.data.numValues = this._player.numValues;
+			sharedData.flush();
+		}
+		
+		/**
+		 * Load variables assigned for current community (on editor, only on local storage for debug purposes).
+		 */
+		private function loadData(evt:Message):void {
+			// load from local storage
+			var sharedData:SharedObject = SharedObject.getLocal("managana-" + this._player.currentCommunity);
+			this._player.strValues = sharedData.data.strValues;
+			this._player.numValues = sharedData.data.numValues;
+		}
+		
+		/**
+		 * Close preview window.
+		 */
+		private function onClose():void {
+			this._player.unload();
+			this._player.visible = false;
+			this.visible = false;
+			this._timer.stop();
+		}
+		
+		/**
+		 * The timer was updated.
+		 */
+		private function onTimer(evt:TimerEvent):void {
+			if (this._player.streamTotalTime == 0) {
+				this.streamTime.text = StringFunctions.parseSeconds(this._player.streamTime);
+			} else {
+				this.streamTime.text = StringFunctions.parseSeconds(this._player.streamTime) + " / " + StringFunctions.parseSeconds(this._player.streamTotalTime);
+			}
+		}
+			
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%">
+		<s:Group id="displayAreaContainer" styleName="displayGroup" width="100%" height="100%">
+			<s:Scroller x="0" y="0" width="100%" height="100%">
+				<s:Group><s:SpriteVisualElement id="displayArea" /></s:Group>
+			</s:Scroller>
+		</s:Group>
+		<mx:HRule width="100%"/>
+		<s:HGroup width="100%" height="25">
+			<s:HGroup width="30%" verticalAlign="middle" horizontalAlign="left">
+				<mx:Spacer width="5" />
+				<s:Button width="28" height="22" label="&lt;" click="navigate('xDown')" />
+				<s:Label width="10" text="x" textAlign="center"/>
+				<s:Button width="28" height="22" label="&gt;" click="navigate('xUp')"/>
+				<s:Label width="5"/>
+				<s:Button width="28" height="22" label="&lt;" click="navigate('yDown')"/>
+				<s:Label width="10" text="y" textAlign="center"/>
+				<s:Button width="28" height="22" label="&gt;" click="navigate('yUp')"/>
+				<s:Label width="5"/>
+				<s:Button width="28" height="22" label="&lt;" click="navigate('zDown')"/>
+				<s:Label width="10" text="z" textAlign="center"/>
+				<s:Button width="28" height="22" label="&gt;"  click="navigate('zUp')"/>
+				<mx:Spacer width="5" />
+			</s:HGroup>
+			<s:HGroup width="15%" verticalAlign="middle" horizontalAlign="center">
+				<mx:Spacer width="5" />
+				<s:Button height="22" label="{resourceManager.getString('language', 'PREV_LANDSCAPE')}" click="changeAspect('landscape')" />
+				<s:Button height="22" label="{resourceManager.getString('language', 'PREV_PORTRAIT')}" click="changeAspect('portrait')"/>
+				<mx:Spacer width="5" />
+			</s:HGroup>
+			<s:HGroup width="25%" verticalAlign="middle" horizontalAlign="center">
+				<s:DropDownList id="streamList" width="100%" dataProvider="{communityStreams}" ></s:DropDownList>
+				<s:Button height="22" width="40" label="{resourceManager.getString('language', 'PREV_OK')}" click="openStream()" />
+				<s:Label width="5"/>
+			</s:HGroup>
+			<s:HGroup width="25%" verticalAlign="middle" horizontalAlign="right">
+				<mx:Spacer width="5" />
+				<s:Button height="22" width="28" label="-" click="zoomPlayer('-')" />
+				<s:Button height="22" width="100%" label="100%" click="zoomPlayer('100%')"/>
+				<s:Button height="22" width="28" label="+" click="zoomPlayer('+')"/>
+				<s:Button height="22" label="{resourceManager.getString('language', 'PREV_ADJUST')}" click="zoomPlayer('adjust')"/>
+				<mx:Spacer width="5" />
+			</s:HGroup>
+		</s:HGroup>
+		<s:HGroup width="100%" height="25">
+			<s:HGroup width="50%" verticalAlign="middle" height="100%">
+				<mx:Spacer width="5" />
+				<s:Label width="100%" text="" id="streamTime" textAlign="left" color="0xCCCCCC" />
+			</s:HGroup>
+			<s:HGroup width="50%" verticalAlign="middle" height="100%">
+				<s:Label width="100%" text="" id="loadStatus" textAlign="right" color="0xCCCCCC" />
+				<mx:Spacer width="5" />
+			</s:HGroup>
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamTime creates a windo to handle stream time and (in future) voting.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			    xmlns:mana="art.ciclope.managanaeditor.*"
+			   width="700" height="500" borderVisible="true" title="{resourceManager.getString('language', 'STW_GEOLOCATION')}">
+			   
+	<fx:Declarations>
+		<mx:ArrayCollection id="targetInstances" />
+		<mx:ArrayCollection id="mapInstances" />
+		<mx:ArrayCollection id="geoPoints" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import spark.components.ComboBox;
+		import flash.events.Event;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			var index:uint;
+			// check current stream instances
+			this.targetInstances.removeAll();
+			this.mapInstances.removeAll();
+			this.targetInstances.addItem( { label:String(resourceManager.getString('language', 'STW_GEOLOCATIONTARGETNONE')) , data:"" } );
+			this.mapInstances.addItem( { label:String(resourceManager.getString('language', 'STW_GEOLOCATIONMAPNONE')) , data:"" } );
+			if (FlexGlobals.topLevelApplication.view != null) {
+				var instances:Array = FlexGlobals.topLevelApplication.view.instanceNames;
+				for (index = 0; index < instances.length; index++) {
+					this.mapInstances.addItem( { label: instances[index], data: instances[index] } );
+					this.targetInstances.addItem( { label: instances[index], data: instances[index] } );
+				}
+			}
+			// check geolocation properties at the server
+			WindowServerCheck.createServer("streamgeolocation", ("community=" + escape(LoadedData.community.id) + "&stream=" + LoadedData.stream.id + "&action=list"), this.dataReturn);
+		}
+		
+		/**
+		 * Stream geolocation information received.
+		 * @param	server	the server information object
+		 */
+		private function dataReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try to load again
+				WindowServerCheck.createServer("streamgeolocation", ("community=" + escape(LoadedData.community.id) + "&stream=" + LoadedData.stream.id + "&action=list"), this.dataReturn);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// check properties
+				this.geoUse.selected = (String(server.data.geouse) != "0");
+				for (var index:uint = 0; index < this.targetInstances.length; index++) {
+					if (String(server.data.geotarget) == String(this.targetInstances.getItemAt(index).data)) this.geoTarget.selectedIndex = index;
+					if (String(server.data.geomap) == String(this.mapInstances.getItemAt(index).data)) this.geoMap.selectedIndex = index;
+				}
+				this.geoTopLatitude.text = String(server.data.geolattop);
+				this.geoTopLongitude.text = String(server.data.geolongtop);
+				this.geoBottomLatitude.text = String(server.data.geolatbottom);
+				this.geoBottomLongitude.text = String(server.data.geolongbottom);
+				// check points
+				this.geoPoints.removeAll();
+				// add loaded names
+				for (index = 0; index < server.data.child("geopoint").length(); index++) {
+					this.geoPoints.addItem({label: String(server.data.geopoint[index].name), name: String(server.data.geopoint[index].name), latitude: String(server.data.geopoint[index].latitude), longitude: String(server.data.geopoint[index].longitude), code: String(server.data.geopoint[index].code)});
+				}
+			}
+			server.kill();
+		}
+		
+		
+		/**
+		 * Get initial component value when it is initialized.
+		 * @param	comp	the component name
+		 */
+		private function cInit(comp:String):void {
+			switch (comp) {
+				case "codeWindow":
+					this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+					break;
+			}
+		}
+		
+		/**
+		 * The text at progress code editor changed.
+		 */
+		private function codeChange(evt:Event):void {
+			if (this.pointNames.selectedIndex >= 0) {
+				this.geoPoints.getItemAt(this.pointNames.selectedIndex).code = this.codeWindow.code;
+			}
+		}
+		
+		/**
+		 * A component value changed.
+		 * @param	name	the component name
+		 */
+		private function cChange(name:String):void {
+			if (this.pointNames.selectedIndex >= 0) {
+				switch (name) {
+					case "geoPointName":
+						this.geoPoints.getItemAt(this.pointNames.selectedIndex).label = this.geoPointName.text;
+						this.geoPoints.getItemAt(this.pointNames.selectedIndex).name = this.geoPointName.text;
+						break;
+					case "geoPointLatitude":
+						this.geoPoints.getItemAt(this.pointNames.selectedIndex).latitude = this.geoPointLatitude.text;
+						break;
+					case "geoPointLongitude":
+						this.geoPoints.getItemAt(this.pointNames.selectedIndex).longitude = this.geoPointLongitude.text;
+						break;
+				}
+				this.geoPoints.refresh();
+			}
+		}
+		
+		/**
+		 * A geolocation point was selected on the list.
+		 */
+		private function pointChange():void {
+			if (this.pointNames.selectedIndex >= 0) {
+				this.geoPointName.text = this.pointNames.selectedItem.name;
+				this.geoPointLatitude.text = this.pointNames.selectedItem.latitude;
+				this.geoPointLongitude.text = this.pointNames.selectedItem.longitude;
+				this.codeWindow.code = this.pointNames.selectedItem.code;
+				this.pointProperties.enabled = true;
+			}
+		}
+		
+		/**
+		 * Remove the selected geolocation point.
+		 */
+		private function onDELETE():void {
+			if (this.pointNames.selectedIndex >= 0) {
+				this.geoPoints.removeItemAt(this.pointNames.selectedIndex);
+				this.pointProperties.enabled = false;
+			}
+		}
+		
+		/**
+		 * Add a new geolocation point.
+		 */
+		private function onADD():void {
+			this.geoPoints.addItem({label: resourceManager.getString('language', 'STW_GEONEWPOINTNAME'), name: resourceManager.getString('language', 'STW_GEONEWPOINTNAME'), latitude: "0", longitude: "0", code: ""});
+		}
+		
+		/**
+		 * Save geolocation changes.
+		 */
+		private function onOK():void {
+			// prepare save values
+			var params:String = "community=" + escape(LoadedData.community.id) + "&stream=" + LoadedData.stream.id + "&action=save";
+			if (this.geoUse.selected) params += "&geouse=1";
+				else params += "&geouse=0";
+			params += "&geotarget=" + escape(this.geoTarget.selectedItem.data);
+			params += "&geomap=" + escape(this.geoMap.selectedItem.data);
+			params += "&geolattop=" + escape(this.geoTopLatitude.text);
+			params += "&geolongtop=" + escape(this.geoTopLongitude.text);
+			params += "&geolatbottom=" + escape(this.geoBottomLatitude.text);
+			params += "&geolongbottom=" + escape(this.geoBottomLongitude.text);
+			params += "&numpoints=" + this.geoPoints.length;
+			for (var index:uint = 0; index < this.geoPoints.length; index++) {
+				params += "&geopointname" + index + "=" + escape(this.geoPoints.getItemAt(index).name);
+				params += "&geopointlat" + index + "=" + escape(this.geoPoints.getItemAt(index).latitude);
+				params += "&geopointlong" + index + "=" + escape(this.geoPoints.getItemAt(index).longitude);
+				params += "&geopointcode" + index + "=" + escape(this.geoPoints.getItemAt(index).code);
+			}
+			// save values
+			WindowServerCheck.createServer("streamgeolocation", params, this.saveReturn);
+		}
+		
+		/**
+		 * Stream geolocation information save return.
+		 * @param	server	the server information object
+		 */
+		private function saveReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// warn user
+				Warning.createWarning(resourceManager.getString('language', 'STW_GEOERRORTITLE'), resourceManager.getString('error', server.errorID));
+				server.kill();
+			} else {
+				// remove window
+				server.kill();
+				if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+				PopUpManager.removePopUp(this);
+			}
+		}
+		
+		/**
+		 * Avoid changes.
+		 */
+		private function onCANCEL():void {
+			if (this.codeWindow != null) this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_GEOLOCATIONUSETAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:CheckBox id="geoUse" />
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLOCATIONUSE')}" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLOCATIONMAP')}" width="40%" />
+						<s:DropDownList id="geoMap" dataProvider="{mapInstances}" width="60%" />
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLOCATIONTARGET')}" width="40%" />
+						<s:DropDownList id="geoTarget" dataProvider="{targetInstances}" width="60%" />
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:Label text="{resourceManager.getString('language', 'STW_GEOMAPDISPLAY')}"/>
+					<s:Label text="{resourceManager.getString('language', 'STW_GEOMAPABOUT')}" width="100%" />
+					<s:Label text="" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOMAPTOPPOINT')}" width="20%" />
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLATITUDE')}" width="20%" textAlign="right" />
+						<s:TextInput id="geoTopLatitude" width="20%" />
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLONGITUDE')}" width="20%" textAlign="right" />
+						<s:TextInput id="geoTopLongitude" width="20%" />
+					</s:HGroup>
+					<s:Label text="" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOMAPBOTTOMPOINT')}" width="20%" />
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLATITUDE')}" width="20%" textAlign="right" />
+						<s:TextInput id="geoBottomLatitude" width="20%" />
+						<s:Label text="{resourceManager.getString('language', 'STW_GEOLONGITUDE')}" width="20%" textAlign="right" />
+						<s:TextInput id="geoBottomLongitude" width="20%" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="{resourceManager.getString('language', 'STW_GEOLOCATIONPOINTTAB')}">
+				<s:VGroup x="0" y="0" width="100%" styleName="paddingGroup">
+					<s:Label text="{resourceManager.getString('language', 'STW_GEOPOINTSABOUT')}" width="100%" />
+					<mx:HRule width="100%" />
+					<s:HGroup width="100%">
+						<s:VGroup width="30%" height="100%">
+							<s:Label width="100%" text="{resourceManager.getString('language', 'STW_GEOPOINTS')}" />
+							<s:List id="pointNames" width="100%" height="267" change="pointChange()" dataProvider="{geoPoints}" />
+							<s:Button label="{resourceManager.getString('language', 'STW_GEOPOINTDELETE')}" click="onDELETE()" width="100%" />
+							<s:Button label="{resourceManager.getString('language', 'STW_GEOPOINTNEW')}" click="onADD()" width="100%" />
+						</s:VGroup>
+						<s:VGroup id="pointProperties" width="70%" height="100%" enabled="false">
+							<s:Label text="" />
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="25%" text="{resourceManager.getString('language', 'STW_GEOPOINTNAME')}" />
+								<s:TextInput id="geoPointName" width="100%" change="cChange('geoPointName')" />
+							</s:HGroup>
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="25%" text="{resourceManager.getString('language', 'STW_GEOLATITUDE')}" />
+								<s:TextInput id="geoPointLatitude" width="100%" change="cChange('geoPointLatitude')" />
+							</s:HGroup>
+							<s:HGroup width="100%" verticalAlign="middle">
+								<s:Label width="25%" text="{resourceManager.getString('language', 'STW_GEOLONGITUDE')}" />
+								<s:TextInput id="geoPointLongitude" width="100%" change="cChange('geoPointLongitude')" />
+							</s:HGroup>
+							<mana:ProgressCode id="codeWindow" width="100%" height="240" creationComplete="cInit('codeWindow')" />
+						</s:VGroup>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Button label="{resourceManager.getString('language', 'STW_GEOCLOSE')}" click="onCANCEL()" />
+			<s:Button label="{resourceManager.getString('language', 'STW_GEOOK')}" click="onOK()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			   close="onClose()" width="470" height="250" title="{resourceManager.getString('language', 'PROPERTIES_TITLE')}">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="blendModes">
+			<fx:String>add</fx:String> 
+            <fx:String>alpha</fx:String> 
+            <fx:String>darken</fx:String> 
+            <fx:String>difference</fx:String>
+			<fx:String>erase</fx:String> 
+            <fx:String>hardlight</fx:String> 
+            <fx:String>invert</fx:String>
+			<fx:String>layer</fx:String>
+			<fx:String>lighten</fx:String>
+			<fx:String>multiply</fx:String>
+			<fx:String>normal</fx:String>
+			<fx:String>overlay</fx:String>
+			<fx:String>screen</fx:String>
+			<fx:String>subtract</fx:String>
+		</mx:ArrayCollection>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.core.FlexGlobals;
+		
+		// VARIABLES
+		
+		private var _image:InstanceDisplay;		// the currently-selected image
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.selectNone();
+			// hide properties
+			ipz.visible = false;
+			ipz_label.visible = false;
+			rotationgroup.removeElement(irx);
+			rotationgroup.removeElement(irx_label);
+			rotationgroup.removeElement(iry);
+			rotationgroup.removeElement(iry_label);
+			rotationgroup.removeElement(irz_label);
+			iforce.visible = false;
+			iactive.visible = false;
+		}
+		
+		/**
+		 * Select a stage image.
+		 * @param	image	the image reference
+		 */
+		public function selectImage(image:InstanceDisplay):void {
+			this._image = image;
+			this.title = resourceManager.getString('language', 'PROPERTIES_TITLE') + ": " + this._image.instance.id;
+			this.imageInit();
+			this.propertiesTab.enabled = true;
+		}
+		
+		/**
+		 * No image selected.
+		 */
+		public function selectNone():void {
+			this._image = null;
+			this.title = resourceManager.getString('language', 'PROPERTIES_TITLE');
+			this.propertiesTab.enabled = false;
+		}
+		
+		/**
+		 * Get initial component value when it is initialized.
+		 * @param	comp	the component name
+		 */
+		private function cInit(comp:String):void {
+			if (this._image) switch (comp) {
+				case "ipx": this.ipx.value = this._image.instance.px; break;
+				case "ipy": this.ipy.value = this._image.instance.py; break;
+				case "ipz": this.ipz.value = this._image.instance.pz; break;
+				case "iwidth": this.iwidth.value = this._image.instance.width; break;
+				case "iheight": this.iheight.value = this._image.instance.height; break;
+				case "irx": this.irx.value = this._image.instance.rx; break;
+				case "iry": this.iry.value = this._image.instance.ry; break;
+				case "irz": this.irz.value = this._image.instance.rz; break;
+				case "ialpha": this.ialpha.value = uint(Math.round(100*this._image.instance.alpha)); break;
+				case "ivolume": this.ivolume.value = uint(Math.round(1000 * this._image.instance.rz)); break;
+				case "iplay": this.iplay.selected = this._image.instance.play; break;
+				case "ivisible": this.iplay.selected = this._image.instance.visible; break;
+				case "iactive": this.iplay.selected = this._image.instance.active; break;
+				case "iforce": this.iplay.selected = this._image.instance.force; break;
+				case "iblend":
+					this.iblend.textInput.editable = false;
+					for (var index:uint = 0; index < this.blendModes.length; index++) {
+						if (this.blendModes[index] == this._image.instance.blend) this.iblend.selectedIndex = index;
+					}
+					break;
+				case "ired": this.ired.value = this._image.instance.red; break;
+				case "igreen": this.igreen.value = this._image.instance.green; break;
+				case "iblue": this.iblue.value = this._image.instance.blue; break;
+				case "idropshadow": this.idropshadow.selected = this._image.instance.DropShadowFilter; break;
+				case "idsalpha": this.idsalpha.value = 100* this._image.instance.DSFalpha; break;
+				case "idsangle": this.idsangle.value = this._image.instance.DSFangle; break;
+				case "idsblurx": this.idsblurx.value = this._image.instance.DSFblurX; break;
+				case "idsblury": this.idsblury.value = this._image.instance.DSFblurY; break;
+				case "idscolor": this.idscolor.selectedColor = uint(this._image.instance.DSFcolor); break;
+				case "idsdistance": this.idsdistance.value = this._image.instance.DSFdistance; break;
+			}
+		}
+		
+		/**
+		 * Get image properties into component values.
+		 */
+		private function imageInit():void {
+			if (this.ipx) this.ipx.value = this._image.instance.px;
+			if (this.ipy) this.ipy.value = this._image.instance.py;
+			if (this.ipz) this.ipz.value = this._image.instance.pz;
+			if (this.iwidth) this.iwidth.value = this._image.instance.width;
+			if (this.iheight) this.iheight.value = this._image.instance.height;
+			if (this.irx) this.irx.value = this._image.instance.rx;
+			if (this.iry) this.iry.value = this._image.instance.ry;
+			if (this.irz) this.irz.value = this._image.instance.rz;
+			if (this.ialpha) this.ialpha.value = uint(Math.round(100*this._image.instance.alpha));
+			if (this.ivolume) this.ivolume.value = uint(Math.round(100 * this._image.instance.volume));
+			if (this.iplay) this.iplay.selected = this._image.instance.play;
+			if (this.iactive) this.iactive.selected = this._image.instance.active;
+			if (this.iforce) this.iforce.selected = this._image.instance.force;
+			if (this.ivisible) this.ivisible.selected = this._image.instance.visible;
+			if (this.iblend) {
+				this.iblend.textInput.editable = false;
+				for (var index:uint = 0; index < this.blendModes.length; index++) {
+					if (this.blendModes[index] == this._image.instance.blend) this.iblend.selectedIndex = index;
+				}
+			}
+			if (this.ired) this.ired.value = this._image.instance.red;
+			if (this.igreen) this.igreen.value = this._image.instance.green;
+			if (this.iblue) this.iblue.value = this._image.instance.blue;
+			if (this.idropshadow) this.idropshadow.selected = this._image.instance.DropShadowFilter;
+			if (this.idsalpha) this.idsalpha.value = 100 * this._image.instance.DSFalpha;
+			if (this.idsangle) this.idsangle.value = this._image.instance.DSFangle;
+			if (this.idsblurx) this.idsblurx.value = this._image.instance.DSFblurX;
+			if (this.idsblury) this.idsblury.value = this._image.instance.DSFblurY;
+			if (this.idscolor) this.idscolor.selectedColor = uint(this._image.instance.DSFcolor);
+			if (this.idsdistance) this.idsdistance.value = this._image.instance.DSFdistance;
+		}
+		
+		/**
+		 * Update an image property.
+		 * @param	prop	property name
+		 */
+		private function update(prop:String):void {
+			if (this._image) switch (prop) {
+				case "ipx": this._image.instance.px = this._image.x = this.ipx.value; break;
+				case "ipy": this._image.instance.py = this._image.y = this.ipy.value; break;
+				case "ipz": this._image.instance.pz = this._image.z = this.ipz.value; break;
+				case "iwidth": this._image.instance.width = this._image.width = this.iwidth.value; break;
+				case "iheight": this._image.instance.height = this._image.height = this.iheight.value; break;
+				case "irx": this._image.instance.rx = this._image.rotationX = this.irx.value; break;
+				case "iry": this._image.instance.ry = this._image.rotationY = this.iry.value; break;
+				case "irz": this._image.instance.rz = this._image.rotationZ = this.irz.value; break;
+				case "ialpha": this._image.instance.alpha = this._image.alpha = this.ialpha.value / 100; break;
+				case "ivolume": this._image.instance.volume = this._image.volume = this.ivolume.value / 100; break;
+				case "iplay": this._image.instance.play = this.iplay.selected; break;
+				case "iactive": this._image.instance.active = this.iactive.selected; break;
+				case "ivisible": this._image.instance.visible = this._image.visible = this.ivisible.selected; break;
+				case "iforce": this._image.instance.force = this.iforce.selected; break;
+				case "iblend": this._image.instance.blend = this._image.blendMode = this.iblend.selectedItem; break;
+				case "ired":
+				case "igreen":
+				case "iblue":
+					this._image.instance.red = this.ired.value;
+					this._image.instance.green = this.igreen.value;
+					this._image.instance.blue = this.iblue.value;
+					this._image.applyColor();
+					break;
+				case "idsalpha": this._image.instance.DSFalpha = this.idsalpha.value / 100; break;
+				case "idsangle": this._image.instance.DSFangle = this.idsangle.value; break;
+				case "idsblurx": this._image.instance.DSFblurX = this.idsblurx.value; break;
+				case "idsblury": this._image.instance.DSFblurY = this.idsblury.value; break;
+				case "idsdistance": this._image.instance.DSFdistance = this.idsdistance.value; break;
+				case "idscolor": this._image.instance.DSFcolor = String(this.idscolor.value); break;
+				case "idropshadow": 
+					this._image.instance.DropShadowFilter = this.idropshadow.selected;
+					this._image.applyFilters();
+					break;
+			}
+		}
+		
+		/**
+		 * Show data about the chisen filter.
+		 */
+		private function selectFilter():void {
+			this.viewstack1.selectedIndex = this.filterList.selectedIndex;
+		}
+		
+		/**
+		 * Remove the selected image from stage.
+		 */
+		private function deleteImage():void {
+			if (this._image) {
+				FlexGlobals.topLevelApplication.processCommand("deleteInstance", this._image.instance.id);
+				this.selectNone();
+			}
+		}
+		
+		/**
+		 * Close tools window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleProperties");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator id="propertiesTab" width="100%" height="100%">
+			<s:NavigatorContent width="100%" height="100%" label="Image">
+				<s:HGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:VGroup width="80%" height="100%">
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="Position:"/>
+							<s:Label text="x"/>
+							<s:NumericStepper id="ipx" minimum="-10000" maximum="10000" width="60" creationComplete="cInit('ipx')" change="update('ipx')" />
+							<s:Label text="y"/>
+							<s:NumericStepper id="ipy" minimum="-10000" maximum="10000" width="60" creationComplete="cInit('ipy')" change="update('ipy')"/>
+							<s:Label text="z" id="ipz_label" />
+							<s:NumericStepper id="ipz" minimum="-10000" maximum="10000" width="60" creationComplete="cInit('ipz')" change="update('ipz')"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="Size:"/>
+							<s:Label text="width"/>
+							<s:NumericStepper id="iwidth" minimum="1" maximum="10000" width="60" creationComplete="cInit('iwidth')" change="update('iwidth')"/>
+							<s:Label text="height"/>
+							<s:NumericStepper id="iheight" minimum="1" maximum="10000" width="60" creationComplete="cInit('iheight')" change="update('iheight')"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle" id="rotationgroup">
+							<s:Label text="Rotation:"/>
+							<s:Label text="x" id="irx_label" />
+							<s:NumericStepper id="irx" minimum="-10000" maximum="10000" width="60" creationComplete="cInit('irx')" change="update('irx')"/>
+							<s:Label text="y" id="iry_label" /> 
+							<s:NumericStepper id="iry" minimum="-10000" maximum="10000" width="60" creationComplete="cInit('iry')" change="update('iry')"/>
+							<s:Label text="z" id="irz_label" />
+							<s:NumericStepper id="irz" minimum="-10000" maximum="10000" width="60" creationComplete="cInit('irz')" change="update('irz')"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="alpha(%):"/>
+							<s:NumericStepper maximum="100" minimum="0" width="60" stepSize="1" id="ialpha" creationComplete="cInit('ialpha')" change="update('ialpha')"/>
+							<s:Label text="volume(%):"/>
+							<s:NumericStepper maximum="100" minimum="0" width="60" stepSize="1" id="ivolume" creationComplete="cInit('ivolume')" change="update('ivolume')"/>
+						</s:HGroup>
+						<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+							<s:Label text="Blend mode:"/>
+							<s:ComboBox id="iblend" dataProvider="{blendModes}" creationComplete="cInit('iblend')" change="update('iblend')"/>
+						</s:HGroup>
+					</s:VGroup>
+					<s:VGroup width="25%" height="100%">
+						<s:CheckBox label="start playing" id="iplay" creationComplete="cInit('iplay')" />
+						<s:CheckBox label="visible" id="ivisible" creationComplete="cInit('ivisible')" />
+						<s:CheckBox label="force media" id="iforce" creationComplete="cInit('iforce')" />
+						<s:CheckBox label="active" id="iactive" creationComplete="cInit('iactive')" />
+						<s:Button label="delete" click="deleteImage()" />
+					</s:VGroup>
+				</s:HGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="Effect">
+				<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+					<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle">
+						<s:Label text="Color gain:"/>
+						<s:Label text="red" />
+						<s:NumericStepper maximum="255" minimum="-255" width="60" stepSize="1" id="ired" creationComplete="cInit('ired')" change="update('ired')"/>
+						<s:Label text="green" />
+						<s:NumericStepper maximum="255" minimum="-255" width="60" stepSize="1" id="igreen" creationComplete="cInit('igreen')" change="update('igreen')"/>
+						<s:Label text="blue" />
+						<s:NumericStepper maximum="255" minimum="-255" width="60" stepSize="1" id="iblue" creationComplete="cInit('iblue')" change="update('iblue')"/>
+					</s:HGroup>
+					<s:HGroup width="100%" height="100%">
+						<s:VGroup width="155" height="100%">
+							<s:Label text="Filters:"/>
+							<s:List id="filterList" width="150" height="100%" dataProvider="{viewstack1}" change="selectFilter()"></s:List>
+						</s:VGroup>
+						<mx:ViewStack id="viewstack1" width="100%" height="100%">
+							<s:NavigatorContent width="100%" height="100%" label="DropShadow">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="use DropShadow filter" id="idropshadow" creationComplete="cInit('idropshadow')" change="update('idropshadow')" />										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="alpha(%):"/>
+											<s:NumericStepper maximum="100" minimum="0" id="idsalpha" creationComplete="cInit('idsalpha')" change="update('idsalpha')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="angle:"/>
+											<s:NumericStepper maximum="360" minimum="0" id="idsangle" creationComplete="cInit('idsangle')" change="update('idsangle')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur X:" />
+											<s:NumericStepper maximum="10" minimum="0" id="idsblurx" creationComplete="cInit('idsblurx')" change="update('idsblurx')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur Y:"/>
+											<s:NumericStepper maximum="10" minimum="0" id="idsblury" creationComplete="cInit('idsblury')" change="update('idsblury')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="distance:"/>
+											<s:NumericStepper maximum="10" minimum="0" id="idsdistance" creationComplete="cInit('idsdistance')" change="update('idsdistance')"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="color:"/>
+											<mx:ColorPicker id="idscolor" creationComplete="cInit('idscolor')" change="update('idscolor')"/>
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent width="100%" height="100%" label="Bevel">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="use Bevel filter"/>										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="angle:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="distance:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur X:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur Y:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="highligh alpha:"/>
+											<s:NumericStepper width="50" maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="highlight color:"/>
+											<mx:ColorPicker/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="shadow alpha:"/>
+											<s:NumericStepper width="50" maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="shadow color:"/>
+											<mx:ColorPicker/>
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent width="100%" height="100%" label="Blur">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="use Blur filter"/>										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur X:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur Y:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent width="100%" height="100%" label="Glow">
+								<s:VGroup width="100%" height="100%">
+									<s:CheckBox label="use Glow filter"/>										  
+									<s:TileGroup x="0" y="0" width="100%" height="100%">
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="alpha (%):"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="strength:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur X:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="blur Y:"/>
+											<s:NumericStepper maximum="100" minimum="0"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:CheckBox label="inner glow"/>
+										</s:HGroup>
+										<s:HGroup verticalAlign="middle">
+											<s:Label text="color:"/>
+											<mx:ColorPicker/>
+										</s:HGroup>
+									</s:TileGroup>
+								</s:VGroup>
+							</s:NavigatorContent>
+						</mx:ViewStack>
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+	</s:VGroup>
+	
+</s:TitleWindow>

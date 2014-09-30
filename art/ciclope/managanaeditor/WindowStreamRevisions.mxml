@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowStreamRevistions creates a window to handle revisions of a stream.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				creationComplete="init()" width="400" title="{resourceManager.getString('language', 'STW_REVISIONTITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="revisionList"></mx:ArrayCollection>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// load categories list
+			var parameters:String = "community=" + escape(LoadedData.community.id);
+			parameters += "&stream=" + LoadedData.stream.id;
+			WindowServerCheck.createServer("streamrevisions", parameters, this.listReturn);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Stream information received.
+		 * @param	server	the server information object
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				// try to load again
+				var parameters:String = "community=" + escape(LoadedData.community.id);
+				parameters += "&stream=" + LoadedData.stream.id;
+				WindowServerCheck.createServer("streamrevisions", parameters, this.listReturn);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// clear previous data
+				this.revisionList.removeAll();
+				// add loaded indexes
+				for (var index:uint = 0; index < server.data.child("stream").length(); index++) {
+					var label:String = String(server.data.stream[index].@update).replace(/-/g, "/");
+					if (String(server.data.stream[index].@state) == "publish") label += " (published)";
+					this.revisionList.addItem({label: label, data: String(server.data.stream[index].@index)});
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Open a stream revision.
+		 */
+		private function openRevision():void {
+			if (this.revList.selectedIndex >= 0) {
+				var param:String = "community=" + LoadedData.community.id;
+				param += "&id=" + String(LoadedData.stream.id);
+				param += "&byindex=" + this.revisionList[this.revList.selectedIndex].data;
+				WindowServerCheck.createServer("openstream", param, onStreamData);
+			}
+		}
+		
+		/**
+		 * Stream data received from server.
+		 */
+		private function onStreamData(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_OPENSTREAMERROR'), resourceManager.getString('error', server.errorID));
+				PopUpManager.removePopUp(this);
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				LoadedData.stream.getData(server.data);
+				FlexGlobals.topLevelApplication.processCommand("redraw");
+				FlexGlobals.topLevelApplication.processCommand("showStatus", (resourceManager.getString('language', 'STW_OPENOK') + " " + LoadedData.stream.title));
+				PopUpManager.removePopUp(this);
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function closeWindow():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" styleName="paddingGroup">
+		<s:VGroup width="100%" height="100%">
+			<s:Label text="{resourceManager.getString('language', 'STW_REVISIONABOUT')}"/>
+			<s:List id="revList" width="100%" height="100%" dataProvider="{revisionList}"></s:List>
+		</s:VGroup>
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'STW_OPENREVISION')}" click="openRevision()" />
+			<s:Button label="{resourceManager.getString('language', 'CLOSE')}" click="closeWindow()" />
+		</s:HGroup>	
+	</s:VGroup>
+</s:TitleWindow>

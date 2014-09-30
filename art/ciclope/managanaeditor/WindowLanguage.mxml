@@ -1,0 +1,982 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowLanguage enables users to create translations for reader interface texts.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns="*"
+			   width="750" height="500" title="{resourceManager.getString('language', 'LW_TITLE')}" creationComplete="init()">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="languageListData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.events.DataEvent;
+		import flash.events.Event;
+		import flash.net.FileFilter;
+		import flash.net.FileReference;
+		import flash.net.URLLoader;
+		import flash.net.URLRequest;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.display.DisplayObject;
+		import flash.events.IOErrorEvent;
+		import flash.events.SecurityErrorEvent;
+		import flash.system.System;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		private var _uploadLang:String = "";		// the language to upload
+		private var _language:Array = new Array();	// language strings
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			WindowServerCheck.createServer("langmanager", "ac=languages", onActionReturn);
+		}
+		
+		/**
+		 * Language selection changed.
+		 */
+		private function listChange():void {
+			WindowServerCheck.createServer("langmanager", ("ac=check&lang=" + escape(String(this.languageList.selectedItem.data))), onActionReturn);
+		}
+		
+		/**
+		 * Close this window.
+		 */
+		private function onClose():void {
+			for (var index:String in this._language) delete(this._language[index]);
+			this._language = null;
+			this._uploadLang = null;
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Initial window display.
+		 */
+		private function onDisplay():void {
+			this.content.removeAllElements();
+			this.content.addElement(this.initialDisplay);
+			if (this.deleteBT != null) this.deleteBT.enabled = false;
+			if (this.saveBT != null) this.saveBT.enabled = false;
+			if (this.downloadBT != null) this.downloadBT.enabled = false;
+		}
+		
+		/**
+		 * Import a language XML file.
+		 */
+		private function onImport():void {
+			// request file for dowload
+			var file:FileReference = new FileReference();
+			file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onFileUpload);
+			file.addEventListener(Event.SELECT, onFileSelected);
+			file.addEventListener(Event.CANCEL, onFileCancel);
+			file.addEventListener(IOErrorEvent.IO_ERROR, onFileUploadError);
+			file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onFileUploadError);
+			var filter:FileFilter = new FileFilter(resourceManager.getString('language', 'LM_UPLOADXML'), "*.xml");
+			file.browse(new Array(filter));
+		}
+		
+		/**
+		 * Upload finished.
+		 */
+		private function onFileUpload(evt:DataEvent):void {
+			// release file resource
+			var file:FileReference = evt.target as FileReference;
+			file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onFileUpload);
+			file.removeEventListener(Event.SELECT, onFileSelected);
+			file.removeEventListener(Event.CANCEL, onFileCancel);
+			file.removeEventListener(IOErrorEvent.IO_ERROR, onFileUploadError);
+			file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onFileUploadError);
+			// start data import
+			var langFile:URLLoader = new URLLoader();
+			langFile.addEventListener(Event.COMPLETE, onLangComplete);
+			langFile.addEventListener(IOErrorEvent.IO_ERROR, onLangError);
+			langFile.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onLangError);
+			var langRequest:URLRequest = new URLRequest(EditorOptions.path + "/language/language_" + this._uploadLang + ".xml");
+			langFile.load(langRequest);
+		}
+		
+		/**
+		 * Imported language file loaded.
+		 */
+		private function onLangComplete(evt:Event):void {
+			var langFile:URLLoader = evt.target as URLLoader;
+			langFile.removeEventListener(Event.COMPLETE, onLangComplete);
+			langFile.removeEventListener(IOErrorEvent.IO_ERROR, onLangError);
+			langFile.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onLangError);
+			var langData:XML;
+			try {
+				langData = new XML(langFile.data);
+				var param:String = "ac=import&lang=" + this._uploadLang;
+				var total:uint = 0;
+				for (var index:uint = 0; index < langData.child("language").length(); index++) {
+					try {
+						param += "&name" + total + "=" + langData.language[index].name;
+						param += "&value" + total + "=" + escape(langData.language[index].value);
+						total++;
+					} catch (e:Error) { }
+				}
+				param += "&total=" + total;
+				WindowServerCheck.createServer("langmanager", param, onActionReturn);
+				System.disposeXML(langData);
+			} catch (e:Error) {
+				Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-6'));
+			}
+		}
+		
+		/**
+		 * Error while checking the uploaded file.
+		 */
+		private function onLangError(evt:Event):void {
+			var langFile:URLLoader = evt.target as URLLoader;
+			langFile.removeEventListener(Event.COMPLETE, onLangComplete);
+			langFile.removeEventListener(IOErrorEvent.IO_ERROR, onLangError);
+			langFile.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onLangError);
+			Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-6'));
+		}
+		
+		/**
+		 * File selected for upload.
+		 */
+		private function onFileSelected(evt:Event):void {
+			// check if is a language file
+			var isLang:Boolean = false;
+			var file:FileReference = evt.target as FileReference;
+			var name:Array = String(file.name).split("_");
+			if (name.length == 2) {
+				if (name[0] == "language") {
+					var name2:Array = String(name[1]).split(".");
+					if (name2.length == 2) {
+						if (String(name2[0]).length == 2) {
+							// is the selected language already available?
+							isLang = true;
+							var found:Boolean = false;
+							for (var index:uint = 0; index < this.languageListData.length; index++) {
+								if (this.languageListData[index].data == name2[0]) found = true;
+							}
+							if (found) {
+								// the selected language is already available
+								file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onFileUpload);
+								file.removeEventListener(Event.SELECT, onFileSelected);
+								file.removeEventListener(Event.CANCEL, onFileCancel);
+								file.removeEventListener(IOErrorEvent.IO_ERROR, onFileUploadError);
+								file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onFileUploadError);
+								Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-4'));
+							} else {
+								// upload the file
+								this._uploadLang = String(name2[0]);
+								var param:String = "language=" + this._uploadLang;
+								param += "&islang=true";
+								var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("uploadfile"));
+								uploadRequest.data = new URLVariables(param);
+								uploadRequest.method = EditorOptions.method;
+								file.upload(uploadRequest);
+							}
+						}
+					}
+				}
+			}
+			// the file is not a managana language one
+			if (!isLang) {
+				file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onFileUpload);
+				file.removeEventListener(Event.SELECT, onFileSelected);
+				file.removeEventListener(Event.CANCEL, onFileCancel);
+				file.removeEventListener(IOErrorEvent.IO_ERROR, onFileUploadError);
+				file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onFileUploadError);
+				Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-5'));
+			}
+		}
+		
+		/**
+		 * File upload error.
+		 */
+		private function onFileUploadError(evt:Event):void {
+			var file:FileReference = evt.target as FileReference;
+			file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onFileUpload);
+			file.removeEventListener(Event.SELECT, onFileSelected);
+			file.removeEventListener(Event.CANCEL, onFileCancel);
+			file.removeEventListener(IOErrorEvent.IO_ERROR, onFileUploadError);
+			file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onFileUploadError);
+			Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-3'));
+		}
+		
+		/**
+		 * File upload cancelled.
+		 */
+		private function onFileCancel(evt:Event):void {
+			var file:FileReference = evt.target as FileReference;
+			file.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onFileUpload);
+			file.removeEventListener(Event.SELECT, onFileSelected);
+			file.removeEventListener(Event.CANCEL, onFileCancel);
+			file.removeEventListener(IOErrorEvent.IO_ERROR, onFileUploadError);
+			file.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onFileUploadError);
+		}
+		
+		/**
+		 * Create a new language entry.
+		 */
+		private function onCreate():void {
+			if (String(this.newLangID.text).length != 2) {
+				Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-1'));
+			} else {
+				var found:Boolean = false;
+				for (var index:uint = 0; index < this.languageListData.length; index++) if (this.languageListData[index].data == this.newLangID.text) found = true;
+				if (found) {
+					Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', 'ERLMANAGER-2'));
+				} else {
+					WindowServerCheck.createServer("langmanager", ("ac=create&lang=" + escape(String(this.newLangID.text))), onActionReturn);
+				}
+			}
+		}
+		
+		/**
+		 * Delete selected language.
+		 */
+		private function onDelete():void {
+			if ((this.languageList.selectedIndex > 0) && (this.languageList.selectedItem.data != "default")) {
+				var confirm:WindowConfirm = new WindowConfirm();
+				confirm.setAction(WindowConfirm.ACTION_DELETELANGUAGESET, String(this.languageList.selectedItem.data), this.confirmReturn);
+				PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+				PopUpManager.centerPopUp(confirm);
+			}
+		}
+		
+		/**
+		 * A function to call after the delete language confirmation is called.
+		 * @param	response	true if the user confirmed deletion, false otherwise
+		 */
+		private function confirmReturn(response:Boolean):void {
+			// refresh language list
+			if (response) {
+				this.onDisplay();
+				this.languageListData.removeAll();
+				this.languageListData.refresh();
+				this.languageList.selectedIndex = -1;
+				this.newLangID.text = "";
+				WindowServerCheck.createServer("langmanager", "ac=languages", onActionReturn);
+			}
+		}
+		
+		/**
+		 * Save current language data.
+		 * @param	download	download XML file after save?
+		 */
+		private function onSave(download:String = "false"):void {
+			var param:String = "ac=save&download=" + download + "&lang=" + this.languageList.selectedItem.data;
+			var total:uint = 0;
+			for (var index:String in this._language) {
+				try {
+					param += "&name" + total + "=" + index;
+					param += "&value" + total + "=" + escape(this[index].text);
+					total++;
+				} catch (e:Error) { }
+			}
+			param += "&total=" + total;
+			WindowServerCheck.createServer("langmanager", param, onActionReturn);
+		}
+		
+		/**
+		 * Server return.
+		 */
+		private function onActionReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'LW_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				var index:uint;
+				switch (String(server.data.ac)) {
+					case 'languages': // available languages list
+						this.languageListData.removeAll();
+						for (index = 0; index < server.data.child("language").length(); index++) {
+							if (String(server.data.language[index]) == "default") {
+								this.languageListData.addItem({label: resourceManager.getString('language', 'LW_DEFAULT'), data: String(server.data.language[index])});
+							} else {
+								this.languageListData.addItem({label: String(server.data.language[index]), data: String(server.data.language[index])});
+							}
+						}
+						break;
+					case 'create':
+					case 'import':
+						this.onDisplay();
+						this.languageListData.removeAll();
+						this.languageListData.refresh();
+						this.languageList.selectedIndex = -1;
+						this.newLangID.text = "";
+						WindowServerCheck.createServer("langmanager", "ac=languages", onActionReturn);
+						break;
+					case 'save':
+						if (String(server.data.download) == "true") {
+							var file:FileReference = new FileReference();
+							file.download(new URLRequest(EditorOptions.path + "/language/language_" + this.languageList.selectedItem.data + ".xml"));
+						}
+						break;
+					case 'check':
+						this.deleteBT.enabled = (this.languageList.selectedItem.data != "default");
+						this.saveBT.enabled = true;
+						this.downloadBT.enabled = true;
+						this.content.removeAllElements();
+						this.content.addElement(this.textDisplay);
+						for (index = 0; index < server.data.child("language").length(); index++) {
+							this._language[String(server.data.language[index].name)] = String(server.data.language[index].value);
+							try {
+								this[String(server.data.language[index].name)].text = String(server.data.language[index].value);
+							} catch (e:Error) { }
+						}
+						break;
+				}
+			}
+			server.kill();
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:HGroup width="100%" height="100%">
+			<s:VGroup width="25%" height="100%" styleName="paddingGroup">
+				<s:List width="100%" height="230" id="languageList" dataProvider="{languageListData}" change="listChange()" />
+				<s:Button width="100%" label="{resourceManager.getString('language', 'LW_SAVELANGUAGE')}" click="onSave()" enabled="false" id="saveBT" />
+				<s:Button width="100%" label="{resourceManager.getString('language', 'LW_DOWNLOAD')}" click="onSave('true')" enabled="false" id="downloadBT" />
+				<s:Button width="100%" label="{resourceManager.getString('language', 'LW_DELETELANGUAGE')}" click="onDelete()" enabled="false" id="deleteBT" />
+				<s:Label width="100%" text="" />
+				<s:Label width="100%" text="{resourceManager.getString('language', 'LW_CREATELANGUAGE')}" />
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="{resourceManager.getString('language', 'LW_LANGID')}" />
+					<s:TextInput width="40" id="newLangID" />
+					<s:Button width="100%" label="{resourceManager.getString('language', 'LW_CREATE')}" click="onCreate()" />
+				</s:HGroup>
+				<s:VGroup width="100%" height="100%" verticalAlign="bottom">
+					<s:Button width="100%" label="{resourceManager.getString('language', 'LW_IMPORT')}" click="onImport()" />
+					<s:Button width="100%" label="{resourceManager.getString('language', 'LW_CLOSE')}" click="onClose()" />
+				</s:VGroup>
+			</s:VGroup>
+			<s:VGroup width="75%" height="100%" id="content" creationComplete="onDisplay()" styleName="paddingGroup">
+				<s:VGroup width="100%" height="100%" styleName="paddingGroup" id="initialDisplay">
+					<s:Label width="100%" height="100%" text="{resourceManager.getString('language', 'LW_ABOUT')}" />
+				</s:VGroup>
+				<s:Scroller id="textDisplay" width="100%" height="100%" styleName="paddingGroup">
+					<s:VGroup width="100%" height="100%" styleName="paddingGroup">
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLEITERFACE')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLECOMMENTBUTTON')}" />
+							<s:TextInput width="62%" id="COMMENTBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINBUTTON')}" />
+							<s:TextInput width="62%" id="LOGINBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGOUTBUTTON')}" />
+							<s:TextInput width="62%" id="LOGOUTBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINREQUIRED')}" />
+							<s:TextInput width="62%" id="LOGINREQUIRED" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINSUCCESS')}" />
+							<s:TextInput width="62%" id="LOGINSUCCESS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINERROR')}" />
+							<s:TextInput width="62%" id="LOGINERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLERATE')}" />
+							<s:TextInput width="62%" id="RATETEXT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLECOMMENT')}" />
+							<s:TextInput width="62%" id="COMMENTTEXT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLECOMMENTADD')}" />
+							<s:TextInput width="62%" id="COMMENTADD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLECOMMENTWAIT')}" />
+							<s:TextInput width="62%" id="COMMENTWAIT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLESEARCHNORESULTS')}" />
+							<s:TextInput width="62%" id="SEARCHNORESULTS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLESEARCHALLCOMMUNITIES')}" />
+							<s:TextInput width="62%" id="SEARCHALLCOMMUNITIES" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLENOTESTITLE')}" />
+							<s:TextInput width="62%" id="NOTESTITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREADERERROR')}" />
+							<s:TextInput width="62%" id="READERERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLENOWEBERROR')}" />
+							<s:TextInput width="62%" id="NOWEBERROR" />
+						</s:HGroup>
+						<s:Label width="100%" text="" />
+						<mx:HRule width="100%" />
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLEUIWARNINGS')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNCLOCKON')}" />
+							<s:TextInput width="62%" id="WARNCLOCKON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNCLOCKOFF')}" />
+							<s:TextInput width="62%" id="WARNCLOCKOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNRATEON')}" />
+							<s:TextInput width="62%" id="WARNRATEON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNRATEOFF')}" />
+							<s:TextInput width="62%" id="WARNRATEOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNCOMMENTON')}" />
+							<s:TextInput width="62%" id="WARNCOMMENTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNCOMMENTOFF')}" />
+							<s:TextInput width="62%" id="WARNCOMMENTOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNNOTEON')}" />
+							<s:TextInput width="62%" id="WARNNOTEON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNNOTEOFF')}" />
+							<s:TextInput width="62%" id="WARNNOTEOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNZOOMON')}" />
+							<s:TextInput width="62%" id="WARNZOOMON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNZOOMOFF')}" />
+							<s:TextInput width="62%" id="WARNZOOMOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNREMOTEON')}" />
+							<s:TextInput width="62%" id="WARNREMOTEON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNREMOTEOFF')}" />
+							<s:TextInput width="62%" id="WARNREMOTEOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNUSERON')}" />
+							<s:TextInput width="62%" id="WARNUSERON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNUSEROFF')}" />
+							<s:TextInput width="62%" id="WARNUSEROFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNVOTEON')}" />
+							<s:TextInput width="62%" id="WARNVOTEON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNVOTEOFF')}" />
+							<s:TextInput width="62%" id="WARNVOTEOFF" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNOFFLINEOK')}" />
+							<s:TextInput width="62%" id="WARNOFFLINEOK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNCOMMENTADD')}" />
+							<s:TextInput width="62%" id="WARNCOMMENTADD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNRATEADD')}" />
+							<s:TextInput width="62%" id="WARNRATEADD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNLOGIN')}" />
+							<s:TextInput width="62%" id="WARNLOGIN" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEWARNLOGOUT')}" />
+							<s:TextInput width="62%" id="WARNLOGOUT" />
+						</s:HGroup>
+						
+						
+						
+						
+						
+						
+						<s:Label width="100%" text="" />
+						<mx:HRule width="100%" />
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLELEAP')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELEAPCALIBRATING')}" />
+							<s:TextInput width="62%" id="LEAPCALIBRATING" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELEAPSUCCESS')}" />
+							<s:TextInput width="62%" id="LEAPSUCCESS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELEAPERROR')}" />
+							<s:TextInput width="62%" id="LEAPERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELEAPPOINTTL')}" />
+							<s:TextInput width="62%" id="LEAPPOINTTL" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELEAPPOINTBR')}" />
+							<s:TextInput width="62%" id="LEAPPOINTBR" />
+						</s:HGroup>
+						
+						
+						
+						
+						
+						
+						
+						<s:Label width="100%" text="" />
+						<mx:HRule width="100%" />
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLECMANAGER')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINETITLE')}" />
+							<s:TextInput width="62%" id="OFFLINETITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEGETTINGINFOWAIT')}" />
+							<s:TextArea height="70" width="62%" id="OFFLINEGETTINGINFOWAIT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINELISTMARK')}" />
+							<s:TextInput width="62%" id="OFFLINELISTMARK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEDOWNBT')}" />
+							<s:TextInput width="62%" id="OFFLINEDOWNBT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINERETBT')}" />
+							<s:TextInput width="62%" id="OFFLINERETBT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEINFOFOR')}" />
+							<s:TextInput width="62%" id="OFFLINEINFOFOR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINESIZE')}" />
+							<s:TextInput width="62%" id="OFFLINESIZE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEINFOERROR')}" />
+							<s:TextArea height="70" width="62%" id="OFFLINEINFOERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEWIFI')}" />
+							<s:TextArea height="70" width="62%" id="OFFLINEWIFI" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEDOWNERROR')}" />
+							<s:TextArea height="70" width="62%" id="OFFLINEDOWNERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEDOWNMSG')}" />
+							<s:TextArea height="70" width="62%" id="OFFLINEDOWNMSG" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEDOWNCLOSE')}" />
+							<s:TextInput width="62%" id="OFFLINEDOWNCLOSE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEDOWNCANCEL')}" />
+							<s:TextInput width="62%" id="OFFLINEDOWNCANCEL" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEUPDABOUT')}" />
+							<s:TextArea height="70" width="62%" id="OFFLINEUPDABOUT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEUPDBT')}" />
+							<s:TextInput width="62%" id="OFFLINEUPDBT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINEUPDDEL')}" />
+							<s:TextInput width="62%" id="OFFLINEUPDDEL" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEOFFLINENEWAVAILABLE')}" />
+							<s:TextInput width="62%" id="OFFLINENEWAVAILABLE" />
+						</s:HGroup>
+						<s:Label width="100%" text="" />
+						<mx:HRule width="100%" />
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLEACCOUNT')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINTITLE')}" />
+							<s:TextInput width="62%" id="LOGINTITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINWITHGUEST')}" />
+							<s:TextArea height="70" width="62%" id="LOGINWITHGUEST" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINNOGUEST')}" />
+							<s:TextArea height="70" width="62%" id="LOGINNOGUEST" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINMAILFIELD')}" />
+							<s:TextInput width="62%" id="LOGINMAILFIELD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINPASSFIELD')}" />
+							<s:TextInput width="62%" id="LOGINPASSFIELD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINCHECKLABEL')}" />
+							<s:TextInput width="62%" id="LOGINCHECKLABEL" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINWAIT')}" />
+							<s:TextArea height="70" width="62%" id="LOGINWAIT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINOKRETURN')}" />
+							<s:TextInput width="62%" id="LOGINOKRETURN" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVERPASS')}" />
+							<s:TextInput width="62%" id="LOGINRECOVERPASS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINNORETURN')}" />
+							<s:TextInput width="62%" id="LOGINNORETURN" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINOPENCANCEL')}" />
+							<s:TextArea height="70" width="62%" id="LOGINOPENCANCEL" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINFAIL')}" />
+							<s:TextArea height="70" width="62%" id="LOGINFAIL" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINOK')}" />
+							<s:TextArea height="70" width="62%" id="LOGINOK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMAILRECOVERSUBJECT')}" />
+							<s:TextInput width="62%" id="MAILRECOVERSUBJECT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMAILRECOVERBODY')}" />
+							<s:TextArea height="70" width="62%" id="MAILRECOVERBODY" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVERABOUT')}" />
+							<s:TextArea height="70" width="62%" id="LOGINRECOVERABOUT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLERECOVERMESSAGEERROR')}" />
+							<s:TextArea height="70" width="62%" id="RECOVERMESSAGEERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLERECOVERMESSAGEOK')}" />
+							<s:TextArea height="70" width="62%" id="RECOVERMESSAGEOK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVERNOTFOUND')}" />
+							<s:TextArea height="70" width="62%" id="LOGINRECOVERNOTFOUND" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVEROK')}" />
+							<s:TextArea height="70" width="62%" id="LOGINRECOVEROK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVERBUTTON')}" />
+							<s:TextInput width="62%" id="LOGINRECOVERBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVERMAILFIELD')}" />
+							<s:TextInput width="62%" id="LOGINRECOVERMAILFIELD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLELOGINRECOVERPASSFIELD')}" />
+							<s:TextInput width="62%" id="LOGINRECOVERPASSFIELD" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLECREATETEXT')}" />
+							<s:TextInput width="62%" id="CREATETEXT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMAILNEWSUBJECT')}" />
+							<s:TextInput width="62%" id="MAILNEWSUBJECT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMAILNEWBODY')}" />
+							<s:TextArea height="70" width="62%" id="MAILNEWBODY" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMAILNEWBODYSUBSCRIBER')}" />
+							<s:TextArea height="70" width="62%" id="MAILNEWBODYSUBSCRIBER" />
+						</s:HGroup>
+						<s:Label width="100%" text="" />
+						<mx:HRule width="100%" />
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLEREMOTE')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTENOPEER')}" />
+							<s:TextInput width="62%" id="REMOTENOPEER" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEMAINTITLE')}" />
+							<s:TextInput width="62%" id="REMOTEMAINTITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOTAB')}" />
+							<s:TextInput width="62%" id="REMOTEINFOTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEVOTETAB')}" />
+							<s:TextInput width="62%" id="REMOTEVOTETAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTESOUNDTAB')}" />
+							<s:TextInput width="62%" id="REMOTESOUNDTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTENAVTAB')}" />
+							<s:TextInput width="62%" id="REMOTENAVTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEZOOMTAB')}" />
+							<s:TextInput width="62%" id="REMOTEZOOMTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTETARGETTAB')}" />
+							<s:TextInput width="62%" id="REMOTETARGETTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTESTREAMSTAB')}" />
+							<s:TextInput width="62%" id="REMOTESTREAMSTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMUNITYTAB')}" />
+							<s:TextInput width="62%" id="REMOTECOMMUNITYTAB" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOLOGINWINDOWTITLE')}" />
+							<s:TextInput width="62%" id="REMOTEINFOLOGINWINDOWTITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOLOGINABOUTERROR')}" />
+							<s:TextInput width="62%" id="REMOTEINFOLOGINABOUTERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOPUBLICLOGIN')}" />
+							<s:TextInput width="62%" id="REMOTEINFOPUBLICLOGIN" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOWAITLOGINMESSAGE')}" />
+							<s:TextInput width="62%" id="REMOTEINFOWAITLOGINMESSAGE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOCONNECTEDTO')}" />
+							<s:TextInput width="62%" id="REMOTEINFOCONNECTEDTO" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOCONNECTEDAS')}" />
+							<s:TextInput width="62%" id="REMOTEINFOCONNECTEDAS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOCONNECTEDJUSTAS')}" />
+							<s:TextInput width="62%" id="REMOTEINFOCONNECTEDJUSTAS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFODISCONNECT')}" />
+							<s:TextInput width="62%" id="REMOTEINFODISCONNECT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOCONNECTIONERROR')}" />
+							<s:TextInput width="62%" id="REMOTEINFOCONNECTIONERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOCONNECTCIRRUS')}" />
+							<s:TextInput width="62%" id="REMOTEINFOCONNECTCIRRUS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOPUBLICNOKEY')}" />
+							<s:TextInput width="62%" id="REMOTEINFOPUBLICNOKEY" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFONOSTREAMDESCRIPTION')}" />
+							<s:TextInput width="62%" id="REMOTEINFONOSTREAMDESCRIPTION" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOSHAREFACEBOOK')}" />
+							<s:TextInput width="62%" id="REMOTEINFOSHAREFACEBOOK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOSHARETWITTER')}" />
+							<s:TextInput width="62%" id="REMOTEINFOSHARETWITTER" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOSHAREGPLUS')}" />
+							<s:TextInput width="62%" id="REMOTEINFOSHAREGPLUS" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSSENDING')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSSENDING" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSBUTTON')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSFOR0')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSFOR0" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSFOR1')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSFOR1" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSFOR')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSFOR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTERROR')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTERROR" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSLOGIN')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSLOGIN" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOWAIT')}" />
+							<s:TextInput width="62%" id="REMOTEINFOWAIT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOLOGINBUTTON')}" />
+							<s:TextInput width="62%" id="REMOTEINFOLOGINBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOLOGINABOUT')}" />
+							<s:TextInput width="62%" id="REMOTEINFOLOGINABOUT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOPUBLICBUTTON')}" />
+							<s:TextInput width="62%" id="REMOTEINFOPUBLICBUTTON" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOPUBLICABOUT')}" />
+							<s:TextInput width="62%" id="REMOTEINFOPUBLICABOUT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEINFOLOGINTITLE')}" />
+							<s:TextInput width="62%" id="REMOTEINFOLOGINTITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTECOMMENTSENT')}" />
+							<s:TextInput width="62%" id="REMOTECOMMENTSENT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTERATELOGIN')}" />
+							<s:TextInput width="62%" id="REMOTERATELOGIN" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTERATECLICK')}" />
+							<s:TextInput width="62%" id="REMOTERATECLICK" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTERATESENT')}" />
+							<s:TextInput width="62%" id="REMOTERATESENT" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTERATETITLE')}" />
+							<s:TextInput width="62%" id="REMOTERATETITLE" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEREMOTEVOTEGUIDEABOUT')}" />
+							<s:TextInput width="62%" id="REMOTEVOTEGUIDEABOUT" />
+						</s:HGroup>
+						<s:Label width="100%" text="" />
+						<mx:HRule width="100%" />
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'LW_TITLEMONTHS')}" />
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH1')}" />
+							<s:TextInput width="62%" id="MONTH1" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH2')}" />
+							<s:TextInput width="62%" id="MONTH2" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH3')}" />
+							<s:TextInput width="62%" id="MONTH3" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH4')}" />
+							<s:TextInput width="62%" id="MONTH4" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH5')}" />
+							<s:TextInput width="62%" id="MONTH5" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH6')}" />
+							<s:TextInput width="62%" id="MONTH6" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH7')}" />
+							<s:TextInput width="62%" id="MONTH7" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH8')}" />
+							<s:TextInput width="62%" id="MONTH8" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH9')}" />
+							<s:TextInput width="62%" id="MONTH9" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH10')}" />
+							<s:TextInput width="62%" id="MONTH10" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH11')}" />
+							<s:TextInput width="62%" id="MONTH11" />
+						</s:HGroup>
+						<s:HGroup width="100%" verticalAlign="middle">
+							<s:Label width="35%" text="{resourceManager.getString('language', 'LW_TITLEMONTH12')}" />
+							<s:TextInput width="62%" id="MONTH12" />
+						</s:HGroup>
+						<s:Label width="100%" text="" />
+					</s:VGroup>
+				</s:Scroller>
+			</s:VGroup>
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

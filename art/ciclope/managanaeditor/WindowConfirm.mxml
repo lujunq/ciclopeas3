@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowConfirm creates a window to ask for user confirmation before proceeding an action.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="450" title="{resourceManager.getString('language', 'CONFIRM_TITLE')}">
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		import art.ciclope.util.LoadedFile;
+		
+		// PUBLIC CONSTANTS
+		
+		/**
+		 * Confirm playlist removal.
+		 */
+		public static const ACTION_DELETEPLAYLIST:String = "ACTION_DELETEPLAYLIST";
+		/**
+		 * Confirm stream removal.
+		 */
+		public static const ACTION_DELETESTREAM:String = "ACTION_DELETESTREAM";
+		/**
+		 * Confirm community removal.
+		 */
+		public static const ACTION_DELETECOMMUNITY:String = "ACTION_DELETECOMMUNITY";
+		/**
+		 * Confirm community re-publish.
+		 */
+		public static const ACTION_PUBLISHCOMMUNITY:String = "ACTION_PUBLISHCOMMUNITY";
+		/**
+		 * Confirm community ratings reset.
+		 */
+		public static const ACTION_RESETRATE:String = "ACTION_RESETRATE";
+		/**
+		 * Confirm community stats reset.
+		 */
+		public static const ACTION_RESETSTATS:String = "ACTION_RESETSTATS";
+		/**
+		 * Confirm community comments reset.
+		 */
+		public static const ACTION_RESETCOMMENTS:String = "ACTION_RESETCOMMENTS";
+		/**
+		 * Confirm meta data field delete.
+		 */
+		public static const ACTION_DELETEMETA:String = "ACTION_DELETEMETA";
+		/**
+		 * Confirm personal file delete.
+		 */
+		public static const ACTION_DELETEPERSONALFILE:String = "ACTION_DELETEPERSONALFILE";
+		/**
+		 * Confirm community file delete.
+		 */
+		public static const ACTION_DELETECOMMUNITYFILE:String = "ACTION_DELETECOMMUNITYFILE";
+		/**
+		 * Confirm language set delete.
+		 */
+		public static const ACTION_DELETELANGUAGESET:String = "ACTION_DELETELANGUAGESET";
+		
+		
+		// VARIABLES
+		
+		public var _response:Function;	// a function to call after the user selection. Must receive one boolean parameter: true if the user confirmed the action, false otherwise.
+		public var _action:String;		// the action to be confirmed according to the action constants
+		public var _param:String;		// the parameter for the confirm action
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Set confirmation action
+		 * @param	action	the action to be confirmed according to the action constants
+		 * @param	parameter	action parameter
+		 * @param	response	a function to call after the user selection. Must receive one boolean parameter: true if the user confirmed the action, false otherwise.
+		 */
+		public function setAction(action:String, parameter:String = "", response:Function = null):void {
+			switch (action) {
+				case WindowConfirm.ACTION_DELETEPLAYLIST:
+				case WindowConfirm.ACTION_DELETESTREAM:
+				case WindowConfirm.ACTION_DELETECOMMUNITY:
+				case WindowConfirm.ACTION_RESETRATE:
+				case WindowConfirm.ACTION_RESETSTATS:
+				case WindowConfirm.ACTION_RESETCOMMENTS:
+				case WindowConfirm.ACTION_DELETEMETA:
+				case WindowConfirm.ACTION_DELETEPERSONALFILE:
+				case WindowConfirm.ACTION_DELETECOMMUNITYFILE:
+				case WindowConfirm.ACTION_DELETELANGUAGESET:
+				case WindowConfirm.ACTION_PUBLISHCOMMUNITY:
+					this._action = action;
+					if (this.theMessage != null) this.onReady('theMessage');
+					this._param = parameter;
+					this._response = response;
+					break;
+				default:
+					// no action
+					PopUpManager.removePopUp(this);
+					break;
+			}
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * A component is ready.
+		 * @param	name	the component name
+		 */
+		private function onReady(name:String):void {
+			switch (name) {
+				case 'theMessage':
+					switch (this._action) {
+						case WindowConfirm.ACTION_DELETEPLAYLIST:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_DELETEPLAYLIST');
+							break;
+						case WindowConfirm.ACTION_DELETESTREAM:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_DELETESTREAM');
+							break;
+						case WindowConfirm.ACTION_DELETECOMMUNITY:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_DELETECOMMUNITY');
+							break;
+						case WindowConfirm.ACTION_RESETRATE:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_RESETRATE');
+							break;
+						case WindowConfirm.ACTION_RESETSTATS:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_RESETSTATS');
+							break;
+						case WindowConfirm.ACTION_RESETCOMMENTS:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_RESETCOMMENTS');
+							break;
+						case WindowConfirm.ACTION_DELETEMETA:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_DELETEMETA');
+							break;
+						case WindowConfirm.ACTION_DELETECOMMUNITYFILE:
+						case WindowConfirm.ACTION_DELETEPERSONALFILE:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_DELETEFILE');
+							break;
+						case WindowConfirm.ACTION_DELETELANGUAGESET:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_DELETEFILE');
+							break;
+						case WindowConfirm.ACTION_PUBLISHCOMMUNITY:
+							this.theMessage.text = resourceManager.getString('language', 'CONFIRM_PUBLISHCOMMUNITY');
+							break;
+					}
+					break;
+			}
+		}
+		
+		/**
+		 * Action confirmed.
+		 */
+		private function onOk():void {
+			var params:String = "community=" + escape(LoadedData.community.id);
+			switch (this._action) {
+				case WindowConfirm.ACTION_DELETEPLAYLIST:
+					params += "&action=deleteplaylist";
+					params += "&playlist=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_DELETESTREAM:
+					params += "&action=deletestream";
+					params += "&stream=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_DELETECOMMUNITY:
+					params += "&action=deletecommunity";
+					params += "&com=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_PUBLISHCOMMUNITY:
+					params += "&action=publishcommunity";
+					params += "&com=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_RESETRATE:
+					params += "&action=resetrating";
+					params += "&com=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_RESETSTATS:
+					params += "&action=resetstats";
+					params += "&com=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_RESETCOMMENTS:
+					params += "&action=resetcomments";
+					params += "&com=" + escape(this._param);
+				case WindowConfirm.ACTION_DELETEMETA:
+					params += "&action=deletemeta";
+					params += "&metaid=" + escape(this._param);
+					break;
+				case WindowConfirm.ACTION_DELETEPERSONALFILE:
+					var acdata:Array = this._param.split("|");
+					params += "&action=deletefile";
+					params += "&from=personal";
+					switch (acdata[0]) {
+						case LoadedFile.TYPE_PICTURE: params += "&type=picture"; break;
+						case LoadedFile.TYPE_TEXT: params += "&type=text"; break;
+						case LoadedFile.TYPE_PARAGRAPH: params += "&type=paragraph"; break;
+						case LoadedFile.TYPE_AUDIO: params += "&type=audio"; break;
+						case LoadedFile.TYPE_VIDEO: params += "&type=video"; break;
+					}
+					params += "&file=" + escape(acdata[1]);
+					params += "&user=" + escape(UserInfo.id);
+					break;
+				case WindowConfirm.ACTION_DELETECOMMUNITYFILE:
+					var acdata2:Array = this._param.split("|");
+					params += "&action=deletefile";
+					params += "&from=community";
+					switch (acdata2[0]) {
+						case LoadedFile.TYPE_PICTURE: params += "&type=picture"; break;
+						case LoadedFile.TYPE_TEXT: params += "&type=text"; break;
+						case LoadedFile.TYPE_PARAGRAPH: params += "&type=paragraph"; break;
+						case LoadedFile.TYPE_AUDIO: params += "&type=audio"; break;
+						case LoadedFile.TYPE_VIDEO: params += "&type=video"; break;
+					}
+					params += "&file=" + escape(acdata2[1]);
+					params += "&user=" + escape(UserInfo.id);
+					break;
+				case WindowConfirm.ACTION_DELETELANGUAGESET:
+					params += "&action=deletelanguage";
+					params += "&lang=" + this._param;
+					break;
+			}
+			WindowServerCheck.createServer("confirmedaction", params, onConfirmReturn);
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onCancel():void {
+			PopUpManager.removePopUp(this);
+			if (this._response != null) this._response(false);
+			this._action = null;
+			this._response = null;
+			this._param = null;
+		}
+		
+		/**
+		 * System configuration values received.
+		 */
+		private function onConfirmReturn(server:ServerInteraction):void {
+			var ret:Boolean;
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONFIRM_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					ret = false;
+					break;
+				case ServerEvent.SERVER_OK:
+					ret = true;
+					break;
+			}
+			server.kill();
+			if (this._response != null) this._response(ret);
+			this._action = null;
+			this._response = null;
+			this._param = null;
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label id="theMessage" width="100%" creationComplete="onReady('theMessage')" />
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CONFIRM_CANCEL')}" click="onCancel()" />
+			<s:Button label="{resourceManager.getString('language', 'CONFIRM_OK')}" click="onOk()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

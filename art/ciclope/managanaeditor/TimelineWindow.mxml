@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+TimelineWindow creates a window for stream timeline handling.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:mana="art.ciclope.managanaeditor.*"
+			   close="onClose()" creationComplete="clear()" width="800" height="420" title="{resourceManager.getString('language', 'TIMELINE_TITLE')}">
+	
+	<fx:Declarations>
+		<mx:ArrayCollection id="instanceList" />
+		<s:RadioButtonGroup id="codeMoment" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.display.BitmapData;
+		import flash.events.Event;
+		import flash.events.MouseEvent;
+		import mx.core.FlexGlobals;
+		import spark.components.Button;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.data.DISKeyframeED;
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _showInstances:Boolean = false;		// is instances list shown?
+		
+		/**
+		 * Clear the timeline buttons.
+		 */
+		public function clear():void {
+			while (this.scrollGroup.numElements > 0) {
+				if (this.scrollGroup.getElementAt(0) is TimelineKeyframe) {
+					var bt:TimelineKeyframe = this.scrollGroup.getElementAt(0) as TimelineKeyframe;
+					bt.kill();
+					bt = null;
+				}
+				this.scrollGroup.removeElementAt(0);
+			}
+			this.itemScroller.setStyle("horizontalScrollPolicy", "on");
+		}
+		
+		/**
+		 * Load stream data into keyframe buttons.
+		 */
+		public function loadStream():void {
+			this.clear();
+			for (var index:uint = 0; index < LoadedData.stream.keyframes.length; index++) {
+				var button:TimelineKeyframe = new TimelineKeyframe();
+				button.width = 80;
+				button.height = 45;
+				button.frameNum = String(index + 1);
+				button.keyframeClick = this.onKeyframe;
+				button.removeClick = this.onRemove;
+				this.scrollGroup.addElement(button);
+			}
+			var addKeyframe:Button = new Button();
+			addKeyframe.width = 45;
+			addKeyframe.height = 45;
+			addKeyframe.label = "+";
+			addKeyframe.addEventListener(MouseEvent.CLICK, onNew);
+			this.scrollGroup.addElement(addKeyframe);
+			this.updateInstances();
+			this.showSelected();
+		}
+		
+		/**
+		 * Update instance list information.
+		 */
+		public function updateInstances():void {
+			this.instanceList.removeAll();
+			var instances:Array = LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].instance;
+			for (var index:String in instances) {
+				this.instanceList.addItem({dataName:instances[index].id, dataZ:instances[index].pz, dataOrder:instances[index].order, dataPlaylist:instances[index].playlist});
+			}
+		}
+		
+		/**
+		 * The progress code component is available.
+		 */
+		private function codeWindowOK():void {
+			this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
+		}
+		
+		/**
+		 * The progress code content changed.
+		 */
+		private function codeChange(evt:Event):void {
+			if (this.codeIn.selected) {
+				LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].codeIn = this.codeWindow.code;
+			} else {
+				LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].codeOut = this.codeWindow.code;
+			}
+		}
+		
+		/**
+		 * Click on a keyframe button.
+		 */
+		private function onKeyframe(num:uint = 0):void {
+			if (num < LoadedData.stream.keyframes.length) {
+				LoadedData.stream.currentKeyframe = num;
+				FlexGlobals.topLevelApplication.processCommand("redraw");
+				FlexGlobals.topLevelApplication.processCommand("StreamRefresh");
+				this.showSelected();
+			}
+		}
+		
+		/**
+		 * Show the selected keyframe button.
+		 */
+		private function showSelected():void {
+			for (var index:uint = 0; index < this.scrollGroup.numElements; index++) {
+				var button:* = this.scrollGroup.getElementAt(index);
+				if (button is TimelineKeyframe) if (index == LoadedData.stream.currentKeyframe) {
+					button.setStyle("chromeColor", 0xA8C6EE);
+				} else {
+					button.clearStyle("chromeColor");
+				}
+			}
+			// update instance table
+			this.updateInstances();
+			// update progress code information
+			if (this.codeIn.selected) {
+				this.codeWindow.code = LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].codeIn;
+			} else {
+				this.codeWindow.code = LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].codeOut;
+			}
+		}
+		
+		/**
+		 * Check the progress code moment to show.
+		 */
+		private function checkCode():void {
+			if (this.codeIn.selected) {
+				this.codeWindow.code = LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].codeIn;
+			} else {
+				this.codeWindow.code = LoadedData.stream.keyframes[LoadedData.stream.currentKeyframe].codeOut;
+			}
+		}
+		
+		/**
+		 * Click on add keyframe button.
+		 */
+		private function onNew(evt:MouseEvent = null):void {
+			FlexGlobals.topLevelApplication.processCommand("StreamNewKey");
+		}
+		
+		/**
+		 * Click on remove keyframe button.
+		 */
+		private function onRemove(num:uint = 0):void {
+			FlexGlobals.topLevelApplication.processCommand("StreamRemoveKey", num);
+		}
+		
+		/**
+		 * Click on the instance list.
+		 */
+		private function onInstanceChange():void {
+			if (this.instanceShow.selectedItem != null) FlexGlobals.topLevelApplication.processCommand("selectImage", FlexGlobals.topLevelApplication.view.getInstance(this.instanceShow.selectedItem.dataName));
+		}
+		
+		/**
+		 * Hide an instance.
+		 */
+		public function onHideInstance(evt:MouseEvent):void {
+			if (!FlexGlobals.topLevelApplication.processCommand("hideImage", this.instanceShow.selectedItem.dataName)) evt.stopPropagation();
+		}
+		
+		/**
+		 * Lock an instance.
+		 */
+		public function onLockInstance(evt:MouseEvent):void {
+			if (!FlexGlobals.topLevelApplication.processCommand("lockImage", this.instanceShow.selectedItem.dataName)) evt.stopPropagation();
+		}
+		
+		/**
+		 * Close tools window.
+		 */
+		private function onClose():void {
+			FlexGlobals.topLevelApplication.processCommand("toggleTimeline");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:HGroup styleName="paddingGroup" height="100%">
+		<s:VGroup styleName="paddingGroup" width="55%" height="100%">
+			<s:Label width="100%" text="{resourceManager.getString('language', 'TIMELINE_KEYFRAMES')}" />
+			<s:Scroller id="itemScroller" width="100%" height="70" measuredSizeIncludesScrollBars="false">
+				<s:Group>
+					<s:HGroup styleName="paddingGroup" id="scrollGroup" />
+				</s:Group>
+			</s:Scroller>
+			<s:Label width="100%" text="" />
+			<s:HGroup width="100%">
+				<s:Label width="100%" text="{resourceManager.getString('language', 'TIMELINE_KEYCODE')}" />
+				<s:RadioButton id="codeIn" group="{codeMoment}" selected="true" label="{resourceManager.getString('language', 'TIMELINE_CODEIN')}" click="checkCode()" />
+				<s:RadioButton id="codeOut" group="{codeMoment}" label="{resourceManager.getString('language', 'TIMELINE_CODEOUT')}" click="checkCode()" />
+			</s:HGroup>
+			<mana:ProgressCode id="codeWindow" width="100%" height="100%" creationComplete="codeWindowOK()" />
+		</s:VGroup>
+		<s:VGroup styleName="paddingGroup" width="45%" height="100%">
+			<s:Label width="100%" text="{resourceManager.getString('language', 'TIMELINE_INSTANCES')}" />
+			<mx:DataGrid id="instanceShow" width="100%" height="100%" dataProvider="{instanceList}" click="onInstanceChange()">
+				<mx:columns>
+						<mx:DataGridColumn width="105" dataField="dataName" headerText="{resourceManager.getString('language', 'TIMELINE_INSTANCENAME')}"></mx:DataGridColumn>
+						<mx:DataGridColumn width="30" dataField="dataZ" headerText="{resourceManager.getString('language', 'TIMELINE_Z')}"></mx:DataGridColumn>
+						<mx:DataGridColumn width="55" dataField="dataOrder" headerText="{resourceManager.getString('language', 'TIMELINE_ORDER')}"></mx:DataGridColumn>
+						<mx:DataGridColumn>
+							<mx:itemRenderer>
+								<fx:Component>
+									<mx:HBox>
+										<mx:Button label="{resourceManager.getString('language', 'TIMELINE_HIDE')}" click="outerDocument.onHideInstance(event)" />
+										<mx:Button label="{resourceManager.getString('language', 'TIMELINE_LOCK')}" click="outerDocument.onLockInstance(event)" />
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+				</mx:columns>
+			</mx:DataGrid>
+		</s:VGroup>
+	</s:HGroup>
+</s:TitleWindow>

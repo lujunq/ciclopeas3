@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowConfigReader creates a window to manage reader configurations, including display text.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="600" height="520" title="{resourceManager.getString('language', 'CONF_READERTITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="comList" />
+		<mx:ArrayCollection id="searchByListData" />
+		<mx:ArrayCollection id="searchExcludeListData" />
+		<mx:ArrayCollection id="offlineCommunitiesData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import flash.display.Shape;
+		import flash.events.DataEvent;
+		import flash.events.Event;
+		import mx.controls.ColorPicker;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.net.navigateToURL;
+		import flash.net.URLRequest;
+		import spark.components.CheckBox;
+		import spark.components.DropDownList;
+		import spark.components.NumericStepper;
+		import spark.components.TextInput;
+		import flash.net.FileReference;
+		import flash.net.FileFilter;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		import art.ciclope.display.GraphicSprite;
+		import art.ciclope.staticfunctions.StringFunctions;
+		
+		// VARIABLES
+		
+		private var _conf:Array = new Array();		// configuration values
+		private var _customLogo:GraphicSprite;		// a custom logo image for reader menu
+		private var _file:FileReference;			// reference for logo file upload
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			this._customLogo = new GraphicSprite(60, 60);
+			// prepare lists
+			this.searchByListData.removeAll();
+			this.searchByListData.addItem( { label:resourceManager.getString('language', 'CONF_SEARCHONID'), data:"id" } );
+			this.searchByListData.addItem( { label:resourceManager.getString('language', 'CONF_SEARCHONTITLE'), data:"title" } );
+			this.searchByListData.addItem( { label:resourceManager.getString('language', 'CONF_SEARCHONABOUT'), data:"excerpt" } );
+			this.searchByListData.addItem( { label:resourceManager.getString('language', 'CONF_SEARCHONTAG'), data:"tag" } );
+			this.searchByListData.addItem( { label:resourceManager.getString('language', 'CONF_SEARCHONCATEGORY'), data:"category" } );
+			this.searchByListData.addItem( { label:resourceManager.getString('language', 'CONF_SEARCHONAUTHOR'), data:"author" } );
+			// get community information
+			WindowServerCheck.createServer("getcommunities", "", onCommunities);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Component initialize.
+		 * @param	name	component name
+		 */
+		private function onComponent(name:String):void {
+			if (this[name] != null) if (this._conf != (new Array())) {
+				if (name == "LOGOFILE") {
+					this.logoArea.removeChildren();
+					var logoBG:Shape = new Shape();
+					logoBG.graphics.beginFill(0);
+					logoBG.graphics.drawRect(0, 0, 60, 60);
+					logoBG.graphics.endFill();
+					this.logoArea.addChild(logoBG);
+					this.logoArea.addChild(this._customLogo);
+					this._customLogo.load(StringFunctions.slashURL(this._conf['INSTALLFOLDER']) + "pics/customlogo.png?rand=" + String(new Date().time));
+					this.LOGOFILE.selected = (this._conf[name] != "");
+					this._file = new FileReference();
+					this._file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadOK);
+					this._file.addEventListener(Event.SELECT, onFileSelected);
+				} else if (name == "searchByList") {
+					var bylistindixes:Vector.<int> = new Vector.<int>();
+					for (var ibylist:uint = 0; ibylist < this.searchByListData.length; ibylist++) {
+						if (this._conf['SEARCHBY'].indexOf(this.searchByListData.getItemAt(ibylist).data) >= 0) {
+							bylistindixes.push(ibylist);
+						}
+					}
+					this.searchByList.selectedIndices = bylistindixes;
+				} else if (name == "searchExcludeList") {
+					var exlistindixes:Vector.<int> = new Vector.<int>();
+					for (var iexlist:uint = 0; iexlist < this.searchExcludeListData.length; iexlist++) {
+						if (this._conf['SEARCHEXCLUDE'].indexOf(this.searchExcludeListData.getItemAt(iexlist).data) >= 0) {
+							exlistindixes.push(iexlist);
+						}
+					}
+					this.searchExcludeList.selectedIndices = exlistindixes;
+				} else if (name == "offlineCommunities") {
+					var offavailable:Vector.<int> = new Vector.<int>();
+					for (var ioalist:uint = 0; ioalist < this.offlineCommunitiesData.length; ioalist++) {
+						if (this._conf['OFFLINEAVAILABLE'].indexOf(this.offlineCommunitiesData.getItemAt(ioalist).data) >= 0) {
+							offavailable.push(ioalist);
+						}
+					}
+					this.offlineCommunities.selectedIndices = offavailable;
+				} else {
+					try {
+						if (this[name] is TextInput) this[name].text = this._conf[name];
+						if (this[name] is CheckBox) this[name].selected = (this._conf[name] == "true");
+						if (this[name] is NumericStepper) this[name].value = uint(this._conf[name]);
+						if (this[name] is DropDownList) {
+							for (var index:uint = 0; index < this[name].dataProvider.length; index++) {
+								if (this[name].dataProvider[index].data == this._conf[name]) this[name].selectedIndex = index;
+							}
+						}
+						if (this[name] is ColorPicker) this[name].selectedColor = uint(this._conf[name]);
+					} catch (e:Error) { }
+				}
+			}
+		}
+		
+		/**
+		 * Save configuration.
+		 */
+		private function onSave():void {
+			var params:String = "action=reader";
+			var total:uint = 0;
+			var index:uint = 0;
+			var temp:Array;
+			for (var name:String in this._conf) {
+				if (name == "LOGOFILE") {
+					if (this.LOGOFILE != null) {
+						if (this.LOGOFILE.selected) this._conf[name] = "customlogo.png";
+							else this._conf[name] = "";
+					}
+				} else if (name == "SEARCHBY") {
+					if (this.searchByList != null) {
+						temp = new Array();
+						for (index = 0; index < this.searchByList.selectedItems.length; index++) {
+							temp.push(String(this.searchByList.selectedItems[index].data));
+						}
+						this._conf[name] = temp.join("|");
+					}
+				} else if (name == "SEARCHEXCLUDE") {
+					if (this.searchExcludeList != null) {
+						temp = new Array();
+						for (index = 0; index < this.searchExcludeList.selectedItems.length; index++) {
+							temp.push(String(this.searchExcludeList.selectedItems[index].data));
+						}
+						this._conf[name] = temp.join("|");
+					}
+				} else if (name == "OFFLINEAVAILABLE") {
+					if (this.offlineCommunities != null) {
+						temp = new Array();
+						for (index = 0; index < this.offlineCommunities.selectedItems.length; index++) {
+							temp.push(String(this.offlineCommunities.selectedItems[index].data));
+						}
+						this._conf[name] = temp.join("|");
+					}
+				} else {
+					try {
+						if (this[name] != null) {
+							if (this[name] is TextInput) this._conf[name] = this[name].text;
+							if (this[name] is CheckBox) {
+								if (this[name].selected) this._conf[name] = "true";
+									else this._conf[name] = "false";
+							}
+							if (this[name] is NumericStepper) this._conf[name] = String(this[name].value);
+							if (this[name] is DropDownList) this._conf[name] = this[name].selectedItem.data;
+							if (this[name] is ColorPicker) this._conf[name] = String(this[name].selectedColor);
+						}
+					} catch (e:Error) { }
+				}
+				params += "&name" + total + "=" + escape(name);
+				params += "&value" + total + "=" + escape(this._conf[name]);
+				total++;
+			}
+			params += "&total=" + total;
+			WindowServerCheck.createServer("saveconfiguration", params, onSaveReturn);
+		}
+			
+		/**
+		 * A picture file was selected for logo upload.
+		 */
+		private function onFileSelected(evt:Event):void {
+			var param:String = "userid=" + UserInfo.id;
+			param += "&userindex=" + UserInfo.index;
+			param += "&islogo=true";
+			var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("uploadfile"));
+			uploadRequest.data = new URLVariables(param);
+			uploadRequest.method = EditorOptions.method;
+			this._file.upload(uploadRequest);
+		}
+		
+		/**
+		 * The logo file upload was completed.
+		 */
+		private function onUploadOK(evt:DataEvent):void {
+			this._customLogo.load(StringFunctions.slashURL(this._conf['INSTALLFOLDER']) + "pics/customlogo.png?rand=" + String(new Date().time));
+		}
+		
+		/**
+		 * Request a logo file upload.
+		 */
+		private function uploadLogo():void {
+			this._file.browse(new Array(new FileFilter(resourceManager.getString('language', 'CONF_LOGOUPLOADTYPE'), "*.png")));
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * Community list received.
+		 */
+		private function onCommunities(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					this.comList.removeAll();
+					this.searchExcludeListData.removeAll();
+					this.offlineCommunitiesData.removeAll();
+					for (var index:uint = 0; index < server.data.child("community").length(); index++) {
+						this.comList.addItem( { label:String(server.data.community[index]), data:String(server.data.community[index].@id) } );
+						this.searchExcludeListData.addItem( { label:String(server.data.community[index]), data:String(server.data.community[index].@id) } );
+						this.offlineCommunitiesData.addItem( { label:String(server.data.community[index]), data:String(server.data.community[index].@id) } );
+					}
+					break;
+			}
+			server.kill();
+			WindowServerCheck.createServer("getconfig", "", onConfig);
+		}
+		
+		/**
+		 * System configuration values received.
+		 */
+		private function onConfig(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					for (var index:uint = 0; index < server.data.child("config").length(); index++) {
+						this._conf[String(server.data.config[index].name)] = String(server.data.config[index].value);
+						try {
+							if (this[String(server.data.config[index].name)] != null) this.onComponent(String(server.data.config[index].name));
+						} catch (e:Error) { }
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Server response from creatw new user attempt.
+		 */
+		private function onSaveReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					Warning.createWarning(resourceManager.getString('language', 'CONF_OKTITLE'), resourceManager.getString('language', 'CONF_OKMESSAGE'));
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Open the Adobe Cirrus site.
+		 */
+		private function openCirrusSite():void {
+			navigateToURL(new URLRequest("http://labs.adobe.com/technologies/cirrus/"), "blank");
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<mx:TabNavigator width="100%" height="100%">
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CONF_FEATURESTAB')}">
+				<s:VGroup styleName="paddingGroup" width="100%">
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:Label text="{resourceManager.getString('language', 'CONF_READERCOMMUNITY')}" />
+						<s:DropDownList width="100%" id="INDEXCOMMUNITY" dataProvider="{comList}" creationComplete="onComponent('INDEXCOMMUNITY')" />
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="ALLOWGUEST" selected="true" creationComplete="onComponent('ALLOWGUEST')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_READERGUEST')}" />
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="USESTATS" creationComplete="onComponent('USESTATS')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSTATS')}" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="USERATE" creationComplete="onComponent('USERATE')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMRATE')}" />
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="USESHARE" creationComplete="onComponent('USESHARE')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHARE')}" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:Label text="{resourceManager.getString('language', 'CONF_COMCOMMENT')}" />
+						<s:DropDownList id="COMMENTMODE" creationComplete="onComponent('COMMENTMODE')" selectedIndex="0" width="100%">
+							<mx:ArrayCollection>
+								<fx:Object label="{resourceManager.getString('language', 'CONF_COMCOMMENTMODERATED')}" data="moderated" />
+								<fx:Object label="{resourceManager.getString('language', 'CONF_COMCOMMENTFREE')}" data="free" />
+								<fx:Object label="{resourceManager.getString('language', 'CONF_COMCOMMENTNO')}" data="none" />
+							</mx:ArrayCollection>
+						</s:DropDownList>
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_DISPLAYGROUP')}" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="READERUI" selected="true" creationComplete="onComponent('READERUI')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_READERUI')}" />
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWTIME" creationComplete="onComponent('SHOWTIME')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWTIME')}" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWRATE" creationComplete="onComponent('SHOWRATE')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWRATE')}" />
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWCOMMENT" creationComplete="onComponent('SHOWCOMMENT')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWCOMMENT')}" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWUSER" creationComplete="onComponent('SHOWUSER')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWUSER')}" />
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWVOTE" creationComplete="onComponent('SHOWVOTE')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWVOTES')}" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWZOOM" creationComplete="onComponent('SHOWZOOM')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWZOOM')}" />
+						</s:HGroup>
+						<s:HGroup verticalAlign="middle" width="50%">
+							<s:CheckBox id="SHOWNOTES" creationComplete="onComponent('SHOWNOTES')" />
+							<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSHOWNOTES')}" />
+						</s:HGroup>
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:Label text="{resourceManager.getString('language', 'CONF_READERFEED')}" />
+						<s:NumericStepper minimum="5" maximum="60" value="15" id="FEEDTIMEOUT" width="60" creationComplete="onComponent('FEEDTIMEOUT')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CONF_DISPLAYTAB')}">
+				<s:VGroup width="100%" styleName="paddingGroup">
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:Label text="{resourceManager.getString('language', 'CONF_BGCOLOR')}" />
+						<mx:ColorPicker id="BGCOLOR" />
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:CheckBox id="LOGOFILE" creationComplete="onComponent('LOGOFILE')" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_LOGOFILE')}" />
+					</s:HGroup>
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:SpriteVisualElement id="logoArea" width="60" height="60" />
+						<s:Button label="{resourceManager.getString('language', 'CONF_LOGOUPLOAD')}" click="uploadLogo()" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CONF_READERREMOTE')}">
+				<s:VGroup width="100%" styleName="paddingGroup">
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:CheckBox id="ALLOWREMOTE" creationComplete="onComponent('ALLOWREMOTE')" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMUSEREMOTE')}" />
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:Label width="100%" height="50" text="{resourceManager.getString('language', 'CONF_READERCIRRUSABOUT')}" />
+					<s:Button width="100%" label="{resourceManager.getString('language', 'CONF_READERCIRRUSGO')}" click="openCirrusSite()" />
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:Label width="30%" text="{resourceManager.getString('language', 'CONF_READERCIRRUS')}" />
+						<s:TextInput id="CIRRUS" width="70%" creationComplete="onComponent('CIRRUS')" />
+					</s:HGroup>
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CONF_SEARCHTAB')}">
+				<s:VGroup width="100%" styleName="paddingGroup">
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:CheckBox id="ALLOWSEARCH" creationComplete="onComponent('ALLOWSEARCH')" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSEARCH')}" />
+					</s:HGroup>
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:CheckBox id="SEARCHONALL" creationComplete="onComponent('SEARCHONALL')" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMSEARCHALL')}" />
+					</s:HGroup>
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_SEARCHON')}" />
+					<s:List id="searchByList" dataProvider="{searchByListData}" allowMultipleSelection="true" width="100%" height="140" creationComplete="onComponent('searchByList')" />
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_SEARCHEXCLUDE')}" />
+					<s:List id="searchExcludeList" dataProvider="{searchExcludeListData}" allowMultipleSelection="true" width="100%" height="110" creationComplete="onComponent('searchExcludeList')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CONF_OFFLINETAB')}">
+				<s:VGroup width="100%" styleName="paddingGroup">
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:CheckBox id="ALLOWOFFLINE" creationComplete="onComponent('ALLOWOFFLINE')" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_COMOFFLINE')}" />
+					</s:HGroup>
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_OFFLINECOMMUNITIES')}" />
+					<s:List id="offlineCommunities" dataProvider="{offlineCommunitiesData}" allowMultipleSelection="true" width="100%" height="100%" creationComplete="onComponent('offlineCommunities')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CONF_OTHERTAB')}">
+				<s:VGroup width="100%" styleName="paddingGroup">
+					<s:HGroup verticalAlign="middle" width="100%">
+						<s:CheckBox id="CREATEALLOW" creationComplete="onComponent('CREATEALLOW')" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_ALLOWCREATE')}" />
+					</s:HGroup>
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_CREATELINK')}" />
+					<s:TextInput id="CREATELINK" width="100%" creationComplete="onComponent('CREATELINK')" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_CREATELINKABOUT')}" />
+					<s:Label text="" />
+					<mx:HRule width="100%" />
+					<s:Label text="" />
+					<s:Label width="100%" text="{resourceManager.getString('language', 'CONF_MAILSENDER')}" />
+					<s:TextInput id="MAILSENDER" width="100%" creationComplete="onComponent('MAILSENDER')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'CONF_CLOSE')}" click="onClose()" />
+			<s:Button label="{resourceManager.getString('language', 'CONF_SAVE')}" click="onSave()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

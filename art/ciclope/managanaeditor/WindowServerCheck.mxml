@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowServerCheck creates a window to show server interaction to the user.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="400" title="{resourceManager.getString('language', 'SW_TITLE')}" backgroundColor="0xCCCCCC">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import art.ciclope.managana.graphics.WaitingGraphic;
+		import flash.events.KeyboardEvent;
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.display.DisplayObject;
+		import flash.ui.Keyboard;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		// VARIABLES
+		
+		private var _server:ServerInteraction;		// the server connection
+		private var _escClick:uint = 0;				// number of times the ESC key was pressed
+		private var _busy:WaitingGraphic;			// waiting graphic
+		
+		// PUBLIC VARIABLES
+		
+		/**
+		 * Script name to call on server.
+		 */
+		public var script:String;
+		/**
+		 * Parameters to send to the script (url-formatted string with name/value pairs).
+		 */
+		public var parameter:String;
+		/**
+		 * A function to call on server return. Must receive a ServereInteraction object as parameter.
+		 * @see	art.ciclope.managanaeditor.ServerInteraction
+		 */
+		public var action:Function;
+		/**
+		 * Try to handle script access errors?
+		 */
+		public var handleError:Boolean = true;
+		
+		// STATIC STATEMENTS
+		
+		/**
+		 * Create a server interaction window and show it.
+		 * @param	script	the script name to call
+		 * @param	parameter	url-enconded name/value pairs
+		 * @param	action	a function to call on server response
+		 * @param	handle	try to handle script access errors with warning message
+		 * @param	display	display server connection window
+		 */
+		public static function createServer(script:String, parameter:String, action:Function, handle:Boolean = true, display:Boolean = true):void {
+			var server:art.ciclope.managanaeditor.WindowServerCheck = new art.ciclope.managanaeditor.WindowServerCheck();
+			server.script = script;
+			if ((parameter != null) && (parameter != "")) server.parameter = parameter;
+			server.action = action;
+			server.handleError = handle;
+			if (display) {
+				PopUpManager.addPopUp(server, DisplayObject(FlexGlobals.topLevelApplication), true);
+				PopUpManager.centerPopUp(server);
+			}
+			server.call();
+		}
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// stage reference?
+			if (Main.theStage != null) Main.theStage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+			this._busy = new WaitingGraphic();
+			this._busy.x = this._busy.width / 2;
+			this._busy.y = this._busy.height / 2;
+			this.busyArea.addChild(this._busy);
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * Call server and wait for response.
+		 */
+		public function call():void {
+			this._server = new ServerInteraction();
+			this._server.addEventListener(ServerEvent.SERVER_OK, onServerOK);
+			this._server.addEventListener(ServerEvent.SERVER_AGENT, onServerError);
+			this._server.addEventListener(ServerEvent.SERVER_CONTENT, onServerError);
+			this._server.addEventListener(ServerEvent.SERVER_ERROR, onServerError);
+			this._server.addEventListener(ServerEvent.SERVER_NOTFOUND, onServerError);
+			this._server.call(this.script, this.parameter);
+		}
+		
+		/**
+		 * Release memory used by this object.
+		 */
+		public function kill():void {
+			this._server.removeEventListener(ServerEvent.SERVER_OK, onServerOK);
+			this._server.removeEventListener(ServerEvent.SERVER_AGENT, onServerError);
+			this._server.removeEventListener(ServerEvent.SERVER_CONTENT, onServerError);
+			this._server.removeEventListener(ServerEvent.SERVER_ERROR, onServerError);
+			this._server.removeEventListener(ServerEvent.SERVER_NOTFOUND, onServerError);
+			this._server = null;
+			this.action = null;
+			this.script = null;
+			this.parameter = null;
+			if (this.busyArea != null) this.busyArea.removeChildren();
+			if (this._busy != null) this._busy.kill();
+			this._busy = null;
+			try { Main.theStage.removeEventListener(KeyboardEvent.KEY_DOWN, this.onKeyDown); } catch (e:Error) { }
+		}
+		
+		// EVENTS
+		
+		/**
+		 * Server returned as expected.
+		 */
+		private function onServerOK(evt:ServerEvent):void {
+			this.action(evt.reference);
+			this.kill();
+			try { PopUpManager.removePopUp(this); } catch (e:Error) { }
+		}
+		
+		/**
+		 * Error on server return.
+		 */
+		private function onServerError(evt:ServerEvent):void {
+			if (this.handleError) {
+				if (evt.type == ServerEvent.SERVER_NOTFOUND) {
+					Warning.createWarning(resourceManager.getString('language', 'SW_ERRORTITLE'), resourceManager.getString('language', 'SW_NOSERVER'));
+				} else if ((evt.type == ServerEvent.SERVER_AGENT) || (evt.type == ServerEvent.SERVER_CONTENT)) {
+					Warning.createWarning(resourceManager.getString('language', 'SW_ERRORTITLE'), resourceManager.getString('language', 'SW_NOCONTENT'));
+				}
+			}
+			this.action(this._server);
+			this.kill();
+			PopUpManager.removePopUp(this);
+		}
+		
+		/**
+		 * A key was pressed.
+		 */
+		private function onKeyDown(evt:KeyboardEvent):void {
+			// esc?
+			if (evt.keyCode == Keyboard.ESCAPE) {
+				this._escClick++;
+				if (this._escClick >= 2) {
+					// esc pressed twice: force server connected fail
+					this._server.setNoServerError();
+					this.onServerError(new ServerEvent(ServerEvent.SERVER_NOTFOUND));
+				}
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="80" horizontalAlign="center" verticalAlign="middle" styleName="paddingGroup">
+		<s:SpriteVisualElement id="busyArea" width="40" height="40" />
+		<s:Label text="{resourceManager.getString('language', 'SW_WAIT')}"/>
+	</s:VGroup>
+</s:TitleWindow>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Graphic version="2.0" viewHeight="45" viewWidth="45" ATE:version="1.0.0" flm:version="1.0.0" d:using="" pd:backgroundColor="10066329" xmlns="http://ns.adobe.com/fxg/2008" xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008" xmlns:pd="http://ns.adobe.com/xfl/2008/pd">
+  <Library/>
+  <Group d:type="layer" d:userLabel="Layer 2">
+    <Path data="M45 36.6Q45 40.1 42.55 42.55 40.1 45 36.6 45L8.45 45Q4.95 45 2.45 42.55 0 40.1 0 36.6L0 8.4Q0 4.9 2.45 2.45 4.95 0 8.45 0L36.6 0Q40.1 0 42.55 2.45 45 4.9 45 8.4L45 36.6">
+      <fill>
+        <SolidColor alpha="0.0039215689"/>
+      </fill>
+    </Path>
+  </Group>
+  <Group d:type="layer" d:userLabel="flash0.ai">
+    <Group>
+      <Path data="M34.7 21.9Q34.7 24.95 33.45 27.7 32.1 30.5 29.7 32.25L31.8 33.9 25 35.75 25.65 29 27.55 30.5Q30.5 27.9 30.5 23.25 30.5 17.3 24.85 13.95L27.25 9.25Q30.75 10.95 32.75 14.5 34.7 17.9 34.7 21.9M11.55 17.35Q12.9 14.5 15.25 12.75L13.15 11.05 19.95
+ 9.25 19.35 16 17.45 14.5Q14.45 17.15 14.45 21.75 14.45 27.75 20.15 31.1L17.75 35.75Q14.25 34.05 12.25 30.5 10.3 27.1 10.3 23.1 10.3 20.05 11.55 17.35">
+        <fill>
+          <SolidColor color="#FFFFFF"/>
+        </fill>
+      </Path>
+    </Group>
+  </Group>
+  <Private/>
+</Graphic>

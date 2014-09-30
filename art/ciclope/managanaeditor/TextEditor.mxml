@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+TextEditor creates a simple text input interface for text elements, artistic or paragraph ones.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  creationComplete="init()">
+		  
+	<fx:Declarations>
+		<mx:ArrayCollection id="textTypes" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.controls.Button;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.util.LoadedFile;
+		import art.ciclope.managanaeditor.*;
+		
+		// PUBLIC VARIABLES
+		
+		/**
+		 * Initial text.
+		 */
+		public var setText:String = "";
+		/**
+		 * Initial HTML text.
+		 */
+		public var setHTMLText:String = "";
+		/**
+		 * Initial text type.
+		 */
+		public var textType:String = "txt";
+		
+		// VARIABLES
+		
+		private var _elementType:String = LoadedFile.TYPE_TEXT;		// media element type
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			// add text types
+			this.textTypes.addItem( { label: resourceManager.getString('language', 'FM_PLAINTEXT'), data: "txt" } );
+			this.textTypes.addItem( { label: resourceManager.getString('language', 'FM_HTMLTEXT'), data: "html" } );
+			this.textTypes.addItem( { label: resourceManager.getString('language', 'FM_HTMLCODE'), data: "html code" } );
+			this.ttype.selectedIndex = 0;
+		}
+		
+		/**
+		 * Media element type.
+		 */
+		public function get elementType():String {
+			return (this._elementType);
+		}
+		public function set elementType(to:String):void {
+			if (to == LoadedFile.TYPE_TEXT) {
+				this._elementType = to;
+				this.textTypeArea.enabled = false;
+				if (this.ttype != null) {
+					this.ttype.selectedIndex = 0;
+					try {
+						this.addElement(this.txtInput);
+						this.removeElement(this.htmlInput);
+						this.removeElement(this.htmlCodeInput);
+					} catch (e:Error) { }
+				}
+			} else {
+				this._elementType = LoadedFile.TYPE_PARAGRAPH;
+				this.textTypeArea.enabled = true;
+			}
+		}
+		
+		/**
+		 * The current text.
+		 */
+		public function get text():String {
+			if (this.ttype.selectedIndex == 0) {
+				return (this.txtInput.text);
+			} else if (this.ttype.selectedIndex == 1) {
+				return (StringFunctions.trim(this.htmlInput.htmlText));
+			} else {
+				return (StringFunctions.trim(StringFunctions.htmlBR(this.htmlCodeInput.text)));
+			}
+		}
+		
+		/**
+		 * The current text format.
+		 */
+		public function get textFormat():String {
+			if (this.ttype.selectedIndex == 0) {
+				return ("txt");
+			} else {
+				return ("html");
+			}
+		}
+		
+		/**
+		 * A guess name for the current text.
+		 */
+		public function get guessName():String {
+			if (this.ttype.selectedIndex == 0) {
+				return (StringFunctions.trim(this.txtInput.text).split(" ")[0]);
+			} else if (this.ttype.selectedIndex == 1) {
+				return (StringFunctions.trim(this.htmlInput.text).split(" ")[0]);
+			} else {
+				return ("HTML");
+			}
+		}
+		
+		/**
+		 * Component initialize.
+		 * @param	name	the component name
+		 */
+		private function cInit(name:String):void {
+			switch (name) {
+				case "ttype":
+					this.ttype.textInput.editable = false;
+					if (this.textType == "txt") {
+						this.ttype.selectedIndex = 0;
+						this.addElement(this.txtInput);
+						this.removeElement(this.htmlInput);
+						this.removeElement(this.htmlCodeInput);
+					} else {
+						if (this.setHTMLText.indexOf("<TEXTFORMAT") < 0) {
+							this.ttype.selectedIndex = 2;
+							this.removeElement(this.txtInput);
+							this.removeElement(this.htmlInput);
+							this.addElement(this.htmlCodeInput);
+						} else {
+							this.ttype.selectedIndex = 1;
+							this.removeElement(this.txtInput);
+							this.addElement(this.htmlInput);
+							this.removeElement(this.htmlCodeInput);
+						}
+					}
+					this.elementType = this._elementType;
+					break;
+				case "htmlInput":
+					try {
+						this.htmlInput.htmlText = StringFunctions.htmlBR(this.setHTMLText);
+					} catch (e:Error) {
+						this.htmlInput.text = StringFunctions.htmlBR(this.setHTMLText);
+					}
+					break;
+				case "htmlCodeInput":
+					this.htmlCodeInput.text = StringFunctions.richTextEditorToHtml(StringFunctions.htmlBR(this.setHTMLText));
+					break;
+				case "txtInput":
+					this.txtInput.text = this.setText;
+					break;
+			}
+		}
+		
+		/**
+		 * Set initial text.
+		 * @param	txt	plain text
+		 * @param	html	html text
+		 */
+		public function setInitial(txt:String, html:String):void {
+			this.setText = txt;
+			this.setHTMLText = html;
+			if (this.htmlInput != null) {
+				try {
+					this.htmlInput.htmlText = StringFunctions.htmlBR(html);
+				} catch (e:Error) {
+					this.htmlInput.text = StringFunctions.htmlBR(this.setHTMLText);
+				}
+			}
+			if (this.txtInput != null) this.txtInput.text = txt;
+			if (this.htmlCodeInput != null) this.htmlCodeInput.text = StringFunctions.richTextEditorToHtml(StringFunctions.htmlBR(html));
+			if (txt == "") {
+				this.textType = "html";
+				if (this.ttype != null) {
+					if (html.indexOf("<TEXTFORMAT") < 0) {
+						this.ttype.selectedIndex = 2;
+						try {
+							this.removeElement(this.txtInput);
+							this.removeElement(this.htmlInput);
+							this.addElement(this.htmlCodeInput);
+						} catch (e:Error) { }		
+					} else {
+						this.ttype.selectedIndex = 1;
+						try {
+							this.removeElement(this.txtInput);
+							this.addElement(this.htmlInput);
+							this.removeElement(this.htmlCodeInput);
+						} catch (e:Error) { }						
+					}
+				}
+			} else {
+				this.textType = "txt";
+				if (this.ttype != null) {
+					this.ttype.selectedIndex = 0;
+					try {
+						this.addElement(this.txtInput);
+						this.removeElement(this.htmlInput);
+						this.removeElement(this.htmlCodeInput);
+					} catch (e:Error) { }
+				}
+			}
+			try { this.removeElement(this.txtInput); } catch (e:Error) { }
+			try { this.removeElement(this.htmlInput); } catch (e:Error) { }
+			try { this.removeElement(this.htmlCodeInput); } catch (e:Error) { }
+			if ((this.ttype.selectedItem.data) == "txt") this.addElement(this.txtInput);
+				else if ((this.ttype.selectedItem.data) == "html") this.addElement(this.htmlInput);
+				else this.addElement(this.htmlCodeInput);
+		}
+		
+		/**
+		 * Component state change.
+		 * @param	name	the component name
+		 */
+		private function update(name:String):void {
+			switch (name) {
+				case "ttype":
+					if (this.ttype.selectedIndex == 0) {
+						try {
+							this.removeAllElements();
+							this.addElement(this.textTypeArea);
+							this.addElement(this.txtInput);
+						} catch (e:Error) { }
+					} else if (this.ttype.selectedIndex == 1) {
+						try {
+							this.removeAllElements();
+							this.addElement(this.textTypeArea);
+							this.addElement(this.htmlInput);
+						} catch (e:Error) { }
+					} else {
+						try {
+							this.removeAllElements();
+							this.addElement(this.textTypeArea);
+							this.addElement(this.htmlCodeInput);
+						} catch (e:Error) { }
+					}
+					break;
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	<s:HGroup verticalAlign="middle" id="textTypeArea">
+		<s:Label text="{resourceManager.getString('language', 'FM_TEXTTYPE')}" textAlign="right"/>
+		<s:ComboBox id="ttype" dataProvider="{textTypes}" creationComplete="cInit('ttype')" change="update('ttype')"/>
+	</s:HGroup>
+	<mx:RichTextEditor id="htmlInput" width="100%" height="100%" text="" creationComplete="cInit('htmlInput')"/>
+	<s:TextArea editable="true" id="txtInput" width="100%" height="100%" text="" creationComplete="cInit('txtInput')" />
+	<s:TextArea editable="true" id="htmlCodeInput" width="100%" height="100%" text="" creationComplete="cInit('htmlCodeInput')" />
+</s:VGroup>

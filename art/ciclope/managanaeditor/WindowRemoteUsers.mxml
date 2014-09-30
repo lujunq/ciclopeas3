@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+<b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+<b>License:</b> GNU LGPL version 3<br><br>
+WindowUsers creates a window for user creation and administration.
+@author Lucas Junqueira - lucas@ciclope.art.br
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+				width="550" title="{resourceManager.getString('language', 'RUSR_TITLE')}">
+	<fx:Declarations>
+		<mx:ArrayCollection id="userListData" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		
+		// CICLOPE CLASSES
+		import art.ciclope.managanaeditor.*;
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			this.closeButton.visible = false;
+			// populate user data
+			WindowServerCheck.createServer("remoteusers", "action=list", listReturn);
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * Server response from user listing.
+		 */
+		private function listReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'RUSR_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					this.userListData.removeAll();
+					for (var index:uint = 0; index < server.data.child('user').length(); index++) {
+						this.userListData.addItem( { publickey:String(server.data.user[index].publickey), login:String(server.data.user[index].login), password:String(server.data.user[index].password) } );
+					}
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Remove selected user.
+		 */
+		private function onDelete():void {
+			if (this.userList.selectedIndex >= 0) {
+				this.userListData.removeItemAt(this.userList.selectedIndex);
+			}
+			this.userList.selectedIndex = -1;
+		}
+		
+		/**
+		 * Add a new remote user.
+		 */
+		private function onAdd():void {
+			this.userListData.addItem( { publickey:resourceManager.getString('language', 'RUSR_PUBLICKEY'), login:resourceManager.getString('language', 'RUSR_LOGIN'), password:resourceManager.getString('language', 'RUSR_PASS') } );
+			this.userList.selectedIndex = this.userListData.length - 1;
+		}
+		
+		/**
+		 * Save user table.
+		 */
+		private function onSave():void {
+			var param:String = "action=save";
+			param += "&total=" + this.userListData.length;
+			for (var index:uint = 0; index < this.userListData.length; index++) {
+				param += "&publickey" + index + "=" + escape(this.userListData.getItemAt(index).publickey);
+				param += "&login" + index + "=" + escape(this.userListData.getItemAt(index).login);
+				param += "&password" + index + "=" + escape(this.userListData.getItemAt(index).password);
+			}
+			WindowServerCheck.createServer("remoteusers", param, saveReturn);
+		}
+		
+		/**
+		 * Server response from list save.
+		 */
+		private function saveReturn(server:ServerInteraction):void {
+			switch (server.error) {
+				case ServerEvent.SERVER_ERROR:
+					Warning.createWarning(resourceManager.getString('language', 'RUSR_ERRORTITLE'), resourceManager.getString('error', server.errorID));
+					break;
+				case ServerEvent.SERVER_OK:
+					// do nothing
+					break;
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Exit window.
+		 */
+		private function onClose():void {
+			PopUpManager.removePopUp(this);
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:VGroup x="0" y="0" width="100%" height="100%" styleName="paddingGroup">
+		<s:Label width="100%" text="{resourceManager.getString('language', 'RUSR_ABOUT')}" />
+		<mx:DataGrid id="userList" width="100%" height="300" editable="true" dataProvider="{userListData}">
+			<mx:columns>
+				<mx:DataGridColumn dataField="publickey" editable="true" headerText="{resourceManager.getString('language', 'RUSR_PUBLICKEY')}" />
+				<mx:DataGridColumn dataField="login" editable="true" headerText="{resourceManager.getString('language', 'RUSR_LOGIN')}" />
+				<mx:DataGridColumn dataField="password" editable="true" headerText="{resourceManager.getString('language', 'RUSR_PASS')}" />
+			</mx:columns>
+		</mx:DataGrid>
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+			<s:Button label="{resourceManager.getString('language', 'RUSR_DELETE')}" click="onDelete()" />
+			<s:Button label="{resourceManager.getString('language', 'RUSR_ADD')}" click="onAdd()" />
+			<s:Button label="{resourceManager.getString('language', 'RUSR_SAVE')}" click="onSave()" />
+			<s:Button label="{resourceManager.getString('language', 'RUSR_CLOSE')}" click="onClose()" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

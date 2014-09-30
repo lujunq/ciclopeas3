@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="30" backgroundColor="#AAAAAA" creationComplete="init()"  borderVisible="false">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+		
+		// FLASH PACKAGES
+		import mx.managers.PopUpManager;
+		import mx.core.FlexGlobals;
+		import flash.display.DisplayObject;
+		import flash.utils.Timer;
+		import flash.events.TimerEvent;
+		
+		// VARIABLES
+		
+		private var _hideTimer:uint = 0;		// time to hide status message
+		
+		/**
+		 * Component initialize.
+		 */
+		private function init():void {
+			// remove logout button
+			this.logBar.removeElement(this.logoutButton);
+			// start hide counter
+			var timer:Timer = new Timer(1000);
+			timer.addEventListener(TimerEvent.TIMER, onTimer);
+			timer.start();
+		}
+		
+		// PUBLIC METHODS
+		
+		/**
+		 * An user has just logged in.
+		 */
+		public function userLogged():void {
+			this.userConnected.text = resourceManager.getString('language', 'SB_USERLOGGED') + " " + UserInfo.name;
+			this.logBar.removeElement(this.loginButton);
+			this.logBar.addElement(this.logoutButton);
+		}
+		
+		/**
+		 * An user has just logged out.
+		 */
+		public function userLoggedOut():void {
+			this.userConnected.text = resourceManager.getString('language', 'SB_NOONE');
+			this.logBar.removeElement(this.logoutButton);
+			this.logBar.addElement(this.loginButton);
+		}
+		
+		/**
+		 * Show a status string.
+		 * @param	text	the text to show
+		 */
+		public function showStatus(text:String = ""):void {
+			this.statusShow.text = text;
+			this._hideTimer = 0;
+		}
+		
+		// PRIVATE METHODS
+		
+		/**
+		 * User login.
+		 */
+		private function login():void {
+			var login:art.ciclope.sitioeditor.WindowLogin = new art.ciclope.sitioeditor.WindowLogin();
+			PopUpManager.addPopUp(login, DisplayObject(FlexGlobals.topLevelApplication), true);
+			PopUpManager.centerPopUp(login)
+		}
+		
+		/**
+		 * User logout.
+		 */
+		private function logout():void {
+			WindowServerCheck.createServer("logout", null, logoutOK);
+			
+		}
+		
+		/**
+		 * Finish user logout.
+		 */
+		private function logoutOK(server:ServerInteraction):void {
+			FlexGlobals.topLevelApplication.processCommand("doLogout");
+			server.kill();
+		}
+		
+		// EVENT
+		
+		/**
+		 * Hide status message after 15 seconds.
+		 */
+		private function onTimer(evt:TimerEvent):void {
+			this._hideTimer++;
+			if (this._hideTimer >= 15) {
+				this._hideTimer = 0;
+				this.statusShow.text = "";
+			}
+		}
+		
+		]]>
+	</fx:Script>
+	
+	<s:HGroup left="5" horizontalAlign="left" verticalAlign="middle" height="100%" styleName="paddingGroup">
+		<s:Label id="statusShow" color="0xFFFFFF" />
+	</s:HGroup>
+	<s:HGroup id="logBar" right="5" horizontalAlign="right" verticalAlign="middle" height="100%" styleName="paddingGroup">
+		<s:Label id="userConnected" text="{resourceManager.getString('language', 'SB_NOONE')}" />
+		<s:Button id="loginButton" width="20" height="20" icon="@Embed('icon/status-disconnect.png')" toolTip="{resourceManager.getString('language', 'SB_LOGINTIP')}" click="login()" />
+		<s:Button id="logoutButton" width="20" height="20" icon="@Embed('icon/status-connect.png')" toolTip="{resourceManager.getString('language', 'SB_LOGOUTTIP')}" click="logout()" />
+	</s:HGroup>
+</s:BorderContainer>
