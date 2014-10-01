@@ -1,7 +1,6 @@
 package art.ciclope.data {
 		
 	// FLASH PACKAGES
-	import com.leapmotion.leap.SwipeGesture;
 	import flash.display.Shape;
 	import flash.display.Sprite;
 	import flash.display.Stage;
@@ -16,6 +15,7 @@ package art.ciclope.data {
 	import art.ciclope.event.LeapDataEvent;
 	
 	// LEAP CLASSES
+	import com.leapmotion.leap.SwipeGesture;
 	import com.leapmotion.leap.LeapMotion;
 	import com.leapmotion.leap.events.LeapEvent;
 	import com.leapmotion.leap.Frame;
