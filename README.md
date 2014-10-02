@@ -10,4 +10,6 @@ This repository code is licensed under the LGPL v3 terms.
 
 MANAGANA CODE REPOSITORIES
 
+AS3 CLASSES: https://github.com/lujunq/ciclopeas3
 WEB PLAYER: https://github.com/lujunq/managanawebplayer
+APP PLAYER: https://github.com/lujunq/managanaappplayer
