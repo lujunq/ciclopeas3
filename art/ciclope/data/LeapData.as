@@ -16,13 +16,15 @@ package art.ciclope.data {
 	
 	// LEAP CLASSES
 	import com.leapmotion.leap.SwipeGesture;
-	import com.leapmotion.leap.LeapMotion;
+	//import com.leapmotion.leap.LeapMotion;
 	import com.leapmotion.leap.events.LeapEvent;
 	import com.leapmotion.leap.Frame;
 	import com.leapmotion.leap.Hand;
 	import com.leapmotion.leap.Vector3;
 	import com.leapmotion.leap.Finger;
 	import com.leapmotion.leap.Gesture;
+	
+	import com.leapmotion.leap.Controller;
 	
 	/**
 	 * <b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
@@ -51,7 +53,7 @@ package art.ciclope.data {
 		
 		// VARIABLES
 		
-		private var _leap:LeapMotion;			// the leap motion controller reference
+		private var _leap:Controller;			// the leap motion controller reference
 		private var _frame:Frame;				// current frame information
 		private var _hand0:Hand;				// current first hand information
 		private var _hand1:Hand;				// current second hand information
@@ -121,12 +123,21 @@ package art.ciclope.data {
 			this._deltaY = this._maxY - this._minY;
 			this._deltaZ = this._maxZ - this._minZ;
 			// start leap
-			this._leap = new LeapMotion();
+			/*this._leap = new LeapMotion();
 			this._leap.controller.addEventListener(LeapEvent.LEAPMOTION_INIT, onInit);
 			this._leap.controller.addEventListener(LeapEvent.LEAPMOTION_CONNECTED, onConnect);
 			this._leap.controller.addEventListener(LeapEvent.LEAPMOTION_DISCONNECTED, onDisconnect);
 			this._leap.controller.addEventListener(LeapEvent.LEAPMOTION_EXIT, onExit);
-			this._leap.controller.addEventListener(LeapEvent.LEAPMOTION_FRAME, onFrame);
+			this._leap.controller.addEventListener(LeapEvent.LEAPMOTION_FRAME, onFrame);*/
+			
+			this._leap = new Controller();
+			this._leap.addEventListener(LeapEvent.LEAPMOTION_INIT, onInit);
+			this._leap.addEventListener(LeapEvent.LEAPMOTION_CONNECTED, onConnect);
+			this._leap.addEventListener(LeapEvent.LEAPMOTION_DISCONNECTED, onDisconnect);
+			this._leap.addEventListener(LeapEvent.LEAPMOTION_EXIT, onExit);
+			this._leap.addEventListener(LeapEvent.LEAPMOTION_FRAME, onFrame);
+			
+			
 			// prepare data
 			this._fingers0 = new Array();
 			this._fingers1 = new Array();
@@ -379,11 +390,18 @@ package art.ciclope.data {
 		 * Release resources used by the object.
 		 */
 		public function kill():void {
-			this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_INIT, onInit);
+			/*this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_INIT, onInit);
 			this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_CONNECTED, onConnect);
 			this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_DISCONNECTED, onDisconnect);
 			this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_EXIT, onExit);
-			this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_FRAME, onFrame);
+			this._leap.controller.removeEventListener(LeapEvent.LEAPMOTION_FRAME, onFrame);*/
+			
+			this._leap.removeEventListener(LeapEvent.LEAPMOTION_INIT, onInit);
+			this._leap.removeEventListener(LeapEvent.LEAPMOTION_CONNECTED, onConnect);
+			this._leap.removeEventListener(LeapEvent.LEAPMOTION_DISCONNECTED, onDisconnect);
+			this._leap.removeEventListener(LeapEvent.LEAPMOTION_EXIT, onExit);
+			this._leap.removeEventListener(LeapEvent.LEAPMOTION_FRAME, onFrame);
+			
 			this._leap = null;
 			this.clearData();
 			this._fingers0 = null;
@@ -580,8 +598,8 @@ package art.ciclope.data {
 				}
 				// check for gestures
 				var hasGestures:Boolean = false;
-				if (frame._gestures.length > 0) {
-					for each(var gesture:Gesture in frame._gestures) {
+				if (frame.gestures.length > 0) {
+					for each(var gesture:Gesture in frame.gestures) {
 						if (gesture.type == Gesture.TYPE_SWIPE) {
 							if (gesture.id != this._lastGSwipe) {
 								var swipegesture:SwipeGesture = gesture as SwipeGesture;
