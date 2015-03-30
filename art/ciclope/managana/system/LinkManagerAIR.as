@@ -46,6 +46,9 @@ package art.ciclope.managana.system {
 		private var _timer:Timer;			// interface feedback timer
 		private var _authenticate:Boolean;	// opening link for OpenID/oAuth authentication?
 		
+		private var _comWidth:uint;			// current community design width
+		private var _comHeight:uint;		// current community design height
+		
 		private var _refWidth:Number = -1;
 		private var _refHeight:Number = -1;
 		
@@ -64,6 +67,11 @@ package art.ciclope.managana.system {
 			this.visible = false;
 			this._authenticate = false;
 			this.addEventListener(Event.ADDED_TO_STAGE, onStage);
+		}
+		
+		public function setComSize(w:uint, h:uint):void {
+			this._comWidth = w;
+			this._comHeight = h;
 		}
 		
 		public function setRefSize(refSize:Point):void {
@@ -253,7 +261,18 @@ package art.ciclope.managana.system {
 				this._white.y = (this._close.height - this._white.height) / 2;
 				this._addr.x = this._white.x + 5;
 				this._addr.y = this._white.y + 6;
-				if (this._view.stage != null) this._view.viewPort = new Rectangle(0, this._close.height, this._refWidth, (this._refHeight - this._close.height));
+				var maxWidth:Number = this._refWidth - (2 * this._close.width);
+				var maxHeight:Number = this._refHeight - (2 * this._close.height);
+				var sizeW:Number = maxWidth;
+				var sizeH:Number = sizeW * this._comHeight / this._comWidth;
+				if (sizeH > maxHeight) {
+					sizeH = maxHeight;
+					sizeW = sizeH * this._comWidth / this._comHeight;
+				}
+				var posX:Number = (this._refWidth - sizeW) / 2;
+				var posY:Number = (this._refHeight - sizeH) / 2;
+				if (this._view.stage != null) this._view.viewPort = new Rectangle(posX, posY, sizeW, sizeH);
+				//if (this._view.stage != null) this._view.viewPort = new Rectangle(0, this._close.height, this._refWidth, (this._refHeight - this._close.height));
 			}
 		}
 		

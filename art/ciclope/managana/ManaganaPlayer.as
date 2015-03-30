@@ -507,6 +507,20 @@ package art.ciclope.managana {
 		}
 		
 		/**
+		 * The loaded community design width.
+		 */
+		public function get currentCommunityWidth():uint {
+			return (this._community.screenwidth);
+		}
+		
+		/**
+		 * The loaded community design height.
+		 */
+		public function get currentCommunityHeight():uint {
+			return (this._community.screenheight);
+		}
+		
+		/**
 		 * The loaded stream ID.
 		 */
 		public function get currentStream():String {

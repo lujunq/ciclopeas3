@@ -34,6 +34,9 @@ package art.ciclope.managana.system {
 		private var _view:StageWebView;		// browser
 		private var _close:Sprite;			// close button
 		
+		private var _comWidth:uint;			// current community design width
+		private var _comHeight:uint;		// current community design height
+		
 		private var _refWidth:Number = -1;
 		private var _refHeight:Number = -1;
 		
@@ -58,6 +61,11 @@ package art.ciclope.managana.system {
 			this._refHeight = refSize.y;
 		}
 		
+		public function setComSize(w:uint, h:uint):void {
+			this._comWidth = w;
+			this._comHeight = h;
+		}
+		
 		/**
 		 * The stage is available.
 		 */
@@ -78,7 +86,7 @@ package art.ciclope.managana.system {
 			this._close.useHandCursor = true;
 			this._close.addEventListener(MouseEvent.CLICK, onClose);
 			this.addChild(this._close);
-			this._view = new StageWebView();
+			this._view = new StageWebView(true);
 			this._view.addEventListener(ErrorEvent.ERROR, onViewError);
 			this._view.addEventListener(LocationChangeEvent.LOCATION_CHANGE, onLocationChange);
 			this.onResize();
@@ -97,7 +105,6 @@ package art.ciclope.managana.system {
 			if (this._ready) {
 				if (value) {
 					this._view.stage = this.stage;
-					this._view.viewPort = new Rectangle(this._close.width, this._close.height, (this._refWidth - (2 * this._close.width)), (this._refHeight - (2 * this._close.height)));
 					this.onResize();
 				} else {
 					this._view.stage = null;
@@ -164,7 +171,17 @@ package art.ciclope.managana.system {
 			if (this._ready) {
 				this.setBGColor(this._color);
 				this._close.width = this._close.height = ManaganaInterface.newSize(40);
-				if (this._view.stage != null) this._view.viewPort = new Rectangle(this._close.width, this._close.height, (this._refWidth - (2 * this._close.width)), (this._refHeight - (2 * this._close.height)));
+				var maxWidth:Number = this._refWidth - (2 * this._close.width);
+				var maxHeight:Number = this._refHeight - (2 * this._close.height);
+				var sizeW:Number = maxWidth;
+				var sizeH:Number = sizeW * this._comHeight / this._comWidth;
+				if (sizeH > maxHeight) {
+					sizeH = maxHeight;
+					sizeW = sizeH * this._comWidth / this._comHeight;
+				}
+				var posX:Number = (this._refWidth - sizeW) / 2;
+				var posY:Number = (this._refHeight - sizeH) / 2;
+				if (this._view.stage != null) this._view.viewPort = new Rectangle(posX, posY, sizeW, sizeH);
 				this._close.x = this._close.y = 0;
 			}
 		}

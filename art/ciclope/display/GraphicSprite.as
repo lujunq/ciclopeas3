@@ -2,6 +2,7 @@ package art.ciclope.display {
 	
 	// FLASH PACKAGES
 	import flash.display.Bitmap;
+	import flash.display.BitmapData;
 	import flash.display.DisplayObject;
 	import flash.display.Loader;
 	import flash.display.Sprite;
@@ -348,6 +349,19 @@ package art.ciclope.display {
 		 */
 		public function get loader():Loader {
 			return (this._graphic);
+		}
+		
+		/**
+		 * If the content is a bitmap, the loaded BitmapData.
+		 */
+		public function get bitmapData():BitmapData {
+			var bData:BitmapData;
+			if (this._graphic != null) {
+				if (this._graphic.content != null) {
+					if (this._graphic.content is Bitmap) bData = Bitmap(this._graphic.content).bitmapData;
+				}
+			}
+			return (bData);
 		}
 		
 		
