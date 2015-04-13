@@ -24,7 +24,7 @@ package art.ciclope.mobile {
 		private var _interval:uint;			// interval for sensor update
 		
 		/**
-		 * GPS creator.
+		 * GPS constructor.
 		 * @param	update	a function to call on sensor update (won't receive any parameters)
 		 * @param	interval	the sensor update interval in miliseconds
 		 */

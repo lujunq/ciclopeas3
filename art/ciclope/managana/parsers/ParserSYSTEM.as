@@ -54,6 +54,8 @@ package art.ciclope.managana.parsers {
 						case "hideBookmarks":
 						case "showNotes":
 						case "hideNotes":
+						case "readQRCode":
+						case "showRemoteInfo":
 							ret = true;
 							break;
 						default:
@@ -75,6 +77,12 @@ package art.ciclope.managana.parsers {
 			switch (line[1]) {
 				case "print":
 					this._player.print();
+					break;
+				case "readQRCode":
+					this._player.send({ "ac":"readQRCode" });
+					break;
+				case "showRemoteInfo":
+					this._player.send({ "ac":"showRemoteInfo" });
 					break;
 				case "showClock":
 				case "hideClock":

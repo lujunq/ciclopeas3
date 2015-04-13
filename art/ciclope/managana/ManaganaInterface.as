@@ -43,9 +43,14 @@ package art.ciclope.managana {
 	import art.ciclope.event.CommunityContentEvent;
 	import art.ciclope.event.RemoteTCPEvent;
 	import art.ciclope.staticfunctions.StringFunctions;
+	import art.ciclope.managana.graphics.QRCodeWindow;
 	
 	// EVENTS
 	
+	/**
+     * A generic message is available.
+     */
+    [Event( name = "MESSAGE", type = "art.ciclope.event.Message" )]
 	/**
      * An user authentication is requested.
      */
@@ -142,6 +147,8 @@ package art.ciclope.managana {
 		private var _premotestart:Array;				// public remote start info
 		private var _tcpRemote:Object;					// tcp remote control manager
 		private var _noSystemAtStage:Boolean;			// start with no system info when stage is available?
+		
+		private var _qrcode:QRCodeWindow;				// the qrcode display window
 		
 		private var _useHolder:Boolean = false;
 		private var _holder:Sprite;
@@ -285,6 +292,9 @@ package art.ciclope.managana {
 			this._timer = new Timer(1000);
 			this._timer.addEventListener(TimerEvent.TIMER, onTimer);
 			this._timer.start();
+			
+			// prepare qrcode display
+			this._qrcode = new QRCodeWindow();
 		}
 		
 		/**
@@ -574,6 +584,23 @@ package art.ciclope.managana {
 		}
 		
 		/**
+		 * Close Managana interface.
+		 */
+		public function closeInterface():void {
+			this._plusmenu.visible = false;
+			this._bar.showPlus(true);
+			this._commentwnd.visible = false;
+			this._messagewnd.visible = false;
+			this._addcommentwnd.visible = false;
+			this._searchwnd.visible = false;
+			this._noteswnd.visible = false;
+			this._offlinewnd.visible = false;
+			this._bar.visible = false;
+			this._time.bgVisible = !this._bar.visible;
+			this._mainButton.visible = true;
+		}
+		
+		/**
 		 * Custom logo size adjust.
 		 * @param	evt
 		 */
@@ -672,6 +699,7 @@ package art.ciclope.managana {
 					if (this._ratebt.visible && this._zoombt.visible) this._ratebt.x = ((this.stage.stageWidth / 3) * 2) - (this._ratebt.width /2);
 				}
 				this._uiwarning.redraw(refSize);
+				this._qrcode.redraw(this.stage.stageWidth, this.stage.stageHeight);
 			}
 		}
 		
@@ -1498,6 +1526,22 @@ package art.ciclope.managana {
 			}
 		}
 		
+		/**
+		 * Display a qrcode on screen.
+		 * @param	text	the string to be shown as a qrcode
+		 */
+		public function showQRCode(text:String):void {
+			this._qrcode.code = text;
+			this.addChild(this._qrcode);
+		}
+		
+		/**
+		 * Close the qrcode display interface if it is shown.
+		 */
+		public function closeQRCode():void {
+			this._qrcode.close();
+		}
+		
 		// PRIVATE METHODS
 		
 		/**
@@ -1906,6 +1950,9 @@ package art.ciclope.managana {
 			// ui warning
 			if (this._allowRemote) this._uiwarning.setText(this._language.getText('WARNREMOTEON'));
 				else this._uiwarning.setText(this._language.getText('WARNREMOTEOFF'));
+				
+			// remote
+			this.dispatchEvent(new Message(Message.MESSAGE, { "ac":"showRemoteInfo" } ));
 		}
 		
 		/**

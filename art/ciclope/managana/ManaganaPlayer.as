@@ -32,6 +32,7 @@ package art.ciclope.managana {
 	// CICLOPE CLASSES
 	import art.ciclope.event.DISLoad;
 	import art.ciclope.managana.data.DISCommunity;
+	import art.ciclope.managana.data.DISLoadProtocol;
 	import art.ciclope.staticfunctions.DisplayFunctions;
 	import art.ciclope.util.ObjectState;
 	import art.ciclope.managana.data.DISInstance;
@@ -174,14 +175,18 @@ package art.ciclope.managana {
 		private var _history:Array;					// navigation history
 		private var _historyStep:uint;				// navigation history step
 		private var _type:String;					// player type
+		private var _lastComProtocol:String;		// last community loaded protocol according to DISLoadProtocol constants
 		
 		// STATIC CONSTANTS
 		
 		/**
 		 * Managana player internal version number.
 		 */
-		public static const VERSION:uint = 5;	// 1.5.0
-		
+		public static const VERSION:uint = 7;	// 1.7.0
+		/**
+		 * Number of stream history steps to record.
+		 */
+		public static const HISTORY_STEPS:uint = 100;
 		/**
 		 * Player type: unknown.
 		 */
@@ -269,6 +274,10 @@ package art.ciclope.managana {
 		 * A keyframe number to force on next keyframe change (leave < 0 to follow standard stream flow).
 		 */
 		public var nextKeyframe:int = -1;
+		/**
+		 * Ignore (once) the keyframe forced number?
+		 */
+		public var ignoreKeyframeSet:Boolean = false;
 		/**
 		 * Is an user logged?
 		 */
@@ -384,9 +393,9 @@ package art.ciclope.managana {
 			this._streamSprite[DISStream.LEVEL_MAIN] = new Sprite();
 			this._streamSprite[DISStream.LEVEL_UP] = new Sprite();
 			this._streamSprite[DISStream.LEVEL_DOWN] = new Sprite();
-			this._content.addChild(this._streamSprite[DISStream.LEVEL_UP]);
-			this._content.addChild(this._streamSprite[DISStream.LEVEL_MAIN]);
 			this._content.addChild(this._streamSprite[DISStream.LEVEL_DOWN]);
+			this._content.addChild(this._streamSprite[DISStream.LEVEL_MAIN]);
+			this._content.addChild(this._streamSprite[DISStream.LEVEL_UP]);
 			this._streamImage = new Array();
 			this._streamImage[DISStream.LEVEL_MAIN] = new Array();
 			this._streamImage[DISStream.LEVEL_UP] = new Array();
@@ -707,6 +716,13 @@ package art.ciclope.managana {
 			return (ret);
 		}
 		
+		/**
+		 * A reference to the player progress code parser.
+		 */
+		public function get pCodeParser():ManaganaParser {
+			return (this._parser);
+		}
+		
 		// PROPERTIES
 		
 		/**
@@ -919,7 +935,6 @@ package art.ciclope.managana {
 		
 		/**
 		 * Are there history back information?
-		 * @return	true if is possible to check the previous stream in history, false otherwise
 		 */
 		public function get hasHistoryBack():Boolean {
 			return (this._historyStep > 0);
@@ -927,10 +942,16 @@ package art.ciclope.managana {
 		
 		/**
 		 * Are there history forward information?
-		 * @return	true if is possible to check the next stream in history, false otherwise
 		 */
 		public function get hasHistoryNext():Boolean {
 			return (this._historyStep < (this._history.length - 1));
+		}
+		
+		/**
+		 * The last community loaded protocol according to DISLoadProtocol constants.
+		 */
+		public function get lastComProtocol():String {
+			return (this._lastComProtocol);
 		}
 		
 		// PUBLIC METHODS
@@ -1192,6 +1213,7 @@ package art.ciclope.managana {
 				this._counter = 0;
 				this._loading = true;
 				this._keyfcount = 0;
+				this._lastComProtocol = DISLoadProtocol.getProtocol(comPath);
 			}
 		}
 		
@@ -1290,16 +1312,20 @@ package art.ciclope.managana {
 		 * Load a stream.
 		 * @param	id	the stream identifier.
 		 * @param	from	stream load request origin
+		 * @return	true if the stream will be loaded, false if the id is the same as current one and nothing is loaded
 		 */
-		public function loadStream(id:String, from:String = ""):void {
+		public function loadStream(id:String, from:String = ""):Boolean {
+			var ret:Boolean = false;
 			if (from == "list") this.transition = this._community.navlist;
 			if (this._streamData[DISStream.LEVEL_MAIN] != null) {
 				if (id != this._streamData[DISStream.LEVEL_MAIN].id) {
+					this.nextKeyframe = -1;
 					this._community.loadStream(id, this._cache.streamCacheData(id));
 					this._playing = false;
 					this._counter = 0;
 					this._loading = true;
 					this._keyfcount = 0;
+					ret = true;
 				}
 			} else {
 				this._community.loadStream(id, this._cache.streamCacheData(id));
@@ -1307,8 +1333,59 @@ package art.ciclope.managana {
 				this._counter = 0;
 				this._loading = true;
 				this._keyfcount = 0;
+				ret = true;
 			}
-			
+			return (ret);
+		}
+		
+		/**
+		 * Load a stream into the upper guide.
+		 * @param	id	the stream identifier.
+		 * @return	true if the stream will be loaded, false if the id is the same as current one and nothing is loaded
+		 */
+		public function loadStreamUpper(id:String):Boolean {
+			var ret:Boolean = false;
+			if (this._streamData[DISStream.LEVEL_UP] != null) {
+				if (id != this._streamData[DISStream.LEVEL_UP].id) {
+					this._community.loadStreamUpper(id, this._cache.streamCacheData(id));
+					ret = true;
+				}
+			} else {
+				this._community.loadStreamUpper(id, this._cache.streamCacheData(id));
+				ret = true;
+			}
+			return (ret);
+		}
+		
+		/**
+		 * Load a stream into the lower guide.
+		 * @param	id	the stream identifier.
+		 * @return	true if the stream will be loaded, false if the id is the same as current one and nothing is loaded
+		 */
+		public function loadStreamLower(id:String):Boolean {
+			var ret:Boolean = false;
+			if (this._streamData[DISStream.LEVEL_DOWN] != null) {
+				if (id != this._streamData[DISStream.LEVEL_DOWN].id) {
+					this._community.loadStreamLower(id, this._cache.streamCacheData(id));
+					ret = true;
+				}
+			} else {
+				this._community.loadStreamLower(id, this._cache.streamCacheData(id));
+				ret = true;
+			}
+			return (ret);
+		}
+		
+		/**
+		 * Load a stream at a defined keyframe.
+		 * @param	id	the stream identifier.
+		 * @param	kframe	the keyframe number to load (ignored if the loaded stream doesn't have the requested keyframe)
+		 * @param	from	stream load request origin
+		 */
+		public function loadStreamAt(id:String, kframe:uint, from:String = ""):void {
+			if (this.loadStream(id, from)) {
+				this.nextKeyframe = kframe;
+			}	
 		}
 		
 		/**
@@ -1799,7 +1876,7 @@ package art.ciclope.managana {
 					this._history.push(new HistoryData(this.currentCommunity, this.currentStream));
 					this._historyStep = 0;
 				} else if (this._historyStep == (this._history.length - 1)) { // at initial history position
-					if (this._history.length >= 10) {
+					if (this._history.length >= ManaganaPlayer.HISTORY_STEPS) {
 						// remove the last history data
 						this._history[0].kill();
 						this._history.shift();
@@ -1891,11 +1968,17 @@ package art.ciclope.managana {
 			var index:uint;
 			// check the keyframe number to open
 			if (level == DISStream.LEVEL_MAIN) {
-				if (this.nextKeyframe >= 0) {
-					// set the forced next keyframe
-					num = this.nextKeyframe;
-					this.nextKeyframe = -1;
+				if (!this.ignoreKeyframeSet && (this.nextKeyframe >= 0)) {
+					// does the set keyframe exist?
+					if (this.nextKeyframe >= this._streamData[DISStream.LEVEL_MAIN].numKeyframes) {
+						this.nextKeyframe = -1;
+					} else {
+						// set the forced next keyframe
+						num = this.nextKeyframe;
+						this.nextKeyframe = -1;
+					}
 				}
+				this.ignoreKeyframeSet = false;
 			}
 			// set transition to use
 			var toUse:String = this._streamData[level].fade;

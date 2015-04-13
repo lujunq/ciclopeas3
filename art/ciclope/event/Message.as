@@ -14,10 +14,6 @@ package art.ciclope.event {
 		// CONSTANT DEFINITIONS
 		
 		/**
-		 * A message sent by the sitio player is available.
-		 */
-		public static const SITIO_MESSAGE:String = "SITIO_MESSAGE";
-		/**
 		 * An openURL message.
 		 */
 		public static const OPENURL:String = "OPENURL";
@@ -89,6 +85,10 @@ package art.ciclope.event {
 		 * Internal mouse out event.
 		 */
 		public static const MOUSEOUT:String = "MOUSEOUT";
+		/**
+		 * A message sent by the sitio player is available (kept for compatibility issues).
+		 */
+		public static const SITIO_MESSAGE:String = "SITIO_MESSAGE";
 		
 		// VARIABLES
 		

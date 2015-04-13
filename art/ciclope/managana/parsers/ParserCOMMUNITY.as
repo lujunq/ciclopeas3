@@ -49,10 +49,13 @@ package art.ciclope.managana.parsers {
 							break;
 						case "showLowerGuide":
 						case "hideLowerGuide":
+						case "toggleLowerGuideVisibility":
 						case "showUpperGuide":
 						case "hideUpperGuide":
+						case "toggleUpperGuideVisibility":
 						case "showMainLayer":
 						case "hideMainLayer":
+						case "toggleMainLayerVisibility":
 							ret = true;
 							break;
 						default:
@@ -84,17 +87,26 @@ package art.ciclope.managana.parsers {
 				case "hideLowerGuide":
 					this._player.lowerGuideVisible = false;
 					break;
+				case "toggleLowerGuideVisibility":
+					this._player.lowerGuideVisible = !this._player.lowerGuideVisible;
+					break;
 				case "showUpperGuide":
 					this._player.upperGuideVisible = true;
 					break;
 				case "hideUpperGuide":
 					this._player.upperGuideVisible = false;
 					break;
+				case "toggleUpperGuideVisibility":
+					this._player.upperGuideVisible = !this._player.upperGuideVisible;
+					break;
 				case "showMainLayer":
 					this._player.mainLayerVisible = true;
 					break;
 				case "hideMainLayer":
 					this._player.mainLayerVisible = false;
+					break;
+				case "toggleMainLayerVisibility":
+					this._player.mainLayerVisible = !this._player.mainLayerVisible;
 					break;
 			}
 		}

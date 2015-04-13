@@ -403,6 +403,13 @@ package art.ciclope.managana.data {
 		}
 		
 		/**
+		 * The number of keyframes of the loaded stream.
+		 */
+		public function get numKeyframes():uint {
+			return (this._keyframes.length);
+		}
+		
+		/**
 		 * Current stream keyframes (array of DISKeyframe objects).
 		 * @see	art.ciclope.managana.data.DISKeyframe
 		 */

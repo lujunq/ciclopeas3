@@ -174,8 +174,8 @@ package art.ciclope.managana.data {
 			this._screenaspect = "landscape";
 			// prepare streams
 			this._mainstream = new DISStream(DISStream.LEVEL_MAIN, this.addPlaylist, parserRun, getImage);
-			this._upstream = new DISStream(DISStream.LEVEL_DOWN, this.addPlaylist, parserRun, getImage);
-			this._downstream = new DISStream(DISStream.LEVEL_UP, this.addPlaylist, parserRun, getImage);
+			this._upstream = new DISStream(DISStream.LEVEL_UP, this.addPlaylist, parserRun, getImage);
+			this._downstream = new DISStream(DISStream.LEVEL_DOWN, this.addPlaylist, parserRun, getImage);
 			this._mainstream.addEventListener(DISLoad.STREAM_OK, onStreamOK);
 			this._upstream.addEventListener(DISLoad.STREAM_OK, onStreamOK);
 			this._downstream.addEventListener(DISLoad.STREAM_OK, onStreamOK);
@@ -562,6 +562,44 @@ package art.ciclope.managana.data {
 				if (this._mainstream.id != id) {
 					this._mainstream.load(id, cache);
 					this.dispatchEvent(new DISLoad(DISLoad.STREAM_LOAD, this._mainstream));
+					return (true);
+				} else {
+					return (false);
+				}
+			} else {
+				return (false);
+			}
+		}
+		
+		/**
+		 * Load a stream into upper level.
+		 * @param	id	the stream identifier
+		 * @param	cache	text cache with stream content
+		 * @return	true if the community can load the stream, false otherwise
+		 */
+		public function loadStreamUpper(id:String, cache:String = null):Boolean {
+			if (this._state == ObjectState.STATE_LOADOK) {
+				if (this._upstream.id != id) {
+					this._upstream.load(id, cache);
+					return (true);
+				} else {
+					return (false);
+				}
+			} else {
+				return (false);
+			}
+		}
+		
+		/**
+		 * Load a stream into lower level.
+		 * @param	id	the stream identifier
+		 * @param	cache	text cache with stream content
+		 * @return	true if the community can load the stream, false otherwise
+		 */
+		public function loadStreamLower(id:String, cache:String = null):Boolean {
+			if (this._state == ObjectState.STATE_LOADOK) {
+				if (this._downstream.id != id) {
+					this._downstream.load(id, cache);
 					return (true);
 				} else {
 					return (false);

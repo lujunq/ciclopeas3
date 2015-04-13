@@ -7,12 +7,22 @@ package art.ciclope.event {
 	/**
 	 * <b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
 	 * <b>License:</b> GNU LGPL version 3<br><br>
-	 * TCPDataEvent create events for TCP remote connections.
+	 * WebsocketEvent create events for websocket remote connections.
 	 * @author Lucas Junqueira - lucas@ciclope.art.br
 	 */
-	public class TCPDataEvent extends Event {
+	public class WebsocketEvent extends Event {
 		
 		// STATIC CONSTANTS
+		
+		/**
+		 * New client connection.
+		 */
+		public static var NEWCLIENT:String = "NEWCLIENT";
+		
+		/**
+		 * A client just disconnected.
+		 */
+		public static var CLIENTCLOSE:String = "CLIENTCLOSE";
 		
 		/**
 		 * New message available from a connected client.
@@ -32,12 +42,12 @@ package art.ciclope.event {
 		public var message:String;
 		
 		/**
-		 * TCPDataEvent constructor.
+		 * WebsocketEvent constructor.
 		 * @param	type	event type
 		 * @param	cclient	the connected client reference
 		 * @param	cmsg	the received message
 		 */
-		public function TCPDataEvent(type:String, cclient:Socket, cmsg:String, bubbles:Boolean = false, cancelable:Boolean = false) { 
+		public function WebsocketEvent(type:String, cclient:Socket, cmsg:String = '', bubbles:Boolean = false, cancelable:Boolean = false) { 
 			this.client = cclient;
 			this.message = cmsg;
 			super(type, bubbles, cancelable);
@@ -63,7 +73,7 @@ package art.ciclope.event {
 		 * @return	a clone of the current event
 		 */
 		public override function clone():Event { 
-			return new TCPDataEvent(type, client, message, bubbles, cancelable);
+			return new WebsocketEvent(type, client, message, bubbles, cancelable);
 		} 
 		
 		/**
@@ -71,7 +81,7 @@ package art.ciclope.event {
 		 * @return	a string representation of current event 
 		 */
 		public override function toString():String { 
-			return formatToString("TCPDataEvent", "type", "message", "bubbles", "cancelable", "eventPhase"); 
+			return formatToString("WebsocketEvent", "type", "message", "bubbles", "cancelable", "eventPhase"); 
 		}
 		
 	}

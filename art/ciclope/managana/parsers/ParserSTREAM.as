@@ -52,12 +52,20 @@ package art.ciclope.managana.parsers {
 					case "previousZ":
 					case "historyNext":
 					case "historyBack":
+					case "clearKeyframeSet":
+					case "ignoreKeyframeSet":
 						ret = true;
 						break;
 					case "load":
+					case "loadAtUpperGuide":
+					case "loadAtLowerGuide":
 					case "transition":
 					case "gotoKeyframe":
 						if (line[2] != null) ret = true;
+							else ret = false;
+						break;
+					case "loadAt":
+						if ((line[2] != null) && (line[3] != null)) ret = true;
 							else ret = false;
 						break;
 					default:
@@ -83,11 +91,29 @@ package art.ciclope.managana.parsers {
 				case "load":
 					this._player.loadStream(line[2]);
 					break;
+				case "loadAt":
+					this._player.loadStreamAt(line[2], (uint(line[3]) - 1));
+					break;
+				case "loadAtUpperGuide":
+					
+					trace ('load at upper', line[2]);
+					
+					this._player.loadStreamUpper(line[2]);
+					break;
+				case "loadAtLowerGuide":
+					this._player.loadStreamLower(line[2]);
+					break;
 				case "transition":
 					this._player.transition = line[2];
 					break;
 				case "gotoKeyframe":
 					this._player.nextKeyframe = int(line[2]) - 1;
+					break;
+				case "clearKeyframeSet":
+					this._player.nextKeyframe = -1;
+					break;
+				case "ignoreKeyframeSet":
+					this._player.ignoreKeyframeSet = true;
 					break;
 				case "clearTransition":
 					this._player.transition = "";

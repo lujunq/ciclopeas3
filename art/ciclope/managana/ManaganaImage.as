@@ -742,7 +742,7 @@ package art.ciclope.managana {
 		 * @param	onCompleteParams	parameters to send to complete function
 		 * @param	onUpdate	function to call on update
 		 * @param	onUpdateParams	parameters to send to update function
-		 * @return	an object suited to Caurine Tweener transformation
+		 * @return	an object suited to Caurina Tweener transformation
 		 */
 		public function tweenObject(time:Number, distortion:uint = 0, transition:String = "linear", onComplete:Function = null, onCompleteParams:Array = null, onUpdate:Function = null, onUpdateParams:Array = null):Object {
 			for (var index:String in this._tween) {
@@ -764,15 +764,33 @@ package art.ciclope.managana {
 			if (this.z != this.toZ) this._tween.z = this.toZ;
 			if (this.order != this.toOrder) this._tween.order = this.toOrder;
 			if (this.rotationX != this.toRX) {
-				if (this.toRX < this.rotationX) this.toRX += 360;
+				if (Math.abs(this.toRX - this.rotationX) > 180) {
+					if (this.toRX < this.rotationX) {
+						this.toRX += 360;
+					} else {
+						this.toRX -= 360;
+					}
+				}
 				this._tween.rotationX = this.toRX;
 			}
 			if (this.rotationY != this.toRY) {
-				if (this.toRY < this.rotationY) this.toRY += 360;
+				if (Math.abs(this.toRY - this.rotationY) > 180) {
+					if (this.toRY < this.rotationY) {
+						this.toRY += 360;
+					} else {
+						this.toRY -= 360;
+					}
+				}
 				this._tween.rotationY = this.toRY;
 			}
 			if (this.rotationZ != this.toRZ) {
-				if (this.toRZ < this.rotationZ) this.toRZ += 360;
+				if (Math.abs(this.toRZ - this.rotationZ) > 180) {
+					if (this.toRZ < this.rotationZ) {
+						this.toRZ += 360;
+					} else {
+						this.toRZ -= 360;
+					}
+				}
 				this._tween.rotationZ = this.toRZ;
 			}
 			if (this.width != this.toWidth) this._tween.width = this.toWidth;

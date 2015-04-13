@@ -507,6 +507,9 @@ package art.ciclope.managana.graphics {
 		 * Remote button clicked.
 		 */
 		private function onRemoteClick(evt:MouseEvent):void {
+			
+			
+			
 			this._remotebutton.checked = !this._remotebutton.checked;
 			if (this.remoteclick != null) this.remoteclick(this._remotebutton.checked);
 		}

@@ -1,20 +1,29 @@
 package art.ciclope.display {
 	
+	// FLASH PACKAGES
 	import flash.display.Bitmap;
 	import flash.display.Sprite;
 	
+	// AS3 QRCODE ENCODER
 	import org.qrcode.QRCode;
 	
 	/**
-	 * ...
-	 * @author Lucas Junqueira
+	 * <b>Availability:</b> CICLOPE AS3 Classes - www.ciclope.art.br<br>
+	 * <b>License:</b> GNU LGPL version 3<br><br>
+	 * QRCodeDisplay provides methods for creating an sprite with a string encoded as a QR Code.
+	 * @author Lucas Junqueira - lucas@ciclope.art.br
 	 */
 	public class QRCodeDisplay extends Sprite {
 		
-		var _qrcode:QRCode;
-		var _codeDisplay:Bitmap;
-		var _lastCode:String;
+		// PRIVATE VARIABLES
 		
+		private var _qrcode:QRCode;				// the qrcode encoder library reference
+		private var _codeDisplay:Bitmap;		// the qrcode display bitmap
+		private var _lastCode:String;			// the last encoded string
+		
+		/**
+		 * QRCodeDisplay constructor.
+		 */
 		public function QRCodeDisplay() {
 			super();
 			this._qrcode = new QRCode();
@@ -23,10 +32,21 @@ package art.ciclope.display {
 			this._lastCode = '';
 		}
 		
+		// READ-ONLY VALUES
+		
+		/**
+		 * The last string encoded.
+		 */
 		public function get code():String {
 			return (this._lastCode);
 		}
 		
+		// PUBLIC METHODS
+		
+		/**
+		 * Encode a string as a qrcode and display the resulting bitmap.
+		 * @param	text	the string to be encoded
+		 */
 		public function setCode(text:String):void {
 			this._lastCode = text;
 			this._qrcode.encode(text);

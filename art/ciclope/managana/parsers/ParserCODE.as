@@ -468,7 +468,9 @@ package art.ciclope.managana.parsers {
 					break;
 				case "mergeToStr":
 					if (this._strings[line[2]] != null) {
-					this._strings[line[2]] = String(this._strings[line[2]]) + String(line[3]);
+						this._strings[line[2]] = String(this._strings[line[2]]) + String(line[3]);
+						
+						trace ('new string', this._strings[line[2]]);
 					}
 					break;
 				case "getStreamID":

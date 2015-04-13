@@ -108,6 +108,8 @@ ProgressCode creates a component capable of editing progress code for elements o
 			this.parserList.addItem("SYSTEM");
 			this.systemActions = new ArrayCollection();
 			this.systemActions.addItem("print");
+			this.systemActions.addItem("readQRCode");
+			this.systemActions.addItem("showRemoteInfo");
 			this.systemActions.addItem("showClock");
 			this.systemActions.addItem("hideClock");
 			this.systemActions.addItem("showRate");
@@ -122,16 +124,24 @@ ProgressCode creates a component capable of editing progress code for elements o
 			this.communityActions.addItem("loadCommunity");
 			this.communityActions.addItem("showLowerGuide");
 			this.communityActions.addItem("hideLowerGuide");
+			this.communityActions.addItem("toggleLowerGuideVisibility");
 			this.communityActions.addItem("showUpperGuide");
 			this.communityActions.addItem("hideUpperGuide");
+			this.communityActions.addItem("toggleUpperGuideVisibility");
 			this.communityActions.addItem("showMainLayer");
 			this.communityActions.addItem("hideMainLayer");
+			this.communityActions.addItem("toggleMainLayerVisibility");
 			this.streamList = new ArrayCollection();
+			this.streamList.addItem("clearKeyframeSet");
 			this.streamList.addItem("clearTransition");
 			this.streamList.addItem("gotoKeyframe");
+			this.streamList.addItem("ignoreKeyframeSet");
 			this.streamList.addItem("historyBack");
 			this.streamList.addItem("historyNext");
 			this.streamList.addItem("load");
+			this.streamList.addItem("loadAt");
+			this.streamList.addItem("loadAtLowerGuide");
+			this.streamList.addItem("loadAtUpperGuide");
 			this.streamList.addItem("nextX");
 			this.streamList.addItem("nextY");
 			this.streamList.addItem("nextZ");
@@ -424,6 +434,8 @@ ProgressCode creates a component capable of editing progress code for elements o
 			if (this.drop0.selectedItem == "SYSTEM") {
 				switch (this.drop1.selectedItem) {
 					case "print":
+					case "readQRCode":
+					case "showRemoteInfo":
 					case "showClock":
 					case "hideClock":
 					case "showRate":
@@ -448,6 +460,8 @@ ProgressCode creates a component capable of editing progress code for elements o
 					case "previousX":
 					case "previousY":
 					case "previousZ":
+					case "clearKeyframeSet":
+					case "ignoreKeyframeSet":
 						// do nothing
 						break;
 					case "load":
@@ -459,6 +473,39 @@ ProgressCode creates a component capable of editing progress code for elements o
 						this.drop_stream.dataProvider = this.communityStreams;
 						this.drop_stream.selectedIndex = 0;
 						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_STREAMLOAD');
+						break;
+					case "loadAtLowerGuide":
+						if (this.communityStreams.length == 0) this.updateLists();
+						this.param_stream.removeAllElements();
+						this.param_stream.addElement(this.label_stream);
+						this.param_stream.addElement(this.drop_stream);
+						this.commandParams.addElement(this.param_stream);
+						this.drop_stream.dataProvider = this.communityStreams;
+						this.drop_stream.selectedIndex = 0;
+						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_STREAMLOAD');
+						break;
+					case "loadAtUpperGuide":
+						if (this.communityStreams.length == 0) this.updateLists();
+						this.param_stream.removeAllElements();
+						this.param_stream.addElement(this.label_stream);
+						this.param_stream.addElement(this.drop_stream);
+						this.commandParams.addElement(this.param_stream);
+						this.drop_stream.dataProvider = this.communityStreams;
+						this.drop_stream.selectedIndex = 0;
+						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_STREAMLOAD');
+						break;
+					case "loadAt":
+						if (this.communityStreams.length == 0) this.updateLists();
+						this.param_stream.removeAllElements();
+						this.param_stream.addElement(this.label_stream);
+						this.param_stream.addElement(this.drop_stream);
+						this.commandParams.addElement(this.param_stream);
+						this.drop_stream.dataProvider = this.communityStreams;
+						this.drop_stream.selectedIndex = 0;
+						this.label_stream.text = resourceManager.getString('language', 'PROGRESSCODE_STREAMLOAD');
+						this.param_stream.addElement(this.label_stream2);
+						this.param_stream.addElement(this.numeric_keyframe);
+						this.label_stream2.text = resourceManager.getString('language', 'PROGRESSCODE_GOTOKEYFRAME');
 						break;
 					case "gotoKeyframe":
 						this.param_stream.removeAllElements();
@@ -814,10 +861,13 @@ ProgressCode creates a component capable of editing progress code for elements o
 							break;
 						case "showLowerGuide":
 						case "hideLowerGuide":
+						case "toggleLowerGuideVisibility":
 						case "showUpperGuide":
 						case "hideUpperGuide":
+						case "toggleUpperGuideVisibility":
 						case "showMainLayer":
 						case "hideMainLayer":
+						case "toggleMainLayerVisibility":
 							code += this.drop1.selectedItem;
 							break
 					}
@@ -825,6 +875,8 @@ ProgressCode creates a component capable of editing progress code for elements o
 				case "SYSTEM":
 					switch (this.drop1.selectedItem) {
 						case "print":
+						case "readQRCode":
+						case "showRemoteInfo":
 						case "showClock":
 						case "hideClock":
 						case "showRate":
@@ -852,11 +904,34 @@ ProgressCode creates a component capable of editing progress code for elements o
 						case "previousZ":
 						case "historyNext":
 						case "historyBack":
+						case "clearKeyframeSet":
+						case "ignoreKeyframeSet":
 							code += this.drop1.selectedItem;
 							break;
 						case "load":
 							if (this.drop_stream.selectedIndex >= 0) {
 								code += this.drop1.selectedItem + "->" + this.drop_stream.selectedItem.data;
+							} else {
+								code = "";
+							}
+							break;
+						case "loadAtLowerGuide":
+							if (this.drop_stream.selectedIndex >= 0) {
+								code += this.drop1.selectedItem + "->" + this.drop_stream.selectedItem.data;
+							} else {
+								code = "";
+							}
+							break;
+						case "loadAtUpperGuide":
+							if (this.drop_stream.selectedIndex >= 0) {
+								code += this.drop1.selectedItem + "->" + this.drop_stream.selectedItem.data;
+							} else {
+								code = "";
+							}
+							break;
+						case "loadAt":
+							if (this.drop_stream.selectedIndex >= 0) {
+								code += this.drop1.selectedItem + "->" + this.drop_stream.selectedItem.data + "->" + this.numeric_keyframe.value;
 							} else {
 								code = "";
 							}
@@ -1300,6 +1375,7 @@ ProgressCode creates a component capable of editing progress code for elements o
 		<s:VGroup width="100%" id="param_stream">
 			<s:Label id="label_stream" text="" />
 			<s:DropDownList width="100%" id="drop_stream" selectedIndex="0"></s:DropDownList>
+			<s:Label id="label_stream2" text="" />
 			<s:NumericStepper width="100%" id="numeric_keyframe" minimum="1" maximum="1000" value="1" />
 		</s:VGroup>
 		<s:VGroup width="100%" id="param_playlist1">
