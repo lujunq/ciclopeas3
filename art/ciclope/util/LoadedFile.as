@@ -19,6 +19,10 @@
 		 */
 		public static const TYPE_PICTURE:String = "TYPE_PICTURE";
 		/**
+		 * Type of data loaded: widget (swf).
+		 */
+		public static const TYPE_WIDGET:String = "TYPE_WIDGET";
+		/**
 		 * Type of data loaded: flash movie (swf).
 		 */
 		public static const TYPE_FLASH:String = "TYPE_FLASH";

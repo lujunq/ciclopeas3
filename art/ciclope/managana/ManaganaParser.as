@@ -37,6 +37,7 @@ package art.ciclope.managana {
 			this._groups["INSTANCE"] = new ParserINSTANCE(player);
 			this._groups["COMMUNITY"] = new ParserCOMMUNITY(player);
 			this._groups["SYSTEM"] = new ParserSYSTEM(player);
+			this._groups["WIDGET"] = new ParserWIDGET(player);
 			this._groups["CODE"] = new ParserCODE(player, this);
 			// legacy support
 			this._groups["PLAYLIST"] = new ParserPLAYLIST(player);

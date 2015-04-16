@@ -10,6 +10,7 @@ package art.ciclope.managana {
 	import flash.events.MouseEvent;
 	import flash.events.TimerEvent;
 	import flash.geom.Matrix;
+	import flash.geom.Point;
 	import flash.media.SoundTransform;
 	import flash.printing.PrintJobOptions;
 	import flash.printing.PrintJobOrientation;
@@ -50,6 +51,7 @@ package art.ciclope.managana {
 	import art.ciclope.event.Playing;
 	import art.ciclope.managana.graphics.Target;
 	import art.ciclope.managana.data.HistoryData;
+	import art.ciclope.managana.elements.ManaganaWidgetHolder;
 	
 	// CAURINA
 	import caurina.transitions.Tweener;
@@ -176,6 +178,9 @@ package art.ciclope.managana {
 		private var _historyStep:uint;				// navigation history step
 		private var _type:String;					// player type
 		private var _lastComProtocol:String;		// last community loaded protocol according to DISLoadProtocol constants
+		private var _widgets:Array;					// loaded widgets holder
+		private var _widgetUpperLayer:Sprite;		// widget upper layer
+		private var _widgetLowerLayer:Sprite;		// widget lower layer
 		
 		// STATIC CONSTANTS
 		
@@ -393,13 +398,19 @@ package art.ciclope.managana {
 			this._streamSprite[DISStream.LEVEL_MAIN] = new Sprite();
 			this._streamSprite[DISStream.LEVEL_UP] = new Sprite();
 			this._streamSprite[DISStream.LEVEL_DOWN] = new Sprite();
-			this._content.addChild(this._streamSprite[DISStream.LEVEL_DOWN]);
-			this._content.addChild(this._streamSprite[DISStream.LEVEL_MAIN]);
-			this._content.addChild(this._streamSprite[DISStream.LEVEL_UP]);
 			this._streamImage = new Array();
 			this._streamImage[DISStream.LEVEL_MAIN] = new Array();
 			this._streamImage[DISStream.LEVEL_UP] = new Array();
 			this._streamImage[DISStream.LEVEL_DOWN] = new Array();
+			// widget layers
+			this._widgetLowerLayer = new Sprite();
+			this._widgetUpperLayer = new Sprite();
+			// add stream and widget layers to display
+			this._content.addChild(this._widgetLowerLayer);
+			this._content.addChild(this._streamSprite[DISStream.LEVEL_DOWN]);
+			this._content.addChild(this._streamSprite[DISStream.LEVEL_MAIN]);
+			this._content.addChild(this._streamSprite[DISStream.LEVEL_UP]);
+			this._content.addChild(this._widgetUpperLayer);
 			// vote displays
 			this._totalVotes = 0;
 			this._endOfStream = false;
@@ -470,6 +481,8 @@ package art.ciclope.managana {
 			// external feeds
 			this._feedurl = "";
 			this._feeds = new ManaganaFeed();
+			// widgets
+			this._widgets = new Array();
 			// wait for the stage
 			this.addEventListener(Event.ADDED_TO_STAGE, onStage);
 			// counter
@@ -527,6 +540,20 @@ package art.ciclope.managana {
 		 */
 		public function get currentCommunityHeight():uint {
 			return (this._community.screenheight);
+		}
+		
+		/**
+		 * The loaded community landscape size (x and y values).
+		 */
+		public function get currentCommunityLandscapeSize():Point {
+			return (this._community.landscapeSize);
+		}
+		
+		/**
+		 * The loaded community portrait size (x and y values).
+		 */
+		public function get currentCommunityPortraitSize():Point {
+			return (this._community.portraitSize);
 		}
 		
 		/**
@@ -1708,6 +1735,114 @@ package art.ciclope.managana {
 			if (this._target.visible) this._target.act();
 		}
 		
+		/**
+		 * Hide a widget from display.
+		 * @param	name	the widget name to hide
+		 */
+		public function hideWidget(name:String):void {
+			if (this._widgets[name] != null) {
+				if (this._widgets[name].widgetDisplay != null) {
+					if (this._widgets[name].widgetDisplay.parent != null) {
+						this._widgets[name].widgetDisplay.parent.removeChild(this._widgets[name].widgetDisplay);
+						this._widgets[name].warn('hide');
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Hide all loaded widgets.
+		 */
+		public function hideAllWidgets():void {
+			for (var index:String in this._widgets) this.hideWidget(index);
+		}
+		
+		/**
+		 * Show a widget above the current stream display.
+		 * @param	name	the widget name
+		 */
+		public function showWidgetAbove(name:String):void {
+			if (this._widgets[name] != null) {
+				if (this._widgets[name].widgetDisplay != null) {
+					if (this._widgets[name].widgetDisplay.parent != null) {
+						this._widgets[name].widgetDisplay.parent.removeChild(this._widgets[name].widgetDisplay);
+					}
+					this._widgetUpperLayer.addChild(this._widgets[name].widgetDisplay);
+					this._widgets[name].warn('showAbove');
+				}
+			}
+		}
+		
+		/**
+		 * Show a widget below the current stream display.
+		 * @param	name	the widget name
+		 */
+		public function showWidgetBelow(name:String):void {
+			if (this._widgets[name] != null) {
+				if (this._widgets[name].widgetDisplay != null) {
+					if (this._widgets[name].widgetDisplay.parent != null) {
+						this._widgets[name].widgetDisplay.parent.removeChild(this._widgets[name].widgetDisplay);
+					}
+					this._widgetLowerLayer.addChild(this._widgets[name].widgetDisplay);
+					this._widgets[name].warn('showBelow');
+				}
+			}
+		}
+		
+		/**
+		 * Set a widget position.
+		 * @param	name	the widget name
+		 * @param	x	the widget X position
+		 * @param	y	the widget Y position
+		 */
+		public function setWidgetPos(name:String, x:uint, y:uint):void {
+			if (this._widgets[name] != null) {
+				if (this._widgets[name].widgetDisplay != null) {
+					this._widgets[name].widgetDisplay.x = x;
+					this._widgets[name].widgetDisplay.y = y;
+				}
+			}
+		}
+		
+		/**
+		 * Set a widget X position.
+		 * @param	name	the widget name
+		 * @param	x	the widget X position
+		 */
+		public function setWidgetXPos(name:String, x:uint):void {
+			if (this._widgets[name] != null) {
+				if (this._widgets[name].widgetDisplay != null) {
+					this._widgets[name].widgetDisplay.x = x;
+				}
+			}
+		}
+		
+		
+		/**
+		 * Set a widget Y position.
+		 * @param	name	the widget name
+		 * @param	y	the widget Y position
+		 */
+		public function setWidgetYPos(name:String, y:uint):void {
+			if (this._widgets[name] != null) {
+				if (this._widgets[name].widgetDisplay != null) {
+					this._widgets[name].widgetDisplay.y = y;
+				}
+			}
+		}
+		
+		/**
+		 * Call a custom widget exposed method.
+		 * @param	name	the widget name
+		 * @param	method	the exposed method name
+		 * @param	param	any string parameter to send (null for none)
+		 */
+		public function callWidgetMethod(name:String, method:String, param:String = null) {
+			if (this._widgets[name] != null) {
+				this._widgets[name].callMethod(method, param);
+			}
+		}
+		
 		// PRIVATE METHODS
 		
 		/**
@@ -1730,6 +1865,8 @@ package art.ciclope.managana {
 			this._originalH = this._community.screenheight;
 			this.width = this._width;
 			this.height = this._height;
+			// warn loaded widgets
+			for (var index in this._widgets) this._widgets[index].warn('aspectChange');
 		}
 		
 		/**
@@ -1780,6 +1917,18 @@ package art.ciclope.managana {
 			} else {
 				if (this._community.home.id != "") this.loadStream(this._community.home.id);
 			}
+			
+			// clear previous widgets
+			for (var iwidgetindex:String in this._widgets) {
+				this._widgets[iwidgetindex].kill();
+				delete(this._widgets[iwidgetindex]);
+			}
+			
+			// load widgets
+			for (var iwidget:uint = 0; iwidget < this._community.widgets.length; iwidget++) {
+				this._widgets[this._community.widgets[iwidget]] = new ManaganaWidgetHolder(this._community.widgets[iwidget], this._community.url, this);
+			}
+			
 			// warn listeners
 			this.dispatchEvent(new DISLoad(DISLoad.COMMUNITY_OK, this._community));
 		}
@@ -1904,6 +2053,8 @@ package art.ciclope.managana {
 		private function onStreamLoad(evt:DISLoad):void {
 			// warn listeners
 			this.dispatchEvent(new DISLoad(DISLoad.STREAM_LOAD, evt.loader));
+			// warn loaded widgets
+			for (var index:String in this._widgets) this._widgets[index].warn('newStream');
 		}
 		
 		/**

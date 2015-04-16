@@ -91,6 +91,10 @@ package art.ciclope.managanaeditor.data {
 		 */
 		public var meta:Array = new Array();
 		/**
+		 * List of community widget files.
+		 */
+		public var widgets:Array = new Array();
+		/**
 		 * Icon graphic.
 		 */
 		public var icon:String = "";
@@ -246,6 +250,9 @@ package art.ciclope.managanaeditor.data {
 				this.meta[0].kill();
 				this.meta.shift();
 			}
+			while (this.widgets.length > 0) {
+				this.widgets.shift();
+			}
 			voteRecord = true;
 			// css
 			css = "body {\n    color: #000000;\n    font-family: Arial, Helvetica, sans-serif;\n    font-size: 16px;\n}\n\na {\n    color: #0000FF;\n    text-decoration: underline;\n}";
@@ -267,6 +274,15 @@ package art.ciclope.managanaeditor.data {
 			while (this.meta.length > 0) {
 				this.meta[0].kill();
 				this.meta.shift();
+			}
+		}
+		
+		/**
+		 * Clear widgets information.
+		 */
+		public function clearWidgets():void {
+			while (this.widgets.length > 0) {
+				this.widgets.shift();
 			}
 		}
 		
@@ -318,6 +334,10 @@ package art.ciclope.managanaeditor.data {
 			// meta data
 			for (index = 0; index < data.meta.child("field").length(); index++) {
 				this.meta.push(new DISMetaED(String(data.meta.field[index]), int(data.meta.field[index].@id)));
+			}
+			// widgets
+			for (index = 0; index < data.widgets.child("widget").length(); index++) {
+				this.widgets.push(String(data.widgets.widget[index]).substr(0, (String(data.widgets.widget[index]).length-4)));
 			}
 			//css
 			if (data.child("css").length() > 0) {

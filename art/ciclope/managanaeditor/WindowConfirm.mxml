@@ -221,6 +221,7 @@ WindowConfirm creates a window to ask for user confirmation before proceeding an
 					params += "&from=community";
 					switch (acdata2[0]) {
 						case LoadedFile.TYPE_PICTURE: params += "&type=picture"; break;
+						case LoadedFile.TYPE_WIDGET: params += "&type=widget"; break;
 						case LoadedFile.TYPE_TEXT: params += "&type=text"; break;
 						case LoadedFile.TYPE_PARAGRAPH: params += "&type=paragraph"; break;
 						case LoadedFile.TYPE_AUDIO: params += "&type=audio"; break;

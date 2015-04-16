@@ -24,6 +24,7 @@ WindowCommunityProperties creates a window to manage community properties.
 		<mx:ArrayCollection id="feedList" />
 		<mx:ArrayCollection id="metaList" />
 		<mx:ArrayCollection id="cGraphicsList" />
+		<mx:ArrayCollection id="cWidgetsList" />
 		<mx:ArrayCollection id="graphicsFor" />
 		<mx:ArrayCollection id="voteProvider" />
 		<mx:ArrayCollection id="navxnextdata" />
@@ -34,24 +35,34 @@ WindowCommunityProperties creates a window to manage community properties.
 		<mx:ArrayCollection id="navzprevdata" />
 		<mx:ArrayCollection id="navhomedata" />
 		<mx:ArrayCollection id="navlistdata" />
+		<mx:ArrayCollection id="uploadListData" />
 	</fx:Declarations>
 	
 	<fx:Script>
 		<![CDATA[
 		
 		// FLASH PACKAGES
-		import art.ciclope.managanaeditor.data.DISFeedED;
-		import art.ciclope.managanaeditor.data.DISMetaED;
+		import flash.net.URLRequest;
+		import flash.net.URLVariables;
 		import mx.managers.PopUpManager;
 		import mx.core.FlexGlobals;
 		import flash.display.DisplayObject;
+		import flash.net.FileFilter;
+		import flash.net.FileReference;
+		import flash.net.FileReferenceList;
+		import flash.events.*;
 		
 		// CICLOPE CLASSES
 		import art.ciclope.managanaeditor.*;
+		import art.ciclope.managanaeditor.data.DISFeedED;
+		import art.ciclope.managanaeditor.data.DISMetaED;
+		import art.ciclope.staticfunctions.StringFunctions;
+		import art.ciclope.util.LoadedFile;
 		
 		// VARIABLES
 		
 		private var _openAt:String;
+		private var _file:FileReference;
 		
 		/**
 		 * Component initialize.
@@ -214,6 +225,15 @@ WindowCommunityProperties creates a window to manage community properties.
 			this.navlistdata.addItem( { label:"swiperight", data:"swiperight" } );
 			this.navlistdata.addItem( { label:"swipeup", data:"swipeup" } );
 			this.navlistdata.addItem( { label:"target", data:"target" } );
+			// widgets upload
+			this._file = new FileReference();
+			this._file.addEventListener(Event.CANCEL, onUploadCancel);
+            this._file.addEventListener(IOErrorEvent.IO_ERROR, onUploadError);
+            this._file.addEventListener(Event.OPEN, onUploadOpen);
+            this._file.addEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+            this._file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadError);
+            this._file.addEventListener(Event.SELECT, onUploadSelect);
+            this._file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadComplete);
 		}
 		
 		// PUBLIC METHODS
@@ -575,6 +595,152 @@ WindowCommunityProperties creates a window to manage community properties.
 				else this.gVote100.text = LoadedData.community.vote100;
 		}
 		
+		/**
+		 * Load the community widgets list.
+		 */
+		private function loadWidgetsList():void {
+			var param:String = "community=" + LoadedData.community.id;
+			param += "&type=widget";
+			param += "&cfiles=true";
+			WindowServerCheck.createServer("listfiles", param, widgetsReturn);
+		}
+		
+		/**
+		 * Widgets list information received.
+		 * @param	server	the server information object
+		 */
+		private function widgetsReturn(server:ServerInteraction):void {
+			if (server.error == ServerEvent.SERVER_ERROR) {
+				Warning.createWarning(resourceManager.getString('language', 'CW_PROPWINDOWTITLEERROR'), resourceManager.getString('error', server.errorID));
+			} else if (server.error == ServerEvent.SERVER_OK) {
+				// get data
+				this.cWidgetsList.removeAll();
+				for (var index:uint = 0; index < server.data.child("file").length(); index++) {
+					this.cWidgetsList.addItem({ file: String(server.data.file[index]), size: Math.round(Number(server.data.file[index].@size) / 1024), date:new Date(uint(server.data.file[index].@date))});
+				}
+			}
+			server.kill();
+		}
+		
+		/**
+		 * Widget file manager actions.
+		 * @param	ac	the action to take
+		 */
+		private function onWidgetAction(ac:String):void {
+			switch (ac) {
+				case 'delete':
+					if (this.cWidgets.selectedIndex >= 0) {
+						var confirm:WindowConfirm = new WindowConfirm();
+						confirm.setAction(WindowConfirm.ACTION_DELETECOMMUNITYFILE, (LoadedFile.TYPE_WIDGET + "|" + this.cWidgets.selectedItem.file), this.confirmDeleteWidget);
+						PopUpManager.addPopUp(confirm, (FlexGlobals.topLevelApplication as DisplayObject), true);
+						PopUpManager.centerPopUp(confirm);
+					} else {
+						Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('language', 'FM_DELETEERROR'));
+					}
+					break;
+				case 'send':
+					var types:FileFilter = new FileFilter(resourceManager.getString('language', 'FM_UPLOADABOUTWIDGET'), "*.swf");
+					this._file.browse(new Array(types));
+					widgetProgress.text = "";
+					break;
+			}
+		}
+		
+		/**
+		 * A function to call after the delete widget file confirmation is called.
+		 * @param	response	true if the user confirmed deletion, false otherwise
+		 */
+		private function confirmDeleteWidget(response:Boolean):void {
+			// refresh list
+			if (response) {
+				this.loadWidgetsList();
+				this.btWidgetDelete.enabled = true;
+				this.btWidgetSend.enabled = true;
+				this.cWidgets.enabled = true;
+				widgetProgress.text = resourceManager.getString('language', 'CW_WIDGETDELETED');
+			}
+		}
+		
+		
+		/**
+		 * Upload finished.
+		 */
+		private function onUploadComplete(evt:DataEvent):void {
+			try {
+				var data:XML = new XML(evt.data);
+				if (data.error.@id != "0") {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', data.error.@id));
+				}
+			} catch (e:Error) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-0'));
+			}
+			widgetProgress.text = resourceManager.getString('language', 'CW_WIDGETUPLOADED');
+			this.loadWidgetsList();
+			this.btWidgetDelete.enabled = true;
+			this.btWidgetSend.enabled = true;
+			this.cWidgets.enabled = true;
+		}
+		
+		/**
+		 * Upload progress.
+		 */
+		private function onUploadProgress(evt:ProgressEvent):void {
+			widgetProgress.text = resourceManager.getString('language', 'FM_UPLOADING') + ": " + uint(Math.round(100 * evt.bytesLoaded / evt.bytesTotal)) + "%";
+		}
+		
+		/**
+		 * A file was selected for upload.
+		 */
+		private function onUploadSelect(evt:Event):void {
+			try {
+				if (this._file.size <= (EditorOptions.uploadMax * 1024 * 1024)) {
+					var param:String = "community=" + LoadedData.community.id + "&type=widget";
+					param += "&name=" + StringFunctions.noSpecial(this._file.name);
+					param += "&userid=" + UserInfo.id;
+					param += "&userindex=" + UserInfo.index;
+					param += "&cfiles=true";
+					var uploadRequest:URLRequest = new URLRequest(ServerInteraction.callScript("uploadfile"));
+					uploadRequest.data = new URLVariables(param);
+					uploadRequest.method = EditorOptions.method;
+					this._file.upload(uploadRequest);
+					this.btWidgetDelete.enabled = false;
+					this.btWidgetSend.enabled = false;
+					this.cWidgets.enabled = false;
+				} else {
+					Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-3'));
+				}
+			} catch (e:Error) {
+				Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-4'));
+			}
+		}
+		
+		/**
+		 * Upload started.
+		 */
+		private function onUploadOpen(evt:Event):void {
+			widgetProgress.text = resourceManager.getString('language', 'FM_UPLOADING') + ": 0%";
+		}
+		
+		/**
+		 * File upload error.
+		 */
+		private function onUploadError(evt:Event):void {
+			Warning.createWarning(resourceManager.getString('language', 'FM_UPLOADFILEERRORWINDOW'), resourceManager.getString('error', 'ERFILE-0'));
+			widgetProgress.text = resourceManager.getString('language', 'CW_WIDGETUPLOADERROR');
+			this.btWidgetDelete.enabled = true;
+			this.btWidgetSend.enabled = true;
+			this.cWidgets.enabled = true;
+		}
+		
+		/**
+		 * File upload cancel.
+		 */
+		private function onUploadCancel(evt:Event):void {
+			widgetProgress.text = resourceManager.getString('language', 'CW_WIDGETUPLOADCANCEL');
+			this.btWidgetDelete.enabled = true;
+			this.btWidgetSend.enabled = true;
+			this.cWidgets.enabled = true;
+		}
 		
 		/**
 		 * Load the current meta data list.
@@ -1172,6 +1338,28 @@ WindowCommunityProperties creates a window to manage community properties.
 				<s:VGroup styleName="paddingGroup">
 					<s:Label text="{resourceManager.getString('language', 'CW_CSSABOUT')}" width="100%" />
 					<s:TextArea id="cssText" width="100%" height="100%" creationComplete="onCInit('cssText')" />
+				</s:VGroup>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="{resourceManager.getString('language', 'CW_WIDGETSTAB')}">
+				<s:VGroup styleName="paddingGroup">
+					<s:VGroup width="100%" height="70%">
+						<s:DataGrid id="cWidgets" dataProvider="{cWidgetsList}" width="100%" height="280" requestedRowCount="3" creationComplete="loadWidgetsList()">
+							<s:columns>
+								<s:ArrayList>
+									<s:GridColumn dataField="file" headerText="{resourceManager.getString('language', 'FM_COLUMNFILE')}"></s:GridColumn>
+									<s:GridColumn dataField="size" headerText="{resourceManager.getString('language', 'FM_COLUMNSIZE')}"></s:GridColumn>
+									<s:GridColumn dataField="date" headerText="{resourceManager.getString('language', 'FM_COLUMNDATE')}"></s:GridColumn>
+								</s:ArrayList>
+							</s:columns>
+						</s:DataGrid>
+						<s:HGroup width="100%">
+							<s:Button id="btWidgetSend" label="{resourceManager.getString('language', 'CW_UPLOADWIDGET')}" click="onWidgetAction('send')"/>
+							<s:Button id="btWidgetDelete" label="{resourceManager.getString('language', 'CW_DELETEWIDGET')}" click="onWidgetAction('delete')"/>
+						</s:HGroup>
+						<s:Label width="100%" text="" />
+						<s:Label width="100%" text="{resourceManager.getString('language', 'CW_ABOUTWIDGET')}" />
+						<s:Label id="widgetProgress" width="100%" text="" />
+					</s:VGroup>
 				</s:VGroup>
 			</s:NavigatorContent>
 		</mx:TabNavigator>

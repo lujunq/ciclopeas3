@@ -9,6 +9,7 @@ package art.ciclope.managana.data {
 	import flash.events.IOErrorEvent;
 	import flash.events.ProgressEvent;
 	import flash.events.SecurityErrorEvent;
+	import flash.geom.Point;
 	import flash.net.URLRequest;
 	import flash.net.URLRequestHeader;
 	import flash.net.URLVariables;
@@ -141,6 +142,7 @@ package art.ciclope.managana.data {
 		private var _navzprev:String;			// navigation transition for previous Z stream
 		private var _navhome:String;			// navigation transition for home stream
 		private var _navlist:String;			// navigation transition for list-selected streams
+		private var _widgets:Array;				// widgets references
 		
 		/**
 		 * DISCommunity constructor.
@@ -165,6 +167,7 @@ package art.ciclope.managana.data {
 			this._categories = new Array();
 			this._home = new StreamData("", "");
 			this._feeds = new Array();
+			this._widgets = new Array();
 			this._playlists = new Array();
 			this._iconloader = new Loader();
 			this._iconloader.contentLoaderInfo.addEventListener(Event.INIT, onIcon);
@@ -302,6 +305,20 @@ package art.ciclope.managana.data {
 		}
 		
 		/**
+		 * Community landscape size (x and y values).
+		 */
+		public function get landscapeSize():Point {
+			return (new Point(this._screenwidth, this._screenheight));
+		}
+		
+		/**
+		 * Community portrait size (x and y values).
+		 */
+		public function get portraitSize():Point {
+			return (new Point(this._portraitwidth, this._portraitheight));
+		}
+		
+		/**
 		 * Use highlight color on links?
 		 */
 		public function get usehighlight():Boolean {
@@ -351,6 +368,13 @@ package art.ciclope.managana.data {
 		 */
 		public function get feeds():Array {
 			return (this._feeds);
+		}
+		
+		/**
+		 * An array with the loaded widget names.
+		 */
+		public function get widgets():Array {
+			return (this._widgets);
 		}
 		
 		/**
@@ -680,6 +704,9 @@ package art.ciclope.managana.data {
 				this._feeds[0].kill();
 				this._feeds.shift();
 			}
+			while (this._widgets.length > 0) {
+				this._widgets.shift();
+			}
 			for (var istr:String in this._playlists) {
 				this._playlists[istr].kill();
 				delete(this._playlists[istr]);
@@ -756,6 +783,10 @@ package art.ciclope.managana.data {
 				this._feeds.shift();
 			}
 			this._feeds = null;
+			while (this._widgets.length > 0) {
+				this._widgets.shift();
+			}
+			this._widgets = null;
 			for (var istr:String in this._playlists) {
 				this._playlists[istr].kill();
 				delete(this._playlists[istr]);
@@ -876,6 +907,15 @@ package art.ciclope.managana.data {
 				for (index = 0; index < data.feeds[0].child("feed").length(); index++) {
 					if ((data.feeds[0].feed[index].hasOwnProperty('@reference')) && (data.feeds[0].feed[index].hasOwnProperty('@type'))) {
 						this._feeds.push(new FeedData(String(data.feeds[0].feed[index]), String(data.feeds[0].feed[index].@type), String(data.feeds[0].feed[index].@reference)));
+					}
+				}
+				// widgets
+				if (data.widgets[0] != null) {
+					for (index = 0; index < data.widgets[0].child("widget").length(); index++) {
+						this._widgets.push(String(data.widgets[0].widget[index]));
+						if (String(this._widgets[index]).substr( -4) == '.swf') {
+							this._widgets[index] = String(this._widgets[index]).substr(0, String(this._widgets[index]).length - 4);
+						}
 					}
 				}
 			}

@@ -238,7 +238,7 @@ PropertiesWindow creates a window to handle image instance properties.
 				case "iglcolor": this.iglcolor.selectedColor = uint(this._image.instance.GLFcolor); break;
 				case "iglinner": this.iglinner.selected = this._image.instance.GLFinner; break;
 				case "codeWindow":
-					this.codeWindow.code = this._image.instance.action;
+					if (this._image.instance != null) this.codeWindow.code = this._image.instance.action;
 					this.codeWindow.addEventListener(Event.CHANGE, this.codeChange);
 					break;
 				case "instancePlaylist":

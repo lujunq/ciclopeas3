@@ -75,6 +75,10 @@ ProgressCode creates a component capable of editing progress code for elements o
 		private var htmlBoxFolderListData:ArrayCollection;
 		[Bindable]
 		private var systemActions:ArrayCollection;
+		[Bindable]
+		private var widgetActions:ArrayCollection;
+		[Bindable]
+		private var availableWidgets:ArrayCollection;
 		
 		
 		// PROPERTIES
@@ -99,6 +103,7 @@ ProgressCode creates a component capable of editing progress code for elements o
 			this.streamInstances = new ArrayCollection();
 			this.communityStreams = new ArrayCollection();
 			this.externalFeeds = new ArrayCollection();
+			this.availableWidgets = new ArrayCollection();
 			this.parserList = new ArrayCollection();
 			this.parserList.addItem("COMMUNITY");
 			this.parserList.addItem("STREAM");
@@ -106,6 +111,17 @@ ProgressCode creates a component capable of editing progress code for elements o
 			this.parserList.addItem("MESSAGE");
 			this.parserList.addItem("CODE");
 			this.parserList.addItem("SYSTEM");
+			this.parserList.addItem("WIDGET");
+			this.widgetActions = new ArrayCollection();
+			this.widgetActions.addItem("showAbove");
+			this.widgetActions.addItem("showBelow");
+			this.widgetActions.addItem("hide");
+			this.widgetActions.addItem("hideAll");
+			this.widgetActions.addItem("setPosition");
+			this.widgetActions.addItem("setXPosition");
+			this.widgetActions.addItem("setYPosition");
+			this.widgetActions.addItem("customCall");
+			this.widgetActions.addItem("customCallValue");
 			this.systemActions = new ArrayCollection();
 			this.systemActions.addItem("print");
 			this.systemActions.addItem("readQRCode");
@@ -376,6 +392,18 @@ ProgressCode creates a component capable of editing progress code for elements o
 					this.drop1.visible = this.label1.visible = true;
 					this.drop2.visible = this.label2.visible = false;
 					break;
+				case "WIDGET":
+					this.loadWidgets();
+					this.drop1.textInput.enabled = false;
+					this.drop1.dataProvider = this.availableWidgets;
+					this.drop1.selectedIndex = 0;
+					this.label1.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETS');
+					this.drop1.visible = this.label1.visible = true;
+					this.drop2.dataProvider = this.widgetActions;
+					this.drop2.selectedIndex = 0;
+					this.label2.text = resourceManager.getString('language', 'PROGRESSCODE_ACTION');
+					this.drop2.visible = this.label2.visible = true;
+					break;
 				case "STREAM":
 					this.drop1.textInput.enabled = false;
 					this.drop1.dataProvider = this.streamList;
@@ -525,6 +553,8 @@ ProgressCode creates a component capable of editing progress code for elements o
 						break;
 				}
 			} else if (this.drop0.selectedItem == "INSTANCE") {
+				this.drop2.selectedIndex = 0;
+			} else if (this.drop0.selectedItem == "WIDGET") {
 				this.drop2.selectedIndex = 0;
 			} else if (this.drop0.selectedItem == "CODE") {
 				this.param_code.removeAllElements();
@@ -736,61 +766,94 @@ ProgressCode creates a component capable of editing progress code for elements o
 			// remove param forms
 			while (this.commandParams.numElements > 0) this.commandParams.removeElementAt(0);
 			// check command group
-			switch (this.drop2.selectedItem) {
-				case "runCode":
-				case "webcam":
-				case "clearWebcam":
-				case "forceLoop":
-				case "unforceLoop":
-				case "fullScreen":
-				case "clearFullScreen":
-				case "hideSubtitle":
-				case "showSubtitle":
-				case "toggleSubtitle":
-				case "next":
-				case "pause":
-				case "play":
-				case "previous":
-				case "hide":
-				case "show":
-				case "clearAllSets":
-				case "clearElement":
-				case "clearURL":
-				case "clearSubtitle":
-				case "scrollUp":
-				case "scrollDown":
-				case "scrollTop":
-				case "scrollBottom":
-					// do nothing
-					break;
-				case "element":
-					this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_PLAYLISTELEMENT');
-					this.commandParams.addElement(this.param_playlist1);
-					break;
-				case "seek":
-					this.label_playlist5.text = resourceManager.getString('language', 'PROGRESSCODE_PLAYLISTSEEK');
-					this.commandParams.addElement(this.param_playlist5);
-					break;
-				case "mediaURL":
-					this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_MEDIAURL');
-					this.commandParams.addElement(this.param_playlist1);
-					break;
-				case "setSubtitle":
-					this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_SUBTITLE');
-					this.commandParams.addElement(this.param_playlist1);
-					break;
-				case "clearSet":
-					this.label_playlist2.text = resourceManager.getString('language', 'PROGRESSCODE_CLEARSET');
-					this.commandParams.addElement(this.param_playlist2);
-					this.drop_playlist2.dataProvider = this.propertyList;
-					this.drop_playlist2.selectedIndex = 0;
-					break;
-				case "set":
-					this.label_playlist4.text = resourceManager.getString('language', 'PROGRESSCODE_SET');
-					this.commandParams.addElement(this.param_playlist4);
-					this.drop_playlist4.selectedIndex = 0;
-					this.drop4Change();
-					break;
+			if (String(this.drop0.selectedItem) == 'INSTANCE') {
+				switch (this.drop2.selectedItem) {
+					case "runCode":
+					case "webcam":
+					case "clearWebcam":
+					case "forceLoop":
+					case "unforceLoop":
+					case "fullScreen":
+					case "clearFullScreen":
+					case "hideSubtitle":
+					case "showSubtitle":
+					case "toggleSubtitle":
+					case "next":
+					case "pause":
+					case "play":
+					case "previous":
+					case "hide":
+					case "show":
+					case "clearAllSets":
+					case "clearElement":
+					case "clearURL":
+					case "clearSubtitle":
+					case "scrollUp":
+					case "scrollDown":
+					case "scrollTop":
+					case "scrollBottom":
+						// do nothing
+						break;
+					case "element":
+						this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_PLAYLISTELEMENT');
+						this.commandParams.addElement(this.param_playlist1);
+						break;
+					case "seek":
+						this.label_playlist5.text = resourceManager.getString('language', 'PROGRESSCODE_PLAYLISTSEEK');
+						this.commandParams.addElement(this.param_playlist5);
+						break;
+					case "mediaURL":
+						this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_MEDIAURL');
+						this.commandParams.addElement(this.param_playlist1);
+						break;
+					case "setSubtitle":
+						this.label_playlist1.text = resourceManager.getString('language', 'PROGRESSCODE_SUBTITLE');
+						this.commandParams.addElement(this.param_playlist1);
+						break;
+					case "clearSet":
+						this.label_playlist2.text = resourceManager.getString('language', 'PROGRESSCODE_CLEARSET');
+						this.commandParams.addElement(this.param_playlist2);
+						this.drop_playlist2.dataProvider = this.propertyList;
+						this.drop_playlist2.selectedIndex = 0;
+						break;
+					case "set":
+						this.label_playlist4.text = resourceManager.getString('language', 'PROGRESSCODE_SET');
+						this.commandParams.addElement(this.param_playlist4);
+						this.drop_playlist4.selectedIndex = 0;
+						this.drop4Change();
+						break;
+				}
+			} else if (String(this.drop0.selectedItem) == 'WIDGET') {
+				switch (this.drop2.selectedItem) {
+					case "showAbove":
+					case "showBelow":
+					case "hide":
+					case "hideAll":
+						// do nothing
+						break;
+					case "setXPosition":
+						this.label_widget1.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETPOSX');
+						this.commandParams.addElement(this.param_widget1);
+						break;
+					case "setYPosition":
+						this.label_widget1.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETPOSY');
+						this.commandParams.addElement(this.param_widget1);
+						break;
+					case "setPosition":
+						this.label_widget2a.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETPOSX');
+						this.label_widget2b.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETPOSY');
+						this.commandParams.addElement(this.param_widget2);
+						break;
+					case "customCall":
+						this.label_widget3.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETCUSTOM');
+						this.commandParams.addElement(this.param_widget3);
+						break;
+					case "customCallValue":
+						this.label_widget4a.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETCUSTOM');
+						this.label_widget4b.text = resourceManager.getString('language', 'PROGRESSCODE_WIDGETCUSTOMVALUE');
+						this.commandParams.addElement(this.param_widget4);
+						break;
+				}
 			}
 		}
 		
@@ -1039,6 +1102,35 @@ ProgressCode creates a component capable of editing progress code for elements o
 							break;
 					}
 					break;
+				case "WIDGET":
+					switch (this.drop2.selectedItem) {
+						case "showAbove":
+						case "showBelow":
+						case "hide":
+						case "hideAll":
+							if (this.drop1.textInput.text != "") {
+								code += this.drop1.textInput.text + "->" + this.drop2.selectedItem;
+							} else {
+								code += this.drop1.selectedItem + "->" + this.drop2.selectedItem;
+							}
+							break;
+						case "setXPosition":
+							code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + String(this.num_widget1.value);
+							break;
+						case "setYPosition":
+							code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + String(this.num_widget1.value);
+							break;
+						case "setPosition":
+							code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + String(this.num_widget2a.value) + "->" + String(this.num_widget2b.value);
+							break;
+						case "customCall":
+							code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + this.text_widget3.text;
+							break;
+						case "customCallValue":
+							code += this.drop1.selectedItem + "->" + this.drop2.selectedItem + "->" + this.text_widget4a.text + "->" + this.text_widget4b.text;
+							break;
+					}
+					break;
 				case "MESSAGE":
 					switch (this.drop1.selectedItem) {
 						case "htmlbox":
@@ -1196,6 +1288,7 @@ ProgressCode creates a component capable of editing progress code for elements o
 					this.communityStreams.addItem( { label: String(server.data.stream[index]), data: String(server.data.stream[index].@file) } );
 				}
 				this.loadInstances();
+				this.loadWidgets();
 			}
 			server.kill();
 		}
@@ -1257,6 +1350,17 @@ ProgressCode creates a component capable of editing progress code for elements o
 				}
 				if (this.drop0.selectedItem == "INSTANCE") this.drop1.selectedIndex = 0;
 			}
+		}
+		
+		/**
+		 * Get available widgets.
+		 */
+		public function loadWidgets():void {
+			this.availableWidgets.removeAll();
+			for (var index:uint = 0; index < LoadedData.community.widgets.length; index++) {
+				this.availableWidgets.addItem(String(LoadedData.community.widgets[index]));
+			}
+			if (this.drop0.selectedItem == "WIDGET") this.drop1.selectedIndex = 0;
 		}
 		
 		/**
@@ -1407,6 +1511,30 @@ ProgressCode creates a component capable of editing progress code for elements o
 			<s:Label id="label_playlist5" text="" />
 			<s:NumericStepper id="num_playlist5" minimum="0" value="0" maximum="100000" width="100%" />
 		</s:HGroup>
+		<s:HGroup width="100%" id="param_widget1" verticalAlign="middle">
+			<s:Label id="label_widget1" text="" />
+			<s:NumericStepper id="num_widget1" minimum="-1000000" value="0" maximum="1000000" width="100%" />
+		</s:HGroup>
+		<s:HGroup width="100%" id="param_widget2" verticalAlign="middle">
+			<s:Label id="label_widget2a" text="" />
+			<s:NumericStepper id="num_widget2a" minimum="-1000000" value="0" maximum="1000000" width="50%" />
+			<s:Label id="label_widget2b" text="" />
+			<s:NumericStepper id="num_widget2b" minimum="-1000000" value="0" maximum="1000000" width="50%" />
+		</s:HGroup>
+		<s:HGroup width="100%" id="param_widget3" verticalAlign="middle">
+			<s:Label id="label_widget3" text="" />
+			<s:TextInput width="100%" id="text_widget3" />
+		</s:HGroup>
+		<s:VGroup width="100%" id="param_widget4" horizontalAlign="left">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label id="label_widget4a" text="" />
+				<s:TextInput width="100%" id="text_widget4a" />
+			</s:HGroup>
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label id="label_widget4b" text="" />
+				<s:TextInput width="100%" id="text_widget4b" />
+			</s:HGroup>
+		</s:VGroup>
 	</s:VGroup>
 	<s:TextArea width="100%" height="100%" id="codeText" change="update()" />
 	<s:HGroup horizontalAlign="right" width="100%" verticalAlign="middle">
