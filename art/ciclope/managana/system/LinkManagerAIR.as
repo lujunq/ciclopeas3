@@ -271,6 +271,9 @@ package art.ciclope.managana.system {
 				}
 				var posX:Number = (this._refWidth - sizeW) / 2;
 				var posY:Number = (this._refHeight - sizeH) / 2;
+				
+				trace ('size:', posX, posY, sizeW, sizeH, this._comWidth, this._comHeight);
+				
 				if (this._view.stage != null) this._view.viewPort = new Rectangle(posX, posY, sizeW, sizeH);
 				//if (this._view.stage != null) this._view.viewPort = new Rectangle(0, this._close.height, this._refWidth, (this._refHeight - this._close.height));
 			}

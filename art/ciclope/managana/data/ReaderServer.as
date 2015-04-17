@@ -237,6 +237,8 @@ package art.ciclope.managana.data {
 			this.url = StringFunctions.slashURL(url) + "reader" + ending;
 			this.shareurl = StringFunctions.slashURL(url) + "share" + ending;
 			this.feedurl = StringFunctions.slashURL(url) + "feed" + ending;
+			
+			// authenticate update for 1.7 (soon)
 			//this.idcheckurl = StringFunctions.slashURL(url) + "managanalogin" + ending;
 			
 			this.idcheckurl = StringFunctions.slashURL(url) + "idcheck" + ending;
