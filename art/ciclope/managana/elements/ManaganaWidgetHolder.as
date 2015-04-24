@@ -70,6 +70,13 @@ package art.ciclope.managana.elements {
 			}
 		}
 		
+		/**
+		 * A reference to the loaded widget object itself (null if not loaded yet or on error).
+		 */
+		public function get widgetObject():Object {
+			return (this._widget);
+		}
+		
 		// PUBLIC METHODS
 		
 		/**

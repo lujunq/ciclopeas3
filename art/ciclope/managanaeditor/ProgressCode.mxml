@@ -136,6 +136,11 @@ ProgressCode creates a component capable of editing progress code for elements o
 			this.systemActions.addItem("hideBookmarks");
 			this.systemActions.addItem("showNotes");
 			this.systemActions.addItem("hideNotes");
+			this.systemActions.addItem("allowDrag");
+			this.systemActions.addItem("noDrag");
+			this.systemActions.addItem("allowZoom");
+			this.systemActions.addItem("noZoom");
+			this.systemActions.addItem("resetView");
 			this.communityActions = new ArrayCollection();
 			this.communityActions.addItem("loadCommunity");
 			this.communityActions.addItem("showLowerGuide");
@@ -474,6 +479,11 @@ ProgressCode creates a component capable of editing progress code for elements o
 					case "hideBookmarks":
 					case "showNotes":
 					case "hideNotes":
+					case "allowDrag":
+					case "allowZoom":
+					case "resetView":
+					case "noDrag":
+					case "noZoom":
 						// do nothing
 						break;
 				}
@@ -950,6 +960,11 @@ ProgressCode creates a component capable of editing progress code for elements o
 						case "hideBookmarks":
 						case "showNotes":
 						case "hideNotes":
+						case "allowDrag":
+						case "allowZoom":
+						case "resetView":
+						case "noDrag":
+						case "noZoom":
 							code += this.drop1.selectedItem;
 							break;
 					}

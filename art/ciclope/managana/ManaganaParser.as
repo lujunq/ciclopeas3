@@ -86,6 +86,99 @@ package art.ciclope.managana {
 		// PUBLIC METHODS
 		
 		/**
+		 * Get the value of a single string variable.
+		 * @param	name	the string variable name
+		 * @return	the value or null if the variable is not set
+		 */
+		public function getString(name:String):String {
+			if (this._groups["CODE"].getString(name) != null) {
+				return (String(this._groups["CODE"].getString(name)));
+			} else {
+				return (null);
+			}
+		}
+		
+		/**
+		 * Set the value of a single string variable.
+		 * @param	name	the string variable name
+		 * @param	value	the value to set
+		 */
+		public function setString(name:String, value:String):void {
+			this._groups["CODE"].setString(name, value);
+		}
+		
+		/**
+		 * Is a string variable set?
+		 * @param	name	the string variable name
+		 * @return	true if the string variable checked is set, false otherwise
+		 */
+		public function isStrSet(name:String):Boolean {
+			return (this._groups["CODE"].isStrSet(name) as Boolean);
+		}
+		
+		/**
+		 * Get the value of a single number variable.
+		 * @param	name	the number variable name
+		 * @return	the value or 0 if the variable is not set
+		 */
+		public function getNumber(name:String):Number {
+			if (this._groups["CODE"].getNumber(name) != null) {
+				return(Number(this._groups["CODE"].getNumber(name)));
+			} else {
+				return (0);
+			}
+		}
+		
+		/**
+		 * Set the value of a single number variable.
+		 * @param	name	the number variable name
+		 * @param	value	the value to set
+		 */
+		public function setNumber(name:String, value:Number):void {
+			this._groups["CODE"].setNumber(name, value);
+		}
+		
+		/**
+		 * Is a number variable set?
+		 * @param	name	the number variable name
+		 * @return	true if the number variable checked is set, false otherwise
+		 */
+		public function isNumSet(name:String):Boolean {
+			return (this._groups["CODE"].isNumSet(name) as Boolean);
+		}
+		
+		/**
+		 * Get the value of a single community variable.
+		 * @param	name	the community variable name
+		 * @return	the value or null if the variable is not set
+		 */
+		public function getComValue(name:String):String {
+			if (this._groups["CODE"].getComValue(name) != null) {
+				return(String(this._groups["CODE"].getComValue(name)));
+			} else {
+				return (null);
+			}
+		}
+		
+		/**
+		 * Set the value of a single community variable.
+		 * @param	name	the community variable name
+		 * @param	value	the value to set
+		 */
+		public function setComValue(name:String, value:String):void {
+			this._groups["CODE"].setComValue(name, value);
+		}
+		
+		/**
+		 * Is a community variable set?
+		 * @param	name	the community variable name
+		 * @return	true if the community variable checked is set, false otherwise
+		 */
+		public function isComValueSet(name:String):Boolean {
+			return (this._groups["CODE"].isComValueSet(name) as Boolean);
+		}
+		
+		/**
 		 * Add current action to hold list.
 		 * @param	time	the time in seconds to hold actions
 		 */

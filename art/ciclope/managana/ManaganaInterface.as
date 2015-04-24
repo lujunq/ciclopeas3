@@ -1195,16 +1195,20 @@ package art.ciclope.managana {
 						}
 						break;
 					case 'zoom':
-						this._player.scaleX = 3 * zpX;
-						this._player.scaleY = 3 * zpX;
+						if (this._player.userZoom) {
+							this._player.scaleX = 3 * zpX;
+							this._player.scaleY = 3 * zpX;
+						}
 						break;
 					case 'position':
-						if (this._useHolder) {
-							this._player.x = this._holderBG.width * (zpX - 0.25) * 2;
-							this._player.y = this._holderBG.height * (zpY - 0.25) * 2;
-						} else {
-							this._player.x = this.stage.stageWidth * (zpX - 0.25) * 2;
-							this._player.y = this.stage.stageHeight * (zpY - 0.25) * 2;
+						if (this._player.userDrag) {
+							if (this._useHolder) {
+								this._player.x = this._holderBG.width * (zpX - 0.25) * 2;
+								this._player.y = this._holderBG.height * (zpY - 0.25) * 2;
+							} else {
+								this._player.x = this.stage.stageWidth * (zpX - 0.25) * 2;
+								this._player.y = this.stage.stageHeight * (zpY - 0.25) * 2;
+							}
 						}
 						break;
 				}
@@ -2673,12 +2677,12 @@ package art.ciclope.managana {
 		private function zoomAction(ac:String):void {
 			switch (ac) {
 				case 'minus':
-					if (this._player.scaleX > 0.3) {
+					if ((this._player.scaleX > 0.3) && (this._player.userZoom)) {
 						this._player.scaleX = this._player.scaleY = (this._player.scaleX - 0.1);
 					}
 					break;
 				case 'plus':
-					if (this._player.scaleX < 3) {
+					if ((this._player.scaleX < 3) && (this._player.userZoom)) {
 						this._player.scaleX = this._player.scaleY = (this._player.scaleX + 0.1);
 					}
 					break;

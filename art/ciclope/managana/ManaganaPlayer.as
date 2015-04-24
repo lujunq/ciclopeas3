@@ -307,6 +307,14 @@ package art.ciclope.managana {
 		 * Allow content drag?
 		 */
 		public var allowDrag:Boolean = true;
+		/**
+		 * Can user drag content?
+		 */
+		public var userDrag:Boolean = true;
+		/**
+		 * Can user zoom content?
+		 */
+		public var userZoom:Boolean = true;
 		
 		/**
 		 * ManaganaPlayer constructor.
@@ -748,6 +756,26 @@ package art.ciclope.managana {
 		 */
 		public function get pCodeParser():ManaganaParser {
 			return (this._parser);
+		}
+		
+		/**
+		 * A list of current community widgets.
+		 */
+		public function get widgetNames():Vector.<String> {
+			var ret:Vector.<String> = new Vector.<String>();
+			for (var index:String in this._widgets) ret.push(index);
+			return (ret);
+		}
+		
+		/**
+		 * the currently loaded widgets objects references.
+		 */
+		public function get widgetObjects():Array {
+			var ret:Array = new Array();
+			for (var index:String in this._widgets) {
+				ret[index] = this._widgets[index].widgetObject;
+			}
+			return (ret);
 		}
 		
 		// PROPERTIES
@@ -1837,18 +1865,16 @@ package art.ciclope.managana {
 		 * @param	method	the exposed method name
 		 * @param	param	any string parameter to send (null for none)
 		 */
-		public function callWidgetMethod(name:String, method:String, param:String = null) {
+		public function callWidgetMethod(name:String, method:String, param:String = null):void {
 			if (this._widgets[name] != null) {
 				this._widgets[name].callMethod(method, param);
 			}
 		}
 		
-		// PRIVATE METHODS
-		
 		/**
 		 * Redraw the player display considering community parameters.
 		 */
-		private function redraw():void {
+		public function redraw():void {
 			// correct content scale
 			this._mask.scaleX = this._mask.scaleY = this._content.scaleX = this._content.scaleY = 1;
 			this._mask.graphics.clear();
@@ -1866,8 +1892,10 @@ package art.ciclope.managana {
 			this.width = this._width;
 			this.height = this._height;
 			// warn loaded widgets
-			for (var index in this._widgets) this._widgets[index].warn('aspectChange');
+			for (var index:String in this._widgets) this._widgets[index].warn('aspectChange');
 		}
+		
+		// PRIVATE METHODS
 		
 		/**
 		 * Community loaded.
@@ -1875,6 +1903,8 @@ package art.ciclope.managana {
 		private function onCommunityOK(evt:DISLoad):void {
 			// redraw content display
 			this.redraw();
+			this.userDrag = true;
+			this.userZoom = true;
 			// update transitions
 			for (var istr:String in this._transitions) {
 				this._transitions[istr].width = this._community.screenwidth;

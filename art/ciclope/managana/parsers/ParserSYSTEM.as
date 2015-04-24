@@ -56,6 +56,11 @@ package art.ciclope.managana.parsers {
 						case "hideNotes":
 						case "readQRCode":
 						case "showRemoteInfo":
+						case "allowDrag":
+						case "allowZoom":
+						case "resetView":
+						case "noDrag":
+						case "noZoom":
 							ret = true;
 							break;
 						default:
@@ -97,6 +102,23 @@ package art.ciclope.managana.parsers {
 					if (this._player.interfaceMessage != null) {
 						this._player.interfaceMessage(line[1]);
 					}
+					break;
+				case "allowDrag":
+					this._player.userDrag = true;
+					break;
+				case "allowZoom":
+					this._player.userZoom = true;
+					break;
+				case "resetView":
+					this._player.redraw();
+					break;
+				case "noDrag":
+					this._player.userDrag = false;
+					this._player.redraw();
+					break;
+				case "noZoom":
+					this._player.userZoom = false;
+					this._player.redraw();
 					break;
 			}
 		}

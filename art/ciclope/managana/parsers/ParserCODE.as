@@ -130,6 +130,99 @@ package art.ciclope.managana.parsers {
 		// PUBLIC METHODS
 		
 		/**
+		 * Get the value of a single string variable.
+		 * @param	name	the string variable name
+		 * @return	the value or null if the variable is not set
+		 */
+		public function getString(name:String):String {
+			if (this._strings[name] != null) {
+				return(String(this._strings[name]));
+			} else {
+				return (null);
+			}
+		}
+		
+		/**
+		 * Set the value of a single string variable.
+		 * @param	name	the string variable name
+		 * @param	value	the value to set
+		 */
+		public function setString(name:String, value:String):void {
+			this._strings[name] = value;
+		}
+		
+		/**
+		 * Is a string variable set?
+		 * @param	name	the string variable name
+		 * @return	true if the string variable checked is set, false otherwise
+		 */
+		public function isStrSet(name:String):Boolean {
+			return ((this._strings[name] != null));
+		}
+		
+		/**
+		 * Get the value of a single number variable.
+		 * @param	name	the number variable name
+		 * @return	the value or 0 if the variable is not set
+		 */
+		public function getNumber(name:String):Number {
+			if (this._numbers[name] != null) {
+				return(Number(this._numbers[name]));
+			} else {
+				return (0);
+			}
+		}
+		
+		/**
+		 * Set the value of a single number variable.
+		 * @param	name	the number variable name
+		 * @param	value	the value to set
+		 */
+		public function setNumber(name:String, value:Number):void {
+			this._numbers[name] = value;
+		}
+		
+		/**
+		 * Is a number variable set?
+		 * @param	name	the number variable name
+		 * @return	true if the number variable checked is set, false otherwise
+		 */
+		public function isNumSet(name:String):Boolean {
+			return ((this._numbers[name] != null));
+		}
+		
+		/**
+		 * Get the value of a single community variable.
+		 * @param	name	the community variable name
+		 * @return	the value or null if the variable is not set
+		 */
+		public function getComValue(name:String):String {
+			if (this._comValues[name] != null) {
+				return(String(this._comValues[name]));
+			} else {
+				return (null);
+			}
+		}
+		
+		/**
+		 * Set the value of a single community variable.
+		 * @param	name	the community variable name
+		 * @param	value	the value to set
+		 */
+		public function setComValue(name:String, value:String):void {
+			this._comValues[name] = value;
+		}
+		
+		/**
+		 * Is a community variable set?
+		 * @param	name	the community variable name
+		 * @return	true if the community variable checked is set, false otherwise
+		 */
+		public function isComValueSet(name:String):Boolean {
+			return ((this._comValues[name] != null));
+		}
+		
+		/**
 		 * Check a progress code string and replace variable values if they are found.
 		 * @param	toCheck	the code string to check
 		 * @return	the provided string if it is not a variable or the variable value if it is found

@@ -125,6 +125,20 @@ package art.ciclope.managana.elements {
 			return (this._player);
 		}
 		
+		/**
+		 * A list of currenlty-loaded widget names.
+		 */
+		protected final function get widgetNames():Vector.<String> {
+			return (this._player.widgetNames as Vector.<String>);
+		}
+		
+		/**
+		 * References to the loaded widget objects into an array indexed by their names.
+		 */
+		protected final function get widgetObjects():Array {
+			return (this._player.widgetObjects as Array);
+		}
+		
 		// SET-ONLY VALUES
 		
 		/**
@@ -163,6 +177,99 @@ package art.ciclope.managana.elements {
 		}
 		
 		// PROTECTED METHODS
+		
+		/**
+		 * Get the value of a single string variable.
+		 * @param	name	the string variable name
+		 * @return	the value or null if the variable is not set
+		 */
+		protected final function getString(name:String):String {
+			if (this._player.pCodeParser.getString(name) != null) {
+				return (String(this._player.pCodeParser.getString(name)));
+			} else {
+				return (null);
+			}
+		}
+		
+		/**
+		 * Set the value of a single string variable.
+		 * @param	name	the string variable name
+		 * @param	value	the value to set
+		 */
+		protected final function setString(name:String, value:String):void {
+			this._player.pCodeParser.setString(name, value);
+		}
+		
+		/**
+		 * Is a string variable set?
+		 * @param	name	the string variable name
+		 * @return	true if the string variable checked is set, false otherwise
+		 */
+		protected final function isStrSet(name:String):Boolean {
+			return (this._player.pCodeParser.isStrSet(name) as Boolean);
+		}
+		
+		/**
+		 * Get the value of a single number variable.
+		 * @param	name	the number variable name
+		 * @return	the value or 0 if the variable is not set
+		 */
+		protected final function getNumber(name:String):Number {
+			if (this._player.pCodeParser.getNumber(name) != null) {
+				return(Number(this._player.pCodeParser.getNumber(name)));
+			} else {
+				return (0);
+			}
+		}
+		
+		/**
+		 * Set the value of a single number variable.
+		 * @param	name	the number variable name
+		 * @param	value	the value to set
+		 */
+		protected final function setNumber(name:String, value:Number):void {
+			this._player.pCodeParser.setNumber(name, value);
+		}
+		
+		/**
+		 * Is a number variable set?
+		 * @param	name	the number variable name
+		 * @return	true if the number variable checked is set, false otherwise
+		 */
+		protected final function isNumSet(name:String):Boolean {
+			return (this._player.pCodeParser.isNumSet(name) as Boolean);
+		}
+		
+		/**
+		 * Get the value of a single community variable.
+		 * @param	name	the community variable name
+		 * @return	the value or null if the variable is not set
+		 */
+		protected final function getComValue(name:String):String {
+			if (this._player.pCodeParser.getComValue(name) != null) {
+				return(String(this._player.pCodeParser.getComValue(name)));
+			} else {
+				return (null);
+			}
+		}
+		
+		/**
+		 * Set the value of a single community variable.
+		 * @param	name	the community variable name
+		 * @param	value	the value to set
+		 */
+		protected final function setComValue(name:String, value:String):void {
+			this._player.pCodeParser.setComValue(name, value);
+		}
+		
+		/**
+		 * Is a community variable set?
+		 * @param	name	the community variable name
+		 * @return	true if the community variable checked is set, false otherwise
+		 */
+		protected final function isComValueSet(name:String):Boolean {
+			return (this._player.pCodeParser.isComValueSet(name) as Boolean);
+		}
 		
 		/**
 		 * Expose a function using the custom methods interface.

@@ -111,54 +111,14 @@ WindowCommunityCategories creates a window to manage community categories.
 		private function changeSets():void {
 			// interface display
 			this._display = "";
-			if (this.showInterface.selectedItem == undefined) {
-				this.showInterface.selectedItem = this.showInterfaceData.getItemAt(0);
-				this.showInterfaceData.refresh();
-				this.showInterface.validateNow();
-			}
-			if (this.showClock.selectedItem == undefined) {
-				this.showClock.selectedItem = this.showClockData.getItemAt(0);
-				this.showClockData.refresh();
-				this.showClock.validateNow();
-			}
-			if (this.showVotes.selectedItem == undefined) {
-				this.showVotes.selectedItem = this.showVotesData.getItemAt(0);
-				this.showVotesData.refresh();
-				this.showVotes.validateNow();
-			}
-			if (this.showComment.selectedItem == undefined) {
-				this.showComment.selectedItem = this.showCommentData.getItemAt(0);
-				this.showCommentData.refresh();
-				this.showComment.validateNow();
-			}
-			if (this.showRate.selectedItem == undefined) {
-				this.showRate.selectedItem = this.showRateData.getItemAt(0);
-				this.showRateData.refresh();
-				this.showRate.validateNow();
-			}
-			if (this.showZoom.selectedItem == undefined) {
-				this.showZoom.selectedItem = this.showZoomData.getItemAt(0);
-				this.showZoomData.refresh();
-				this.showZoom.validateNow();
-			}
-			if (this.showUser.selectedItem == undefined) {
-				this.showUser.selectedItem = this.showUserData.getItemAt(0);
-				this.showUserData.refresh();
-				this.showUser.validateNow();
-			}
-			if (this.renderMode.selectedItem == undefined) {
-				this.renderMode.selectedItem = this.renderModeData.getItemAt(0);
-				this.renderModeData.refresh();
-				this.renderMode.validateNow();
-			}
-			if (this.renderMode.selectedItem.data == "html5") this._display += "&render=5"; 
-			if (this.showInterface.selectedItem.data != "") this._display += "&showinterface=" + this.showInterface.selectedItem.data;
-			if (this.showClock.selectedItem.data != "") this._display += "&showclock=" + this.showClock.selectedItem.data;
-			if (this.showVotes.selectedItem.data != "") this._display += "&showvote=" + this.showVotes.selectedItem.data;
-			if (this.showComment.selectedItem.data != "") this._display += "&showcomment=" + this.showComment.selectedItem.data;
-			if (this.showRate.selectedItem.data != "") this._display += "&showrate=" + this.showRate.selectedItem.data;
-			if (this.showZoom.selectedItem.data != "") this._display += "&showzoom=" + this.showZoom.selectedItem.data;
-			if (this.showUser.selectedItem.data != "") this._display += "&showuser=" + this.showUser.selectedItem.data;
+			if (this.renderMode.selectedItem != undefined) if (this.renderMode.selectedItem.data == "html5") this._display += "&render=5"; 
+			if (this.showInterface.selectedItem != undefined) if (this.showInterface.selectedItem.data != "") this._display += "&showinterface=" + this.showInterface.selectedItem.data;
+			if (this.showClock.selectedItem != undefined) if (this.showClock.selectedItem.data != "") this._display += "&showclock=" + this.showClock.selectedItem.data;
+			if (this.showVotes.selectedItem != undefined) if (this.showVotes.selectedItem.data != "") this._display += "&showvote=" + this.showVotes.selectedItem.data;
+			if (this.showComment.selectedItem != undefined) if (this.showComment.selectedItem.data != "") this._display += "&showcomment=" + this.showComment.selectedItem.data;
+			if (this.showRate.selectedItem != undefined) if (this.showRate.selectedItem.data != "") this._display += "&showrate=" + this.showRate.selectedItem.data;
+			if (this.showZoom.selectedItem != undefined) if (this.showZoom.selectedItem.data != "") this._display += "&showzoom=" + this.showZoom.selectedItem.data;
+			if (this.showUser.selectedItem != undefined) if (this.showUser.selectedItem.data != "") this._display += "&showuser=" + this.showUser.selectedItem.data;
 			// set iframe text
 			var frameText:String = '<iframe style="background: none repeat scroll 0% 0% #000000;" name="managana" src="';
 			frameText += EditorOptions.path + "iframe.php?community=" + LoadedData.community.id;
